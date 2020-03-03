@@ -1,0 +1,81 @@
+
+!CNF1.1
+This is the main configuration file for the LifeLog applications settings.
+https://github.com/wbudic/LifeLog
+This is an Open Source License project -> https://choosealicense.com/licenses/isc/
+The credential format:<<AUTO_LOGIN <{alias}/{password}> , dont enable here using AUTO_LOGIN option bellow, use config in app.
+<<AUTO_LOGIN<Value>>>
+# List command anon with the name of 'list_cmd'.
+<<list_cmd<
+ls -lh $$$1$$$|sort
+>>>
+<<<CONST
+$RELEASE_VER = 1.8
+$SYS_1 =    10
+$SYS_2 = 20
+$SYS_3 =      "   Some Nice Text!   "
+>>
+<<CONST<$SYS_HELP
+Multiple lines
+in this txt
+is placed as a const.
+>>>
+
+
+
+<<LOG<TABLE
+    ID_CAT TINY NOT NULL,
+    DATE DATETIME  NOT NULL,
+    LOG VCHAR(128) NOT NULL,
+    AMOUNT INTEGER DEFAULT 0,
+    AFLAG TINY DEFAULT 0,
+    RTF BOOL DEFAULT 0,
+    STICKY BOOL DEFAULT 0
+>>
+<<LOG<DATA
+01`@2014-11-13 13:48:05`Test Entry\nmulti\nlined
+>>
+<<CONFIG<TABLE
+    ID TINY PRIMARY KEY NOT NULL,
+    NAME VCHAR(16),
+    VALUE VCHAR(28),
+    DESCRIPTION VCHAR(128)
+   >>
+<<CONFIG<INDEX
+    idx_config_name ON CONFIG (NAME);
+>>
+<<CONFIG<DATA
+00`$RELEASE_VER `$RELEASE_VER$`LifeLog Application Version.
+01`$REC_LIMIT   `25`Records shown per page.
+03`$TIME_ZONE   `Australia/Sydney`Time zone of your country.
+05`$PRC_WIDTH   `80`Default presentation width for pages.
+08`$LOG_PATH    `../../dbLifeLog/`Path to folder containing data.
+10`$SESSN_EXPR  `+30m`Login session expiration time setting, can be minutes or hours.
+12`$DATE_UNI    `0`Setting of how dates are displayed, universal yyyy-mm-dd or local dd-mm-yyyy.
+14`$LANGUAGE	`English`Default language locale.
+18`$IMG_W_H     `210x120`Default embedded image width.
+20`$AUTO_WRD_LMT`200`Autocomplete word gathering limit.
+22`$AUTO_LOGIN  `0`Autologin option, that expires only if login out. Enter Credentials in main.cnf.
+24`$FRAME_SIZE  `0`Youtube frame size settings, 0 - Large, 1 - Medium, 2- Small.
+26`$RTF_SIZE    `2`RTF Document height, 0 - Large, 1 - Medium, 2- Small.
+28`$THEME       `Standard`Theme to applay, Standard, Sun, Moon, Earth.
+30`$DEBUG       `0`Development page additional debug output, off (default) or on.
+32`$KEEP_EXCS   `0`Cache excludes between sessions, off (default) or on.
+>>
+
+<<CAT<DATA
+01`Unspecified`For quick uncategorised entries.
+03`File System`Operating file system/Application short log.
+06`System Log `Operating system important log.
+09`Event`Event that occurred, meeting, historically important.
+28`Personal`Personal log of historical importance, diary type.
+32`Expense`Significant yearly expense.
+35`Income`Significant yearly income.
+40`Work`Work related entry, worth monitoring.
+45`Food`Quick \`reference\` to recipes, observations.
+50`Music`Music reference of interest. Youtube embbed.
+52`Sport/Club`Sport or Social related entry.
+55`Cars`Car(s) related entry.
+60`Online`Online purchases (ebay, or received/ordered from online source).
+>>
+

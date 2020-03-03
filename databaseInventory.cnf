@@ -1,0 +1,56 @@
+!CNF1.1
+Sample database and data. Presentnting a Inventory database of itmes. Having multiple categories.
+<<<CONST
+$LOGIN_USER=admin
+$LOGIN_PASS=admin
+$DATABASE=data_inventory.db
+$RELEASE_VER = 1.0
+$AUTOLOAD_DATA_FILES = 1 `Auto loads included data holding config files.
+>>
+
+<<CATS<TABLE
+    ID TINY PRIMARY KEY NOT NULL,
+    NAME VCHAR(16),
+    DESCRIPTION VCHAR(128)
+>>
+
+<<ITEMS<TABLE
+    DATE DATETIME  NOT NULL,
+    NAME VCHAR(64) NOT NULL,
+    CATS VCHAR(24) DEFAULT '01',
+    AMOUNT DOUBLE DEFAULT 0
+>>
+
+
+<<CATS<DATA
+01`Unspecified`For quick uncategorised entries.~
+03`File System`Operating file system/Application short log.~
+06`System Log `Operating system important log.~
+09`Event`Event that occurred, meeting, historically important.~
+28`Personal`Personal log of historical importance, diary type.~
+32`Expense`Significant yearly expense.~
+35`Income`Significant yearly income.~
+40`Work`Work related entry, worth monitoring.~
+45`Food`Quick reference to recipes, observations.~
+50`Music`Music reference of interest. Youtube embbed.~
+52`Sport/Club`Sport or Social related entry.~
+55`Cars`Car(s) related entry.~
+60`Online`Online purchases (ebay, or received/ordered from online source).~
+62`Utility`Bill, house utility type expense.~
+64`Goverment`Goverment event of all events.
+Be a wise voter.~
+>>
+
+<<ITEMS<DATA
+01-01-2020 12:30:00`Gas Bottle.`39.0`32,62~
+01-02-2020 13:00:00`Car rego \`service, new 2 tires.`513.0`32,55~
+>>
+
+/**
+ * Following file contains rest of data for ITEMS table.
+ */
+<<DATA<FILE
+databaseInventoryDATA.cnf
+>>>
+
+

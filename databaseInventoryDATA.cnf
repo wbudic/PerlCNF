@@ -1,0 +1,8 @@
+!CNF1.1
+Sample database data tagged properties.
+See databaseInventory.cnf for data structure.
+<<ITEMS<DATA
+13-02-2020 11:50:50`First file base entry.`0`0~
+01-02-2020 13:00:00`Car rego \`service, new 2 tires.`513.0`32,55~
+false`false`0`0~
+>>

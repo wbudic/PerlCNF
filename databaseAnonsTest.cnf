@@ -1,0 +1,49 @@
+!CNF1.1
+<<list_cmd<ls -lh $$$1$$$|sort>>>
+<<LS<
+ls -l
+>>>
+<<prop_test1<dir>>>
+<<not_prop-test2<dir>>>
+<<not_prop-test3<dir>>>
+<<not_prop-closed1<
+ls -l
+>>
+<<not_prop-closed2<dir>>
+
+<<proper1< have a nice day! >>>
+<<proper2<
+very much too!
+>>>
+<<<CONST $DEF_PHONE_LINE=1800 800 xxx>>>
+
+<<$HELP<CONST
+Multiple lines
+in this text.
+>>>
+
+
+<<MyTemplate<
+
+Dear $$$SALUTATION$$$ $$$NAME$$$,
+
+We are writting to you to unfortunatelly advise you.
+That your application for an loan of $$$AMOUNT$$$, has been declined.
+
+Our assesment has made you not satify the $$$CRITERIA$$$ criteria.
+As outlined in our approval policy.
+
+Please find enclosed, our approval criteria booklet.
+Giving you a more precise and accurate requirments and information.
+
+Looking forward, in future business with you.
+
+Sincerely your Mike Dolittle
+Policy Approval Manager
+Head Office Acme Bank Corporation Holdings Global
+(p.h. $$$DEF_PHONE_LINE$$$)
+
+
+>>>
+
+<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>
