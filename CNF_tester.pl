@@ -43,5 +43,15 @@ print $today;
 #   print "$_= $ENV{$_}\n";
 # }
 
+my $log ="*Hello My Friend*\nThis is a normal paragraph, now.*sucks*\nnucks";
+$log =~ s/(^\*)(.*)(\*)(\n)/<b>\2<\/b>\n/oi;
+print "\n\n\n\n",$log;
+
+$log ="*Hello My Friend2* Should not match. This is a normal paragraph, now.";
+$log =~ s/(^\*)(.*)(\*)(\n)/<b>\2<\/b>\n/oi;
+print "\n\n\n\n",$log;
+
+
+
 ### CGI END
 1;
