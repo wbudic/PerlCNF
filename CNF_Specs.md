@@ -45,20 +45,21 @@ Which is pretty much welcomed and encouraged.
 13. CNF Constant values are store specific.
 14. Constants can't be changed for the life of the application or service issued.
 15. Storage of CNF constants declared can be preceded to the file based one.
-16. i.e. If stored in a database or on a network node. After the file declaration fact.
-17. Missing file based storage settings can be next queried from the environmental one.
+16. A Constant CNF value is not synchronized, unlike an anon from script to storage configuration. It has to be created from the scripted if missing in storage.
+17. i.e. If stored in a database or on a network node. After the file declaration fact.
+18. Missing file based storage settings can be next queried from the environmental one.
     1. This is to be avoided if possible.
-18. File storage encountered constants override system environmental ones.
+19. File storage encountered constants override system environmental ones.
     1. i.e. System administrator has set them.
-19. Database storage encountered constants override file set ones.
+20. Database storage encountered constants override file set ones.
     1. i.e. User of application has set them.
-20. CNF Constant values can be changed in the script file.
+21. CNF Constant values can be changed in the script file.
     1. If not present in script file, then an application setting must procede with its default.
     2. CNF Constants can be declared only once during initial parsing of script files.
     3. Rule of thumb is that Constants are synchonized with an applications release version.
     4. Static constants, are script or code only assigned values.
     5. CNF Anons can overide in contrast previously assigned value.
-21. A CNF Anon is similar to constants but a more simpler property and value only pair.
+22. A CNF Anon is similar to constants but a more simpler property and value only pair.
     1. Anons are so called because they are unknown or unexpected by the configuration framework, store to object intermidiate.
     2. Constants that turn up in the anon list, are a good indicator that they are not handled from script. Forgotten become anons.
     3. Anons similar to constants, once in the database, overtake the scripted or application default settings value.
@@ -66,9 +67,10 @@ Which is pretty much welcomed and encouraged.
     5. Anons hashed are programatically accessed separately to constants.
        1. It is fine to have several different applications, to share same storage, even if they have different implementation.
        2. Contants will be specific to application, while anons can change in different purpose script files.
-22. Anon is not instruction processed. Hence anonymous in nature for its value.
-23. Anon has no signifier, and doesn't need to have an application default.
-24. Anon value is global to the application and its value can be modified.
+23. Anon is not instruction processed. Hence anonymous in nature for its value.
+24. Anon has no signifier, and doesn't need to have an application default.
+25. Anon value is in best practice and in general synchronized, from script to database configuration.
+26. Anon value is global to the application and its value can be modified.
 
     ```HTML
             <<USE_SWITCH<true>>>
