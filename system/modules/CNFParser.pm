@@ -20,6 +20,7 @@ our @sql    = ();
 our @files  = ();
 our %tables = ();
 our %data   = ();
+our %lists  = ();
 
 
 sub new {
@@ -57,6 +58,8 @@ sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
 sub dataKeys {return keys %data}
 sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
 sub migrations {return %mig;}
+sub lists {return %lists}
+sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -117,9 +120,10 @@ sub parse {
         close $fh;
 try{
 
-    my @tags = ($content =~ m/<<(\$*\w*<(.*?).*?>>)/gs);
-    foreach my $tag (@tags){
-	  next if not $tag;
+    my @tags = ($content =~ m/<<(\$*\w*\$*<(.*?).*?>+)/gs);
+        
+    foreach my $tag (@tags){             
+	  next if not $tag;      
       if(index($tag,'<CONST')==0){#constant multiple properties.
 
             foreach  (split '\n', $tag){
@@ -196,7 +200,9 @@ try{
                $t = substr $t, 0, $i;
             }
 
-           # print "Ins($i): with $e do $t|\n";
+          # print "Ins($i): with $e do $t|\n";
+
+
            if($t eq 'CONST'){#Single constant with mulit-line value;
                $v =~ s/^\s//;
                $consts{$e} = $v if not $consts{$e};
@@ -336,8 +342,19 @@ try{
                 $mig{$e} = [@m];
             }
             else{
-                #Register application statement as an anonymouse one.
-                $anons{$e} = $v;
+                #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.   
+                #print "Reg($e): $v\n";
+                if($e !~ /\$\$$/){ $anons{$e} = $v }
+                else{
+                    $e = substr $e, 0, (rindex $e, "$$")-1;
+                    # Following is confusing as hell. We look to store in the hash an array reference.
+                    # But must convert back and fort via an scalar, since actual arrays returned from an hash are copies in perl.
+                    my $a = $lists{$e};
+                    if(!$a){$a=();$lists{$e} = \@{$a};}
+                    push @{$a}, $v;
+                    #print "Reg($e): $v [$a]\n";                  
+                    
+                }
                 next;
             }
             push @sql, $st;#push as application statement.

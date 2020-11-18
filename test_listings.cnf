@@ -1,0 +1,14 @@
+!CNF1.2
+
+<<CAT$$<Unspecified>>
+<<CAT$$<Inventory>>
+<<CAT$$<Stock>>
+<<CAT$$<Issue>>
+
+<<COUNTRIES$$<
+Australia
+USA
+UK
+GERMANY
+FRANCE
+>>
