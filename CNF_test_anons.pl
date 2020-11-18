@@ -24,7 +24,7 @@ testAnons();
 
 sub testAnons {
 
-my $cnf = CNFParser->new($ENV{'PWD'}."/dbLifeLog/databaseAnonsTest.cnf");
+my $cnf = CNFParser->new($ENV{'PWD'}."/databaseAnonsTest.cnf");
 
 my $exe = $cnf->anons('list_cmd', $ENV{'PWD'});
 print "Exe is:$exe\n";
@@ -32,7 +32,7 @@ $exe = `$exe`;
 print "Error failed system command!" if !$exe;
 #print "Listing:\n$exe\n";
 
-print "--LIST OF ALL ANONS ENCOUNTERED---\n";
+print "\n--LIST OF ALL ANONS ENCOUNTERED---\n";
 my %anons = $cnf->anons();
 foreach my $k (keys %anons){
     print "Key->$k=", $anons{$k},"]\n";
