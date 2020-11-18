@@ -5,8 +5,8 @@
 
 This is a simple and fast file format. That allows setting up of network applications with initial configuration values.
 These are usually standard, property and value pairs. Containing possible also SQL database structures statements with basic data.
-It is designed to accommodate a parser to read and provide for CNF property tags. These can be of three types, using all a textual similar presentation.
-In general are recognised as constants, anons or sqlites.
+It is designed to accommodate a parser to read and provide for CNF property tags. These can be of four types, using all a textual similar presentation.
+In general are recognized as constants, anons, listings or sqlites.
 
 Operating system environmental settings or variables are considered only as the last resort to provide for a value.
 This is however to be avoided as it hides the attention and expectation for a setting.
@@ -22,10 +22,10 @@ Which is pretty much welcomed and encouraged.
 4. Multi line values are tag ended on a separate line with an **>>>**.
 5. CNF tag value can post processed by placing macros making it a template.
 6. Standard markup of a macro is to enclose the property name or number with a triple dollar signifier **\$\$\$**{macro}**\$\$\$**.
-    1. Presedence of resloving the property name/value is by first passed macros, then config anons and finally the looking up constances.
+    1. Precedence of resolving the property name/value is by first passed macros, then config anons and finally the looking up constance's.
     2. Nested macros resolving from linked in other properties is currently not supported.
 7. CNF instructions and constants are uppercase.
-    1. Example 1 format with instruction: ```<<<CONST\n{name=value\n..}\n>>>``` autonoumus const, with inner properties.
+    1. Example 1 format with instruction: ```<<<CONST\n{name=value\n..}\n>>>``` autonomous const, with inner properties.
     2. Example 2 format with instruction: ```<<{$sig}{NAME}<CONST {multi line value}>>>``` A single const property with a multi line value.
     3. Example 3 format with instruction: ```<<CONST<{$sig}{NAME}\n {multi line value}>>>``` A single const property with a multi line value.
     4. Example 4 format with instruction: ```<<{NAME}<{INSTRUCTION}<{value}>>>``` A anon.
@@ -36,10 +36,10 @@ Which is pretty much welcomed and encouraged.
 10. Constants are usually scripted at the beginning of the file, or parsed first in a separate file.
 11. The instruction processor can use them if signifier $ surrounds the constant name. Therefore, replacing it with the constants value if further found in the file.
 
-```HTML
+    ```HTML
      <<<CONST $APP_PATH=~/MyApplication>>>
      <<app_path<$APP_PATH$/module/main>>>
- ```
+    ```
 
 12. Property names, Constant, Anon refer to the programmatically assinged variable name.
 13. CNF Constant values are store specific.
@@ -54,19 +54,19 @@ Which is pretty much welcomed and encouraged.
 20. Database storage encountered constants override file set ones.
     1. i.e. User of application has set them.
 21. CNF Constant values can be changed in the script file.
-    1. If not present in script file, then an application setting must procede with its default.
+    1. If not present in script file, then an application setting must proceed with its default.
     2. CNF Constants can be declared only once during initial parsing of script files.
-    3. Rule of thumb is that Constants are synchonized with an applications release version.
+    3. Rule of thumb is that Constants are synchronized with an applications release version.
     4. Static constants, are script or code only assigned values.
-    5. CNF Anons can overide in contrast previously assigned value.
+    5. CNF Anons can override in contrast previously assigned value.
 22. A CNF Anon is similar to constants but a more simpler property and value only pair.
-    1. Anons are so called because they are unknown or unexpected by the configuration framework, store to object intermidiate.
+    1. Anons are so called because they are unknown or unexpected by the configuration framework, store to object intermediate.
     2. Constants that turn up in the anon list, are a good indicator that they are not handled from script. Forgotten become anons.
     3. Anons similar to constants, once in the database, overtake the scripted or application default settings value.
     4. Static anons, are those that are set in the database, and/or are not merged with application defaults.
-    5. Anons hashed are programatically accessed separately to constants.
+    5. Anons hashed are programmatically accessed separately to constants.
        1. It is fine to have several different applications, to share same storage, even if they have different implementation.
-       2. Contants will be specific to application, while anons can change in different purpose script files.
+       2. Constants will be specific to application, while anons can change in different purpose script files.
 23. Anon is not instruction processed. Hence anonymous in nature for its value.
 24. Anon has no signifier, and doesn't need to have an application default.
 25. Anon value is in best practice and in general synchronized, from script to database configuration.
@@ -76,13 +76,15 @@ Which is pretty much welcomed and encouraged.
             <<USE_SWITCH<true>>>
             <<DIALOG_TITLE_EN<MyApplication Title>>>
     ```
-    1.  Anon value can be scripted to contain template like but numbered parameters.
-    2.  When querying for an anon value, replacement parameter array can be passed.
-    3.  Numbering is from **\$\$\$1\$\$\$**..**$$$(n...)\$\$\$** to be part of its value. Strategically placed.
+
+    1. Anon value can be scripted to contain template like but numbered parameters.
+    2. When querying for an anon value, replacement parameter array can be passed.
+    3. Numbering is from **\$\$\$1\$\$\$**..**$$$(n...)\$\$\$** to be part of its value. Strategically placed.
 
     ```HTML
         <<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>
     ```
+
     ```PERL
        # Perl language
        my $url = $cnf->anon('GET_SUB_URL',('tech','main.cgi'));
@@ -91,20 +93,35 @@ Which is pretty much welcomed and encouraged.
              or warn "Failed to obtain expected URL when querying anon -> GET_SUB_URL"
     ```
 
+27. Listing is an reappearing same name tag postfixed with an **\$\$**.
+
+    ```HTML Example 1:
+                <<INS$$>ls -la>
+                <<INS$$>uname -a>
+    ```
+
+28. Listing is usually a named list of instructions, items grouped and available as individual entries of the listing value.
+
+    ```HTML Example 2:
+                <<Animals$$>Cat>
+                <<Animals$$>Dog>
+                <<Animals$$>Eagle>
+    ```
+
 ## CNF Tag Formats
 
 ### Property Value Tag
 
-    ```HTML
+   ```HTML
         <<{name}<{value}>>>
-    ```
+   ```
 
 ### Instruction Value Tag
 
-    ```HTML
+   ```HTML
         <<<{INSTRUCTION}
         {value\n...valuen\n}>>>
-    ```
+   ```
 
 ### Full Tag
 
@@ -276,5 +293,5 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Moon Stage - v.1.1 2020</center>
+<center>Moon Stage - v.1.2 2020</center>
 
