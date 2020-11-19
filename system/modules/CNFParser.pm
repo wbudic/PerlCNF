@@ -50,7 +50,7 @@ sub anons {
     return %anons;
 }
 sub constant {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
-sub constants {return sort keys %consts}
+sub constants {my @ret = sort keys %consts; return @ret}
 sub SQLStatments {return @sql}
 sub dataFiles {return @files}
 sub tables {return keys %tables}
@@ -58,8 +58,23 @@ sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
 sub dataKeys {return keys %data}
 sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
 sub migrations {return %mig;}
-sub lists {return %lists}
+sub lists {return \%lists}
 sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
+sub listDelimit {                 
+                 my ($this, $d , $t)=@_;                 
+                 my @p = @{%lists{$t}};
+                 if(@p&&$d){                   
+                    my @ret = ();
+                    foreach (@p){
+                        my @s = split $d, $_;
+                        push @ret, @s;
+                    }
+                    $lists{$t}=\@ret;
+                    return @{$lists{$t}};
+                 }
+                 return;
+            
+    }
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
