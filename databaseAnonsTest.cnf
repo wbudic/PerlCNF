@@ -1,4 +1,4 @@
-!CNF1.1
+!CNF2.0
 <<list_cmd<ls -lh $$$1$$$|sort>>>
 <<LS<
 ls -l

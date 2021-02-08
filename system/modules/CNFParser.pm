@@ -11,6 +11,8 @@ use Exception::Class ('CNFParserException');
 use Try::Tiny;
 use Switch;
 
+our $VERSION = '2.0';
+
 
 
 our %anons  = ();
@@ -184,7 +186,8 @@ try{
                 $i = index $content, $tag;
                 $i = $i + length($tag);
                 $st = index $content, ">>", $i;
-                $v = substr $content, $i+1, $st - $i;
+                if($st==-1){$st = index $content, "<<", $i}#Maybe still in old format CNF1.0
+                $v = substr $content, $i+1, $st - $i - 1;
                 $anons{$e} = $t."\n".$v;
                 next;
             }
