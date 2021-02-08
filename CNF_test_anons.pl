@@ -26,6 +26,12 @@ sub testAnons {
 
 my $cnf = CNFParser->new($ENV{'PWD'}."/databaseAnonsTest.cnf");
 
+# Test lifelog categories
+my $v = $cnf->anons('CAT', undef);
+if(length($v)==0|| $v!~/>\n/) {die "CAT is Missing!"}
+print "\n--- CAT ---\n".$v;
+
+
 my $exe = $cnf->anons('list_cmd', $ENV{'PWD'});
 print "Exe is:$exe\n";
 $exe = `$exe`;
@@ -37,7 +43,7 @@ my %anons = $cnf->anons();
 foreach my $k (keys %anons){
     print "Key->$k=", $anons{$k},"]\n";
 }
-eval((keys %anons) == 7) or die "Error annons count mismatch!";
+eval((keys %anons) == 8) or die "Error annons count mismatch!";
 
 eval(length($cnf->constant('$HELP'))>0) or die 'Error missing multi-line valued constant property $HELP';
 
@@ -57,6 +63,8 @@ my $url = $cnf->anons('GET_SUB_URL',('tech','main.cgi'));
 eval ($url =~ m/https:\.*/)
 or warn "Failed to obtain expected URL when querying anon -> GET_SUB_URL";
 eval ($url eq 'https://www.tech.acme.com/main.cgi') or die "Error with: $url";
+
+
 }
 
 

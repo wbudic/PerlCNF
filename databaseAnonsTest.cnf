@@ -21,24 +21,42 @@ very much too!
 Multiple lines
 in this text.
 >>>
+/* Following should return value: "3>\n..\n...90|Fitness...", not 3.
+<<CAT<3>
+01|Unspecified `For quick uncategorized entries.
+03|File System `Operating file system/Application short log.
+06|System Log  `Operating system important log.
+09|Event       `Event that occurred, meeting, historically important.
+28|Personal    `Personal log of historical importance, diary type.
+32|Expense     `Significant yearly expense.
+35|Income      `Significant yearly income.
+40|Work        `Work related entry, worth monitoring.
+45|Food        `Quick reference to recipes, observations.
+50|Music       `Music reference of interest. Youtube embed.
+52|Sport/Club  `Sport or Social related entry.
+55|Cars        `Car(s) related entry.
+60|Online      `Online purchases (ebay, or received/ordered from online source).
+88|Diary       `Diary specific log and entry. Your daily yaddi-yadda that have decided to place here.
+90|Fitness     `Fitness steps, news, info, and useful links. Amount is steps.
+>>
 
 
 <<MyTemplate<
 
 Dear $$$SALUTATION$$$ $$$NAME$$$,
 
-We are writting to you to unfortunatelly advise you.
+We are writing to you to unfortunately advise you.
 That your application for an loan of $$$AMOUNT$$$, has been declined.
 
-Our assesment has made you not satify the $$$CRITERIA$$$ criteria.
+Our assessment has made you not satisfy the $$$CRITERIA$$$ criteria.
 As outlined in our approval policy.
 
 Please find enclosed, our approval criteria booklet.
-Giving you a more precise and accurate requirments and information.
+Giving you a more precise and accurate requirements and information.
 
 Looking forward, in future business with you.
 
-Sincerely your Mike Dolittle
+Sincerely your Mike Doolittle
 Policy Approval Manager
 Head Office Acme Bank Corporation Holdings Global
 (p.h. $$$DEF_PHONE_LINE$$$)
@@ -46,4 +64,4 @@ Head Office Acme Bank Corporation Holdings Global
 
 >>>
 
-<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>
+<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>

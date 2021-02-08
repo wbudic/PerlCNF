@@ -62,7 +62,7 @@ sub lists {return \%lists}
 sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
 sub listDelimit {                 
                  my ($this, $d , $t)=@_;                 
-                 my @p = @{%lists{$t}};
+                 my @p = @{$lists{$t}};
                  if(@p&&$d){                   
                     my @ret = ();
                     foreach (@p){
@@ -180,6 +180,14 @@ try{
             my $i = index $t, "\n";
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
+            if((@kv)==2 && $t =~ m/\w>$/){ # arbitary instructed and values
+                $i = index $content, $tag;
+                $i = $i + length($tag);
+                $st = index $content, ">>", $i;
+                $v = substr $content, $i+1, $st - $i;
+                $anons{$e} = $t."\n".$v;
+                next;
+            }
 
             if($i==-1){
                 my $te = index $t, " ";
