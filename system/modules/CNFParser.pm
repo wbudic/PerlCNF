@@ -9,7 +9,6 @@ use strict;
 use warnings;
 use Exception::Class ('CNFParserException');
 use Try::Tiny;
-use Switch;
 
 our $VERSION = '2.0';
 
@@ -100,16 +99,15 @@ sub addENVList {
 sub template {
     my ($self, $property, %macros) = @_;
     my $val = anons($self, $property);
-    if($val){
-        my $m;
-       foreach $m(keys %macros){
+    if($val){       
+       foreach my $m(keys %macros){
            my $v = $macros{$m};
            $m ="\\\$\\\$\\\$".$m."\\\$\\\$\\\$";
            $val =~ s/$m/$v/gs;
        #    print $val;
        }
        my $prev;
-       foreach $m(split(/\$\$\$/,$val)){
+       foreach my $m(split(/\$\$\$/,$val)){
            if(!$prev){
                $prev = $m;
                next;
@@ -126,7 +124,7 @@ sub template {
        }
        return $val;
     }
-    return undef;
+    return;
 }
 
 
@@ -150,7 +148,7 @@ try{
                     s/\"$//;      # strip end quote
                     s/<const\s//i; # strip  identifier
                     s/\s>>//;
-                    $_             # return the modified string
+                    $_          # return the modified string
                 }
                 split /\s*=\s*/, $_;
 
@@ -187,37 +185,38 @@ try{
                 $i = $i + length($tag);
                 $st = index $content, ">>", $i;
                 if($st==-1){$st = index $content, "<<", $i}#Maybe still in old format CNF1.0
-                $v = substr $content, $i+1, $st - $i - 1;
-                $anons{$e} = $t."\n".$v;
+                if(substr($content, $i,1)eq'\n'){$i++}#value might be new line steped?
+                $v = substr $content, $i, $st - $i ;
+
+                $anons{$e} = "<$t"."\n".$v;
                 next;
             }
-
-            if($i==-1){
+            #TODO This section is problematic, a instruction is not the value of the property. Space is after the instruction on single line.
+            if($i==-1){#It is single line
                 my $te = index $t, " ";
                 if($te>0){
                     $v = substr($t, $te+1, (rindex $t, ">>")-($te+1));
                     if(isReservedWord($v)){
-                        $t = substr($t, 0, $te);
-                       # print "[FAIL[[[$t]]]]]]\n";
+                        $t = substr($t, 0, $te);                       
                     }
                     else{
-                        $v = $t =substr $t, 0, (rindex $t, ">>");#single line declared anon most likely.
-                        #print "[[<<[$t]>>]]\n";
-                    }
-                    #print "Ins($i): with $e val-> $v|\n";
+                        $v = $t =substr $t, 0, (rindex $t, ">>");#single line declared anon most likely.                     
+                    }                    
                 }
                 else{
-                   $t = $v = substr $t, 0, (rindex $t, ">>");
-                   # print "[FAIL2[[[$t]]]]]]\n";
+                     my $ri = (rindex $t, ">>>");
+                        $ri = (rindex $t, ">>") if($ri==-1);
+                        $t = $v = substr $t, 0, $ri;                   
                 }
             }
             else{
-               my $ri = (rindex $t, ">>");
+               my $ri = (rindex $t, ">>>");
+               $ri = (rindex $t, ">>") if($ri==-1);
                #print "[[1[$t]]]\n";
                if($ri>$i){
                     $v = substr $t, $i;
                     #opting to trim on multilines, just in case number of ending "<<" count is scripted in a mismatch!
-                    $v =~ s/\s>+$//g;
+                    $v =~ s/\s*>+$//g; 
                    # print "[[2[$e->$v]]\n";
                }
                else{
@@ -238,9 +237,9 @@ try{
                $st ="";
                my @tad = ();
                foreach(split /~\n/,$v){
-                   my $d = $i = "";
+                   my $i = "";
                    $_ =~ s/\\`/\\f/g;#We escape to form feed  the escaped in file backtick.
-                   foreach $d (split /`/, $_){
+                   foreach my $d (split /`/, $_){
                         $d =~ s/\\f/`/g; #escape back form feed to backtick.
                         $t = substr $d, 0, 1;
                         if($t eq '$'){
@@ -270,7 +269,7 @@ try{
                    my @existing = $data{$e};
                    if(scalar(@existing)>1){
                        @existing = @{$data{$e}};
-                       foreach $i(@existing){
+                       foreach my $i(@existing){
                          push @tad, $i if $i;
                        }
                    }
@@ -306,9 +305,9 @@ try{
                             $st ="";
                             my @tad = ();
                             foreach(split /~\n/,$v){
-                                my $d = $i = "";
+                                my $i = "";
                                 $_ =~ s/\\`/\\f/g;#We escape to form feed  the escaped in file backtick.
-                                foreach $d (split /`/, $_){
+                                foreach my $d (split /`/, $_){
                                         $d =~ s/\\f/`/g; #escape back form feed to backtick.
                                         $t = substr $d, 0, 1;
                                         if($t eq '$'){
@@ -338,7 +337,7 @@ try{
                             my @existing = $data{$e};
                             if(scalar(@existing)>1){
                                 @existing = @{$data{$e}};
-                                foreach $i(@existing){
+                                foreach my $i(@existing){
                                     push @tad, $i if $i;
                                 }
                             }
@@ -392,14 +391,10 @@ try{
 };
 }
 
-sub isReservedWord {
-    my $word = shift;
-    switch($word){
-        case "DATA" { return 1; } case "FILE"  { return 1; } case "TABLE" { return 1; } case "INDEX"  { return 1; }
-        case "VIEW" { return 1; } case "SQL" { return 1; } case "MIGRATE" { return 1; }
-    }
-    return 0;
-}
+my %RESERVED_WORDS = ( DATA=>1,  FILE=>1, TABLE=>1, INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1 );
+sub isReservedWord {return $RESERVED_WORDS{$_[1]}?1:0}
+
+#sub isReservedWord {my $r = $RESERVED_WORDS{$_[1]}; $r = 0 if !$r;  return $r}
 
 ##
 # Required to be called when using CNF with an database based storage.

@@ -1,0 +1,11 @@
+!CNF2.0
+
+<<1<>>>
+<<2<1>>>
+
+# Following anons 3, 4 and 5 should have same value of 33, 2 is instruction.<moth
+<<3<2>33>>
+<<4<2
+33>>>
+<<5<2>
+33>>
