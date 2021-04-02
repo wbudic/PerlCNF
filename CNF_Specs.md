@@ -125,15 +125,15 @@ Which is pretty much welcomed and encouraged.
 
 ### Full Tag
 
-    ```javascript
-        <<{$sig}{name}<{INSTRUCTION}
-            {value\n...value\n}
-        >>>
-    ```
+```javascript
+    <<{$sig}{name}<{INSTRUCTION}
+        {value\n...value\n}
+    >>>
+```
 
 **Examples:**
 
-    ```HTML
+```HTML
         <<$HELP<CONST
             Sorry help is currently.
             Not available.
@@ -144,8 +144,44 @@ Which is pretty much welcomed and encouraged.
             $SYS_2 = 20
             $SYS_3 =      "   Some Nice Text!   "
         >>
-        <<PRINT_TO_HELP<true>>
-    ```
+       <<PRINT_TO_HELP<true>>
+```
+
+## CNF Collections Formatting
+
+1. CNF collections are named two list types.
+   1. Arrays
+   2. Hashtables
+2. Collection format.
+   1. {T} stands for type signifier. Which can only be either ''@'' for array type, or ''%'' for hash.
+   2. NAME is the name of the collection, required. Later this is searched for with signifier prefixed.
+   3. DATA is delimited list of items.
+      1. For hashes named as property value pairs and assigned with '=', for value.
+         1. Hash entries are delimited by a new line.
+      2. For arrays, values are delimited by new line or an comma.
+      3. White space is preserved if values are quoted, otherwise are trimmed.
+
+   ```TEXT
+    Format:    <<@<{T}NAME>DATA>>>
+
+    Examples:
+    # Following provides an array of listed animal types.
+    <<@<@animals>Cat,"Dog","Pigeon",Horse>>>
+    # Following provides an array with numbers from 0..8
+    <<@<@numbers>1,2,3,4,5
+    6
+    7
+    8
+    >>>
+
+    # Following is hashing properties. Notice the important % signifier for the hash name as %settings.
+    <<@<%settings>
+        AppName = "UDP Server"
+        port    = 3820
+        buffer_size = 1024
+        pool_capacity = 1000    
+    >>
+   ```
 
 ## Database and SQL Instruction Formatting
 
@@ -167,6 +203,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
 ### SQLite Formatting
 
 * SQLites have the following reserved instructions:
+
 1. TABLE
 
     ```HTML
@@ -177,6 +214,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
                     FULL_NAME VCHAR(128)
         >>>
     ```
+
 2. INDEX
 
     ```HTML
@@ -184,6 +222,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
             idx_alias on MyAliasTable (ALIAS);
         >>>
     ```
+
 3. SQL
      1. SQL statements are actual full SQL placed in the tag body value.
 
@@ -199,8 +238,8 @@ CNF supports basic SQL Database structure statement generation. This is done via
     3. These should appear as last in the config file as they are translated into insert statements.
     4. First column is taken as the unique and record identity column (UID).
     5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
-      1. This behaviour can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
-      2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
+       1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
+       2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
 
     ```HTML
         <<MyAliasTable<DATA
@@ -210,22 +249,22 @@ CNF supports basic SQL Database structure statement generation. This is done via
         >>
     ```
 
-1. FILE
-    1.  Expects a file name assigned value, file containing actual further CNF DATA rows instructions, separately.
-    2.  The file is expected to be located next to the main config file.
-    3.  File is to be sequentially buffer read and processed instead as a whole in one go.
-    4.  The same principles apply in the file as to the DATA instruction CNF tag format, expected to be contained in it.
+5. FILE
+   1. Expects a file name assigned value, file containing actual further CNF DATA rows instructions, separately.
+   2. The file is expected to be located next to the main config file.
+   3. File is to be sequentially buffer read and processed instead as a whole in one go.
+   4. The same principles apply in the file as to the DATA instruction CNF tag format, expected to be contained in it.
 
     ```HTML
         <<MyItemsTbl<FILE data_my_app.cnf>
     ```
 
-2. MIGRATE
+6. MIGRATE
    1. Migration are brute sql statements to be run based on currently installed previous version of the SQL database.
    2. Migration is to be run from version upwards as stated and in the previous database encountered.
       1. i.e. If encountered old v.1.5, it will be upgraded to v.1.6 first, then v.1.7...
-   3.  Migration is not run on newly created databases. These create the expected latest data structure.
-   4.  SQL Statements a separated by ';' terminator. To be executed one by one.
+   3. Migration is not run on newly created databases. These create the expected latest data structure.
+   4. SQL Statements a separated by ';' terminator. To be executed one by one.
 
     ```HTML
         <<1.6<MIGRATE
@@ -242,6 +281,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
 ## Sample Perl Language Usage
 
 **~/my_application.pl** file contents:
+
 ```PERL
 
 use lib "system/modules";
@@ -274,10 +314,12 @@ if(!$cnf->constant('$MY_APP_LIB_RELATIVE')){
 }
 
 print "Welcome to ", $cnf->constant('$APP_NAME'), " version ", $cnf->constant('$RELEASE_VER'), ".\n";
-
 ```
+
 **~//perl_dev/WB_CNF/db/configuration.cnf** file contents:
+
 ```HTML
+
 # List command anon with the name of 'list'.
 <<list>ls -lh dev|sort>
 <<<CONST
@@ -293,5 +335,4 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Moon Stage - v.1.2 2020</center>
-
+<center>Sun Stage - v.2.1 2021</center>
