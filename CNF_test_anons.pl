@@ -18,16 +18,48 @@ use lib "system/modules";
 use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
 require CNFParser;
 
+# my $random_iter1 = my_srand (100);
+# my $random_iter2 = my_srand (1099);
+# for (0..100) {
+#     print &$random_iter1(), " ", &$random_iter2, "\n";
+# }
+
+
 #testRef();
 testAnonsParser();
 #testAnons();
 
 
+sub my_srand {my ($rand) = @_; return sub {$rand = ($rand*21+1)%1000}}
 
 sub testAnonsParser {
-
 my $cnf = CNFParser->new($ENV{'PWD'}."/anonsTest.cnf");
 my %anons = sort $cnf->anons();
+my $hshs  = $cnf->collections();
+
+my $arr1 = $cnf->collection('@arr1');
+my $arr2 = $cnf->collection('@arr2');
+my $arr3 = $cnf->collection('@arr3');
+
+print map {$_?'['.$_.']':"\n"} @{$arr1}, "\n";
+print map {'['.$_.']'} @{$arr2}, "\n";
+print map {'['.$_.']'} @{$arr3}, "\n";
+
+my %hsh_test = %{$hshs->{'%hsh_test'}}; #By Perl dereferencing.
+my $hsh_test2 = $cnf->collection('%hsh_test'); #By CNF convention
+my $hsh_test3 = $cnf->collection('%hsh_test');
+
+#%{$hsh_test{'City'}}="New York";
+$hsh_test2->{'Surname'}="Mason";
+$hsh_test2->{'City'}="London";
+$cnf->collection('%hsh_test')->{'Test'} ="check";
+#we want both hashes to have same city
+#eval($hsh_test{'City'} eq $hsh_test2{'City'});
+
+print map {'<'.$_.'>'} keys %{$hsh_test2}, "\n";
+print map {$_.'|'} keys %{$hsh_test3}, "\n";
+
+print 'has Test key->'.$hsh_test3->{'Test'}, "\n";
 
 print "Is reserved(INDEX)==".$cnf->isReservedWord('INDEX')."\n";
 print "Is reserved(NOT)==".$cnf->isReservedWord('NOT')."\n";
@@ -39,7 +71,7 @@ print "Find key 5 -> value=", $cnf->anons("5",undef), "\n";
 foreach my $k (sort keys %anons){
     print "Key->[$k=", $anons{$k},"]\n";
 }
-eval((keys %anons) == 5) or die "Error annons count mismatch!";
+eval{(keys %anons) == 5} or die "Error annons count mismatch!";
 
 }
 sub testAnons {

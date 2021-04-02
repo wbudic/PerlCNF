@@ -10,11 +10,10 @@ use warnings;
 use Exception::Class ('CNFParserException');
 use Try::Tiny;
 
-our $VERSION = '2.0';
+our $VERSION = '2.1';
 
 
 
-our %anons  = ();
 our %consts = ();
 our %mig    = ();
 our @sql    = ();
@@ -22,6 +21,8 @@ our @files  = ();
 our %tables = ();
 our %data   = ();
 our %lists  = ();
+our %anons  = ();
+our %prps   = ();
 
 
 sub new {
@@ -38,7 +39,7 @@ sub anons {
     my ($self, $n, @arg)=@_;
     if($n){
         my $ret = $anons{$n};
-        return undef if !$ret;
+        return if !$ret;
         if(@arg){
             my $cnt = 1;
             foreach(@arg){
@@ -52,30 +53,31 @@ sub anons {
 }
 sub constant {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
 sub constants {my @ret = sort keys %consts; return @ret}
-sub SQLStatments {return @sql}
-sub dataFiles {return @files}
-sub tables {return keys %tables}
+sub SQLStatments {@sql}
+sub dataFiles {@files}
+sub tables {keys %tables}
 sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
-sub dataKeys {return keys %data}
+sub dataKeys {keys %data}
 sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
-sub migrations {return %mig;}
-sub lists {return \%lists}
+sub migrations {%mig;}
+sub lists {\%lists}
 sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
+sub collections {\%prps}
+sub collection {my($self, $arr)=@_; %prps{$arr}}
 sub listDelimit {                 
-                 my ($this, $d , $t)=@_;                 
-                 my @p = @{$lists{$t}};
-                 if(@p&&$d){                   
-                    my @ret = ();
-                    foreach (@p){
-                        my @s = split $d, $_;
-                        push @ret, @s;
-                    }
-                    $lists{$t}=\@ret;
-                    return @{$lists{$t}};
-                 }
-                 return;
-            
-    }
+        my ($this, $d , $t)=@_;                 
+        my @p = @{$lists{$t}};
+        if(@p&&$d){                   
+        my @ret = ();
+        foreach (@p){
+            my @s = split $d, $_;
+            push @ret, @s;
+        }
+        $lists{$t}=\@ret;
+        return @{$lists{$t}};
+        }
+        return;            
+}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -126,7 +128,7 @@ sub template {
     }
     return;
 }
-
+my %hsh_test=();
 
 sub parse {
         my ($self, $cnf, $content) = @_;
@@ -135,10 +137,13 @@ sub parse {
         close $fh;
 try{
 
-    my @tags = ($content =~ m/<<(\$*\w*\$*<(.*?).*?>+)/gs);
+    my @tags =  ($content =~ m/(<<)(\$*<?)(.*?)(>>+)/gs);
+    
+    
+   # ($content =~ m/<<(\$*.*\w*\$*<(.*?).*?>+)/gs);
         
     foreach my $tag (@tags){             
-	  next if not $tag;      
+	  next if not $tag;
       if(index($tag,'<CONST')==0){#constant multiple properties.
 
             foreach  (split '\n', $tag){
@@ -191,6 +196,40 @@ try{
                 $anons{$e} = "<$t"."\n".$v;
                 next;
             }
+            elsif(($e eq '@')){#evaluation of multiple properties
+                my $isArray = $t=~ m/^@/;
+                my $v = substr $kv[2], 0;
+                my @lst = ($isArray?split('("+.*"+)|[,\n]', $v):split('\n', $v));
+                my @props = map {
+                        s/^\s+|\s+$//;     # strip unwanted spaces
+                        s/^\s*\"//;      # strip start quote
+                        s/\"\s*$//;      # strip end quote                    
+                        s/\s>>//;
+                        $_ ? $_ : undef   # return the modified string
+                    } @lst;
+                if($isArray){
+                    my @arr=(); $prps{$t}=\@arr;
+                    foreach  my $p(@props){
+                        push @arr, $p if( length($p)>0);
+                    }
+                }else{
+                    my %hsh=(); $prps{$t}=\%hsh;
+                    foreach  my $p(@props){
+                        if( length($p)>0 ){
+                            my @pair = split(/\s*=\s*/, $p);
+                            my $name = $pair[0]; $name =~ s/^\s*|\s*$//g;
+                            my $value = $pair[1]; 
+                            # my $ins= qq($t\{\"$name\"\}=\"$value\");                        
+                            # eval ($ins);
+                            $hsh{$name}=$value;
+                            #if($@) { die "Error with $ins\n$@"}
+                        }
+                    }
+                }
+                next;
+            }  
+
+
             #TODO This section is problematic, a instruction is not the value of the property. Space is after the instruction on single line.
             if($i==-1){#It is single line
                 my $te = index $t, " ";
@@ -275,7 +314,7 @@ try{
                    }
                    $data{$e} = [@tad] if scalar(@tad)>0;
                next;
-            }
+            }         
             elsif($t eq 'FILE'){
 
                     my $path = $cnf;
@@ -373,7 +412,7 @@ try{
                 else{
                     $e = substr $e, 0, (rindex $e, "$$")-1;
                     # Following is confusing as hell. We look to store in the hash an array reference.
-                    # But must convert back and fort via an scalar, since actual arrays returned from an hash are copies in perl.
+                    # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
                     my $a = $lists{$e};
                     if(!$a){$a=();$lists{$e} = \@{$a};}
                     push @{$a}, $v;
