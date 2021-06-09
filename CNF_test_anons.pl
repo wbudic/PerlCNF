@@ -41,6 +41,8 @@ my $arr1 = $cnf->collection('@arr1');
 my $arr2 = $cnf->collection('@arr2');
 my $arr3 = $cnf->collection('@arr3');
 
+print 'CNFParser.$VERSION is '.${CNFParser::VERSION}, "\n" . '-' x 80,"\n";
+
 print map {$_?'['.$_.']':"\n"} @{$arr1}, "\n";
 print map {'['.$_.']'} @{$arr2}, "\n";
 print map {'['.$_.']'} @{$arr3}, "\n";
@@ -55,6 +57,7 @@ $hsh_test2->{'City'}="London";
 $cnf->collection('%hsh_test')->{'Test'} ="check";
 #we want both hashes to have same city
 #eval($hsh_test{'City'} eq $hsh_test2{'City'});
+
 
 print map {'<'.$_.'>'} keys %{$hsh_test2}, "\n";
 print map {$_.'|'} keys %{$hsh_test3}, "\n";
