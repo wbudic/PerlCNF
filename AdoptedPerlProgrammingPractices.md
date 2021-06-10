@@ -125,6 +125,9 @@ Object methods return encapsulate different variable values but structured by sa
 
 ## Expressions and Logic
 
+* Use **references** for passing lists, arrays and hashes if knowing they are further being read only not changed.
+  * In your ``main::`` package you have all in front, and know what are you doing, don't you?
+  * However, not using references is secure way, to pass to an module a copy of an extremely huge list. With which it can modify and do what ever its munchkins wants. You are right.
 * **IF** statements should and can be tested to for the scalar default exclusively.
   * ``if($v){..do something}``
     * It is not needed to test for null, or in Perls parlang which is the value of ``nothing`` or ``0``.
@@ -168,7 +171,7 @@ Object methods return encapsulate different variable values but structured by sa
 
 ***
 
-### Released: v.1.1 Date:20210610**
+### Released: v.1.1 Date:20210610
 
    This document has been written by Will Budic and is from the project ->  <https://github.com/wbudic/PerlCNF>
 
