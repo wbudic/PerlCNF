@@ -20,13 +20,20 @@ Grouped and reused operations are called **subroutines**. Subroutines choice of 
 * Global variables are package variables, the most primitive and default package is called ```main::```. Your script runs in it, I can bet on it.
 * Lexical variables are part of a block, their life starts in it and ends, declared by **my**, **local** or **state**, and are initialized by the type of data they represent.
   * Basic Variable Data Types are:
-    * Scalars
-    * Arrays
-    * Hashes
+    * `$` Scalars
+    * `@` Arrays
+    * `%` Hashes
   * Use of **my** is the preferred declaration. As **local** will not create a private variable, contained to the subroutine.
     * **local** variables are dynamic variables, and are available to other blocks and visible to other called subroutines within the block where declared.
+* Special variables, inbuilt, reserved, magical, these are part also of the Perl language, and are suggested reading about.
+  * These are not covered in this document, and if not familiar with, not a required further reading.
+   * Or if still curious here -> [https://perldoc.perl.org/perlvar]
+* The main benefit of Perl is actually that it isn't strictly typed, and scalars will automatically best can convert, outcome for your expressions, declarations.
+  * Remember it is designed to be an fast interpreted on the fly language, providing you an flexible way to interact and work in a script with behind the scene libraries that are not high level. Making it an excellent candidate for prototyping, testing, implementing algorithm logistics without to be constrained to any needed structures, levels of complex what an external framework implementation requirements is? And where?
+  * Has garbage collection, mutability, and one of the actual first kind of functional languages is Perl. It functions, without having to do much setup, configuration or tooling. If you do, it is most likely that you are reinventing the wheel.
+  * Good practice is to keep to adopted version of Perl, provided features. And not use experimental features in your scripts, not available to an existing old installation on your network. Rest is its long history. Old code has to be compatible with newer version of the Perl interpreter.
 
-### Subroutines 
+### Subroutines
 
 Subroutines can also be in nature anonymous, clojure. They are fastest accessed without parenthesis.
 
@@ -104,7 +111,7 @@ Object methods return encapsulate different variable values but structured by sa
     ```
 
     * Example above creates a flat list or array that can contain only items of a certain package type object.
-      * Some might say seeing this, oh life is not easy in the Perl suburbs of code, put it can get more complicated.The container can be hashref type of list, where each item is a unique property, searchable and nested further.
+      * Some might say; seeing this, *oh life is not easy in the Perl suburbs of code*, put it can get more complicated.The container can be hashref type of list, where each item is a unique property, searchable and nested further.
       * Good saying is also keep it short smart, when bloated is stupid. Iteration method can be passed an anonymous subroutine, that out of scope of the container, performs individual action on items in the container. The container contains, and by purpose restricts or allows, what ever implementation you fit as appropriate with it.
       *
 
@@ -116,17 +123,47 @@ Object methods return encapsulate different variable values but structured by sa
 
     ```
 
+## Expressions and Logic
+
+* **IF** statements should and can be tested to for the scalar default exclusively.
+  * ``if($v){..do something}``
+    * It is not needed to test for null, or in Perls parlang which is the value of ``nothing`` or ``0``.
+  * Post declaration testing and setting of variables as one liners are encouraged, don't know why someone sees them as an eye sore?
+    * The motto is, the less lines of code the better.
+    * Example:
+
+     ```perl
+      my $flag = 0; $flag = 1 if scalar(@args)>1;
+     ```
+
+  * Following is not a **scalar**, so must not to be coded at all as:
+
+     ```perl
+      my @arr;
+        print "@arr is not declared!" if !@arr;
+        @arr=(1 2 3 "check", this, "out", "some elements here are not comma separated but is valid!");
+        print "@arr is declared!" if @arr;
+     ```
+
+    * Surprisingly to some coders out ther, where this fails is on the last ``if`` statement. Which should be written as:
+ 
+     ```perl
+        ...
+        print "\@arr is declared an empty list!" if scalar @arr == 0;
+     ```
+
+* **IF** statements with further curly brace clauses, should be expression based normal logical statements.
+  
 ***
-**Released: v.1.0 Date:20210610**
-***
+
+### Released: v.1.1 Date:20210610**
+
    This document has been written by Will Budic and is from the project ->  <https://github.com/wbudic/PerlCNF>
 
-   
-   
-   The disclaim, ideas and statements encountered are of personal opinion and facts. Acquired from personal study and experience.
+>The disclaim, ideas and statements encountered are of personal opinion and facts. Acquired from personal study and experience.
    Author, removes him self from any responsibility for any third party accepting or implementing the aforementioned document into practice.
-   Amendments and critique are welcomed, as this is an open public letter document. 
-   
-   However, No permission has been given, to publishing, copy parts of this document,
+   Amendments and critique are welcomed, as this is an open public letter document.
+
+>However, No permission has been given, to publishing, copy parts of this document,
     outside of its project location. 
    The only permission been given by the author, is to remove this document from after acquiring any other project code or files, which are open source.
