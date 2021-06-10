@@ -154,6 +154,18 @@ Object methods return encapsulate different variable values but structured by sa
 
 * **IF** statements with further curly brace clauses, should be expression based normal logical statements.
   
+     ```perl
+        if(!@arr){
+            print "\@arr is not declared!";
+        }
+        elsif (scalar @arr == 0){
+            print "\@arr is declared but an empty list!"
+        }
+        else{
+            return hollySmokeHereWeGo(\@arr); #We are passing an reference to our @arr.
+        }
+     ```
+
 ***
 
 ### Released: v.1.1 Date:20210610**
