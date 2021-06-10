@@ -145,7 +145,7 @@ Object methods return encapsulate different variable values but structured by sa
         print "@arr is declared!" if @arr;
      ```
 
-    * Surprisingly to some coders out ther, where this fails is on the last ``if`` statement. Which should be written as:
+    * Surprisingly to some coders out there, where this fails is on the last ``if`` statement. Which should be written as:
  
      ```perl
         ...
