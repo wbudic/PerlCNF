@@ -8,7 +8,7 @@ APPP, Similar to the jargon of Internet Marketings strategy of 3 P's:
 1. **Personalization** – narrow your service offerings to a very specialized niche market to make it easier for potential clients to find you.
 
 This document highlights my personal adopted practices to efficiently and uniformly use the Perl language, through to all the code and future revisions.
-As the number of projects mount, and experience and encountered other best practices come to light in time. Hopefully and possibly this document will be updated and worked on to reflect, give answers or remind. Why something is implemented in particular way, and to some readers for god sake, why?
+As the number of projects mount, and experience and the encountered other best practices come to light. Hopefully and possibly, this document will be updated and worked on to reflect, give answers or remind. Why something is implemented in a particular way, and to some readers for god sake, also why?
 
 ## Perl Objects
 
@@ -116,10 +116,12 @@ Object methods return encapsulate different variable values but structured by sa
 
     ```
 
-
-
+***
+**Released: v.1.0 Date:20210610**
 ***
    This document has been written by Will Budic and is from the project ->  <https://github.com/wbudic/PerlCNF>
+
+   
    
    The disclaim, ideas and statements encountered are of personal opinion and facts. Acquired from personal study and experience.
    Author, removes him self from any responsibility for any third party accepting or implementing the aforementioned document into practice.
