@@ -41,8 +41,8 @@ Which is pretty much welcomed and encouraged.
      <<app_path<$APP_PATH$/module/main>>>
     ```
 
-12. Property names, Constant, Anon refer to the programmatically assinged variable name.
-13. CNF Constant values are store specific.
+12. Property names, Constant, Anon refer to the programmatically assigned variable name.
+13. *CNF Constant* values are store specific.
 14. Constants can't be changed for the life of the application or service issued.
 15. Storage of CNF constants declared can be preceded to the file based one.
 16. A Constant CNF value is not synchronized, unlike an anon from script to storage configuration. It has to be created from the scripted if missing in storage.
@@ -67,9 +67,9 @@ Which is pretty much welcomed and encouraged.
     5. Anons hashed are programmatically accessed separately to constants.
        1. It is fine to have several different applications, to share same storage, even if they have different implementation.
        2. Constants will be specific to application, while anons can change in different purpose script files.
-23. Anon is not instruction processed. Hence anonymous in nature for its value.
+23. *Anon* is not instruction processed. Hence anonymous in nature for its value. Applications using this CNF system usually process and handles this type of entries.
 24. Anon has no signifier, and doesn't need to have an application default.
-25. Anon value is in best practice and in general synchronized, from script to database configuration.
+25. Anon value is in best practice and in general synchronized, from script to a database configuration store. It is up to the implementation.
 26. Anon value is global to the application and its value can be modified.
 
     ```HTML
