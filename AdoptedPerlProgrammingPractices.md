@@ -169,9 +169,70 @@ Object methods return encapsulate different variable values but structured by sa
         }
      ```
 
+## References
+
+* References are only alike with pointers in C, all variable assignments create copies, same is for lists or hashes.
+* Dereferencing outside a scope will create a copy for the purpose of the packages scope. To purposely share a packages hash, return it as a hash reference (**\\%**).
+  
+  ```perl
+  package A;
+  our $S_ =""; 
+  our %HOUSEHOLD = (
+      pets => {dogs=>2, cats=>1}
+      furniture => {pianos=>1, tables=>3, chairs=>12}
+  )sub household {$S_=shift;\%{$HOUSEHOLD{$S_}}};
+  
+  ```
+* ``` sub household ``` is known like this as an method of package A. Opening access to the %HOUSEHOLD hash.
+* Following examples use static access package directive A::, an object instance i.e. A->new(), will have own copy of all variables and lists, private to the package.
+* ``` my $pets1 = A::household(pets); ``` Scalar $pets1 has an hash reference to the inner hash property of the household hash.
+* ``` my %pets2 = ${A::household(pets)}; ``` Hash %pets2 is here dereferencing the other packages owning hash, however this creates an copy. Something not possibly wanted.
+* ``` $pets1 -> {'pigeons'} = 140 ``` Scalar here adds to referenced  in package A::%{HOUSEHOLD}->%{pets}, a new entry pigeons and the number of them.
+* ``` $pets2{'pigeons'} = 180 ``` We can add to the hash copy similar the same, like this, the usual way, things are added to an hash. But A::%{HOUSEHOLD}->%{pets}, would not about it be any more wiser. It will retain its value. And/Or if to copy we added any new entries, would not have a clue about it.
+* ``` my %pets3 = %$pets1 ``` is misleading, it creates the current snapshot copy of $pets1, so similar but not same to assigning ``` my %pets3 = ${A::household(pets)}; ```. The later which you most probably want, a shared and packaged nested anonymous hash.
+
+```
+pets => {dogs=>2, cats=>1} <- This is called an anonymous hash when in curly braces. 
+As the 'pets' entry is a key, not a variable.
+
+```
+
+```
+my %hsh  = (a=>'shared'); <-Normal named and declared hash. Allowed to be declared wrongly
+ also with curly braces instead of brackets.
+my $ref_hsh  = \%std1; 
+$ref_hsh -> {a} = 'changed'; <- Magically we changed the value of a via perls inbuilt autovification process.
+print (($ref_hsh->{a} eq $hsh{a}) ?"true":"false"); <- prints true.
+
+```
+
+* We pass to subroutines references to an obj, array or hash, when the same is to transform. Example: ``` my @transformed = process(\@myArray); ```.
+  * Variable @transformed is quite an obsolete declaration. As it will contain a copy of @myArray if sub process is returning an array.
+  * Subroutines that receive and return a list from its scope, will create new ones on the receiving end. This can be avoided. By changing via array reference (**@$**).
+
+```
+
+package A{
+    sub process {
+      my $into_ref_array = shift;
+      push @$into_ref_array, "Aaaaa, real good!"
+    }
+}
+
+my @this_song = ('Push it!'); <-- Notice list type with brackets declaration, it is mistake 
+                                  to declare as a protected fixed array i.e. with my @this_song = ['Push it!'];
+A::process(\@this_song);
+say join ' ', @this_song;
+
+Push it! Aaaaa, real good! <- Prints. See -> Salt-N-Pepa - Push It (Official Music Video)
+
+```
+
+* That all said, this is all is happening from script to initial state of default existence of an program flow. To preserve changed states and dynamic data or even objects. This will require persistance and most likely dynamic object creation.
+
 ***
 
-### Released: v.1.1 Date:20210610
+### Released: v.1.2 Date:20210629 (v.1.1 Date:20210610)
 
    This document has been written by Will Budic and is from the project ->  <https://github.com/wbudic/PerlCNF>
 
