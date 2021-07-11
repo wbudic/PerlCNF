@@ -233,11 +233,12 @@ CNF supports basic SQL Database structure statement generation. This is done via
     ```
 
 4. DATA
-    1. Data rows are ended with the **~** delimiter. In the tag body.
-    2. Data columns are delimited with the invert quote **`** (back tick) within a row.
-    3. These should appear as last in the config file as they are translated into insert statements.
-    4. First column is taken as the unique and record identity column (UID).
-    5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
+    1. Data is specifically parsed, not requiring quoted strings and delimited new lines.
+    2. Data rows are ended with the **~** delimiter. In the tag body.
+    3. Data columns are delimited with the invert quote **`** (back tick) within a row.
+    4. These should appear as last in the config file as they are translated into insert statements.
+    5. First column is taken as the unique and record identity column (UID).
+    6. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
        1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
        2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
 
@@ -335,4 +336,4 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.1 2021</center>
+<center>Sun Stage - v.2.2 2021</center>

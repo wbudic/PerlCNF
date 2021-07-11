@@ -8,11 +8,9 @@ package CNFParser;
 use strict;
 use warnings;
 use Exception::Class ('CNFParserException');
-use Try::Tiny;
+use Syntax::Keyword::Try;
 
-our $VERSION = '2.1';
-
-
+our $VERSION = '2.2';
 
 our %consts = ();
 our %mig    = ();
@@ -137,13 +135,12 @@ sub parse {
         close $fh;
 try{
 
-    my @tags =  ($content =~ m/(<<)(\$*<?)(.*?)(>>+)/gs);
-    
-    
-   # ($content =~ m/<<(\$*.*\w*\$*<(.*?).*?>+)/gs);
-        
+    my @tags =  ($content =~ m/(<<)(\$*<*.*?)(>>+)/gms);
+    # ($content =~ m/(<<)(\$*<?)(.*?)(>>+)/gms);
+            
     foreach my $tag (@tags){             
 	  next if not $tag;
+      next if $tag =~ m/^(>+)|^(<<)/;
       if(index($tag,'<CONST')==0){#constant multiple properties.
 
             foreach  (split '\n', $tag){
@@ -181,8 +178,8 @@ try{
             my ($st,$v);
             my @kv = split /</,$tag;
             my $e = $kv[0];
-            my $t = $kv[1];
-            my $i = index $t, "\n";
+            my $t = $kv[1]; next if !$t;
+            my $i = index $t, "\n";            
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
             if((@kv)==2 && $t =~ m/\w>$/){ # arbitary instructed and values
@@ -245,7 +242,7 @@ try{
                 else{
                      my $ri = (rindex $t, ">>>");
                         $ri = (rindex $t, ">>") if($ri==-1);
-                        $t = $v = substr $t, 0, $ri;                   
+                        if($ri>-1){$t = $v = substr $t, 0, $ri}else{$v=$t};
                 }
             }
             else{
@@ -259,7 +256,7 @@ try{
                    # print "[[2[$e->$v]]\n";
                }
                else{
-                    $v = substr $t, $i+1, $ri - ($i+2);
+                    $v = substr $t, $i+1;#substr $t, $i+1, $ri - ($i+2);
                }
                $t = substr $t, 0, $i;
             }
@@ -277,7 +274,7 @@ try{
                my @tad = ();
                foreach(split /~\n/,$v){
                    my $i = "";
-                   $_ =~ s/\\`/\\f/g;#We escape to form feed  the escaped in file backtick.
+                   $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
                    foreach my $d (split /`/, $_){
                         $d =~ s/\\f/`/g; #escape back form feed to backtick.
                         $t = substr $d, 0, 1;
@@ -295,7 +292,9 @@ try{
                         else{
                             #First is always ID a number and '#' signifies number.
                             if($t eq "\#") {
-                                $i .= "$d," if $d;
+                                $d = substr $d, 1;
+                                $d=0 if !$d; #default to 0 if not specified.
+                                $i .= "$d,"
                             }
                             else{
                                 $i .= "'$d',";
@@ -386,7 +385,7 @@ try{
                 next;
             }
             elsif($t eq 'TABLE'){
-               $st = "CREATE TABLE $e(\n$v\n);";
+               $st = "CREATE TABLE $e(\n$v);";
                $tables{$e} = $st;
                next;
             }
@@ -427,7 +426,7 @@ try{
 
 }catch{
       CNFParserException->throw(error=>$_, show_trace=>1);
-};
+}
 }
 
 my %RESERVED_WORDS = ( DATA=>1,  FILE=>1, TABLE=>1, INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1 );
@@ -435,36 +434,56 @@ sub isReservedWord {return $RESERVED_WORDS{$_[1]}?1:0}
 
 #sub isReservedWord {my $r = $RESERVED_WORDS{$_[1]}; $r = 0 if !$r;  return $r}
 
+our %curr_tables  = ();
+our $isPostgreSQL = 0;
+
+sub isPostgreSQL{shift; $isPostgreSQL}
+
 ##
 # Required to be called when using CNF with an database based storage.
 #
 sub initiDatabase {
     my($self,$db,$st,$dbver)=@_;
-#Check and set SYS_CNF_CONFIG
+#Check and set CNF_CONFIG
 try{
-    $st=$db->do("select count(*) from SYS_CNF_CONFIG;");
-    $st = $db->prepare('SELECT VALUE FROM SYS_CNF_CONFIG WHERE NAME LIKE "$RELEASE_VER";');
-    $st->execute();
-    my @r =  $st->fetchrow_array();
-    $dbver = $r[0];
-}
-catch{
-        # $st = $db->prepare('SELECT VALUE FROM SYS_CNF_CONFIG WHERE NAME LIKE "$RELEASE_VER";');
-        # $st->execute() or warn "Missing!";
-        # my @r  = $st->fetchrow_array();
-        # return $r[0] if(@r);
 
-        print "Missing SYS_CNF_CONFIG table, trying next to create it.\n";
-        my $stmt = qq(
-                CREATE TABLE SYS_CNF_CONFIG (
+    $isPostgreSQL = $db-> get_info( 17) eq 'PostgreSQL';
+    if($isPostgreSQL){
+        my @tbls = $db->tables(undef, 'public');
+        foreach (@tbls){
+            my $t = uc substr($_,7);
+            $curr_tables{$t} = 1;
+        }
+    }
+    else{
+        my $pst = Settings::selectRecords($db,"SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
+        while(my @r = $pst->fetchrow_array()){
+            $curr_tables{$r[0]} = 1;
+        }
+    }
+
+    if(!$curr_tables{CNF_CONFIG}){        
+        my $stmt;
+        if($isPostgreSQL){
+            $stmt = qq|
+                    CREATE TABLE CNF_CONFIG
+                    (
+                        NAME character varying(16)  NOT NULL,
+                        VALUE character varying(128) NOT NULL,
+                        DESCRIPTION character varying(256),
+                        CONSTRAINT CNF_CONFIG_pkey PRIMARY KEY (NAME)
+                    )|;
+        }else{
+            $stmt = qq|
+                CREATE TABLE CNF_CONFIG (
                     NAME VCHAR(16) NOT NULL,
-                    VALUE VCHAR(28) NOT NULL,
-                    DESCRIPTION VCHAR(128)
-                );
-        );
-        $db->do($stmt);
-        print "Created table: SYS_CNF_CONFIG \n";
-        $st = $db->prepare('INSERT INTO SYS_CNF_CONFIG VALUES(?,?,?);');
+                    VALUE VCHAR(128) NOT NULL,
+                    DESCRIPTION VCHAR(256)
+                )|;
+        }
+        $db->do($stmt);        
+        print "Created CNF_CONFIG table.";
+        $st = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
         $db->begin_work();
         foreach my $key($self->constants()){
             my ($dsc,$val);
@@ -474,11 +493,33 @@ catch{
             $st->execute($key,$val,$dsc);
         }
         $db->commit();
-        $dbver = $self -> constant('$RELEASE_VER');
-};
+    }else{
+        my $sel = $db->prepare('SELECT VALUE FROM CNF_CONFIG WHERE NAME LIKE ?;');
+        my $ins = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
+        foreach my $key($self->constants()){
+                my ($dsc,$val);
+                $val = $self->constant($key);
+                my @sp = split '`', $val;
+                if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
+                $sel->execute($key);
+                if(!$sel->fetchrow_array()){
+                    $ins->execute($key,$val,$dsc);   
+                }                      
+        }
+    }
+    foreach my $tbl(keys %tables){
+        next if $curr_tables{$tbl};
+        $st = $tables{$tbl};
+        print "SQL: $st\n";
+        $db->do($tables{$tbl});
+        print "Created table: $tbl\n";
 
-return $dbver;
-
+    }
+}
+catch{
+  CNFParserException->throw(error=>$@, show_trace=>1);   
+}
+$self -> constant('$RELEASE_VER');
 }
 
 

@@ -1,0 +1,48 @@
+
+!CNF2.2
+
+--- Prerequisite is that CNF_TEST_DB is created and assigned to user postgres or what ever stated bellow:
+
+<<DBI_SOURCE<DBI:Pg:host=localhost;dbname=CNF_TEST_DB>>>
+<<AUTO_LOGIN<postgres/postgres>>>
+
+<<<CONST
+$APP_NAME=CNF Configuration Toll Testing
+$APP_VER=1.0
+$RELEASE_VER = 2.2`Current CNF version under test.
+>>
+
+--- Primary key is important as we don't want duplicates in db from batch runs and transactions.
+<<BITCOIN<TABLE
+date timestamp without time zone NOT NULL,
+value integer NOT NULL,
+PRIMARY KEY (date)
+>>
+--- The following view we can select on to plot min, max, avg in last three months of collected data.
+--- This one took me a while to figure out, there is no useful online help or examples for it.
+<<BITCOIN_DAILY_DATAPOINTS<VIEW
+ SELECT date(t.date) AS date,
+    max(t.value) AS max,
+    min(t.value) AS min,
+    avg(t.value::double precision)::numeric(10,2) AS avg
+   FROM bitcoin t
+  GROUP BY (date(t.date));
+>>
+<<BITCOIN<DATA
+2021-07-11 05:00:02`#33443~
+2021-07-11 04:00:03`#33453~
+2021-07-11 03:00:02`#34119~
+2021-07-11 02:00:02`#33883~
+2021-07-11 01:00:02`#33745~
+2021-07-11 00:00:02`#33693~
+2021-07-10 23:00:02`#33832~
+2021-07-10 22:00:02`#33875~
+2021-07-10 21:00:07`#33727~
+2021-07-10 20:00:02`#33829~
+2021-07-10 19:00:02`#33784~
+2021-07-10 18:00:02`#33751~
+2021-07-10 17:00:02`#33619~
+2021-07-10 16:00:02`#33691~
+2021-07-10 15:00:02`#33683~
+2021-07-10 14:00:02`#33833~
+>>
