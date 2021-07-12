@@ -11,6 +11,7 @@ use DateTime;
 use DateTime::Format::SQLite;
 use DateTime::Duration;
 use DBI;
+use Exception::Class ('CNFParserException');
 
 #DEFAULT SETTINGS HERE!
 use lib "system/modules";
@@ -54,31 +55,9 @@ my $db  =  DBI->connect($DSN, $u, $p, {AutoCommit => 1, RaiseError => 1, PrintEr
 
 $cnf->initiDatabase($db);
 
-        my ($q,$st,@r) ="";
-foreach my $tbl($cnf-> tables()){        
-        if($cnf->isPostgreSQL()){
-            $st = lc $tbl; #silly psql is lower casing meta for internal purposes.
-            $st="select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";            
-            print $st, "\n";
-           $st = $db->prepare($st);          
-        }else{
-           $st = $db->prepare("pragma table_info($tbl);");
-        }
-        $st->execute();
-        
-        while(@r=$st->fetchrow_array()){
-            $q.="?,";
-        }
-        $q =~ s/,$//;
-        my $ins = $db->prepare("INSERT INTO $tbl VALUES($q);");
-         @r = $cnf->data($tbl);
-        $db->begin_work();
-        foreach my $rs(@r){
-            print "Inserting into $tbl -> $rs\n";
-            $ins->execute(split(',',$rs));
-        }
-        $db->commit();
-}
+
+
+
 
 
 1;

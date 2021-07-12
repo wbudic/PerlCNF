@@ -63,18 +63,18 @@ sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
 sub collections {\%prps}
 sub collection {my($self, $arr)=@_; %prps{$arr}}
 sub listDelimit {                 
-        my ($this, $d , $t)=@_;                 
-        my @p = @{$lists{$t}};
-        if(@p&&$d){                   
-        my @ret = ();
-        foreach (@p){
-            my @s = split $d, $_;
-            push @ret, @s;
-        }
-        $lists{$t}=\@ret;
-        return @{$lists{$t}};
-        }
-        return;            
+    my ($this, $d , $t)=@_;                 
+    my @p = @{$lists{$t}};
+    if(@p&&$d){                   
+    my @ret = ();
+    foreach (@p){
+        my @s = split $d, $_;
+        push @ret, @s;
+    }
+    $lists{$t}=\@ret;
+    return @{$lists{$t}};
+    }
+    return;            
 }
 
 # Adds a list of environment expected list of variables.
@@ -126,7 +126,7 @@ sub template {
     }
     return;
 }
-my %hsh_test=();
+
 
 sub parse {
         my ($self, $cnf, $content) = @_;
@@ -178,8 +178,8 @@ try{
             my ($st,$v);
             my @kv = split /</,$tag;
             my $e = $kv[0];
-            my $t = $kv[1]; next if !$t;
-            my $i = index $t, "\n";            
+            my $t = $kv[1]; $t="" if !$t;
+            my $i = index   $t,"\n";            
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
             if((@kv)==2 && $t =~ m/\w>$/){ # arbitary instructed and values
@@ -297,7 +297,7 @@ try{
                                 $i .= "$d,"
                             }
                             else{
-                                $i .= "'$d',";
+                                $i .= "$d,";
                             }
                         }
                    }
@@ -441,9 +441,14 @@ sub isPostgreSQL{shift; $isPostgreSQL}
 
 ##
 # Required to be called when using CNF with an database based storage.
+# This subrotine is also a good example why using generic driver is not recomended. 
+# Various SQL db server flavours meta info is def. handled differently and not updated in them.
 #
 sub initiDatabase {
-    my($self,$db,$st,$dbver)=@_;
+    my($self,$db,$do_not_auto_synch)=@_;
+    my $st = shift;
+    my $dbver = shift;
+    
 #Check and set CNF_CONFIG
 try{
 
@@ -456,7 +461,7 @@ try{
         }
     }
     else{
-        my $pst = Settings::selectRecords($db,"SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
+        my $pst = selectRecords($db, "SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
         while(my @r = $pst->fetchrow_array()){
             $curr_tables{$r[0]} = 1;
         }
@@ -482,7 +487,7 @@ try{
                 )|;
         }
         $db->do($stmt);        
-        print "Created CNF_CONFIG table.";
+        print "CNFParser-> Created CNF_CONFIG table.";
         $st = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
         $db->begin_work();
         foreach my $key($self->constants()){
@@ -507,13 +512,45 @@ try{
                 }                      
         }
     }
+    # By default we automatically data insert synchronize script with database state on every init. 
+    # If set $do_not_auto_synch = 1 we skip that if table is present, empty or not, 
+    # and if has been updated dynamically that is good, what we want. It is of external config. implementation choice.
     foreach my $tbl(keys %tables){
-        next if $curr_tables{$tbl};
-        $st = $tables{$tbl};
-        print "SQL: $st\n";
-        $db->do($tables{$tbl});
-        print "Created table: $tbl\n";
-
+        if(!$curr_tables{$tbl}){
+            $st = $tables{$tbl};
+            print "SQL: $st\n";
+            $db->do($tables{$tbl});
+            print "CNFParser-> Created table: $tbl\n";
+        }
+        else{
+            next if $do_not_auto_synch;
+        }
+        if(isPostgreSQL()){
+            $st = lc $tbl; #we lc, silly psql is lower casing meta and case sensitive for internal purposes.
+            $st="select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";            
+            print "CNFParser-> $st", "\n";
+           $st = $db->prepare($st);          
+        }else{
+           $st = $db->prepare("pragma table_info($tbl)");
+        }
+        $st->execute();  
+        my $q =""; my @r;
+        while(@r=$st->fetchrow_array()){ $q.="?,"; } $q =~ s/,$//;
+        my $ins = $db->prepare("INSERT INTO $tbl VALUES($q);");        
+        $st="SELECT * FROM $tbl where ".getPrimaryKeyColumnNameWherePart($db, $tbl); 
+        print  "CNFParser-> $st\n";
+        my $sel = $db->prepare($st);
+        @r = data($tbl);
+        $db->begin_work();
+          foreach my $rs(@r){
+            my @cols=split(',',$rs);
+            # If data entry already exists in database, we skip and don't force or implement an update, 
+            # as potentially such we would be overwritting possibly changed values, and inserting same pk's is not allowed as they are unique.
+            next if hasEntry($sel, $cols[0]);
+            print "CNFParser-> Inserting into $tbl -> $rs\n";
+            $ins->execute(@cols);
+        }
+        $db->commit();
     }
 }
 catch{
@@ -522,6 +559,55 @@ catch{
 $self -> constant('$RELEASE_VER');
 }
 
+sub hasEntry{
+    my ($sel, $uid) = @_; 
+    $uid=~s/^'//g;$uid=~s/'$//g;
+    $sel->execute($uid);
+    return scalar( $sel->fetchrow_array() );
+}
+sub getPrimaryKeyColumnNameWherePart {
+    my ($db,$tbl) = @_; $tbl = lc $tbl;
+    my $sql = $isPostgreSQL ? qq(SELECT c.column_name, c.data_type
+FROM information_schema.table_constraints tc 
+JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
+JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema
+  AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
+WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = '$tbl') : 
+qq(PRAGMA table_info($tbl););
+my $st = $db->prepare($sql); $st->execute();
+my @r  = $st->fetchrow_array();
+if(!@r){
+    CNFParserException->throw(error=> "Table missing or has no Primary Key -> $tbl", show_trace=>1);
+}
+    if($isPostgreSQL){
+        return $r[0]."=?";
+    }else{
+        # sqlite
+        # cid[0]|name|type|notnull|dflt_value|pk<--[5]
+        while(!$r[5]){
+            @r  = $st->fetchrow_array();
+            if(!@r){
+            CNFParserException->throw(error=> "Table  has no Primary Key -> $tbl", show_trace=>1);
+            }
+        }
+        return $r[1]."=?";
+    }
+}
+
+sub selectRecords {
+    my ($db, $sql) = @_;
+    if(scalar(@_) < 2){
+         die  "Wrong number of arguments, expecting CNFParser::selectRecords(\$db, \$sql) got Settings::selectRecords('@_').\n";
+    }
+    try{
+        my $pst	= $db->prepare($sql);                
+        return 0 if(!$pst);
+        $pst->execute();
+        return $pst;
+    }catch{
+                CNFParserException->throw(error=>"Database error encountered!\n ERROR->$@\n SQL-> $sql DSN:".$db, show_trace=>1);
+    };
+}
 
 sub tableExists {
     my ($self, $db, $tbl) = @_;
