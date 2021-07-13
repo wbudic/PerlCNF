@@ -34,7 +34,21 @@ sub my_srand {my ($rand) = @_; return sub {$rand = ($rand*21+1)%1000}}
 
 sub testAnonsParser {
 my $cnf = CNFParser->new($ENV{'PWD'}."/anonsTest.cnf");
+
 my %anons = sort $cnf->anons();
+print "Find key 1 -> value=", $cnf->anons("1",undef), "\n";
+print "Find key 2 -> value=", $cnf->anons("2",undef), "\n";
+print "Find key 3 -> value=", $cnf->anons("3",undef), "\n";
+print "Find key 4 -> value=", $cnf->anons("4",undef), "\n";
+print "Find key 5 -> value=", $cnf->anons("5",undef), "\n";
+foreach my $k (keys %anons){
+    print "Key->[$k=", $anons{$k},"]\n";
+}
+eval{ scalar keys %anons == 5 } or die "Error annons count mismatch!";
+
+exit;
+
+
 my $hshs  = $cnf->collections();
 
 my $arr1 = $cnf->collection('@arr1');
@@ -68,15 +82,11 @@ print "Is reserved(INDEX)==".$cnf->isReservedWord('INDEX')."\n";
 print "Is reserved(NOT)==".$cnf->isReservedWord('NOT')."\n";
 print "Is reserved(MIGRATE)==".$cnf->isReservedWord('MIGRATE')."\n";
 
-print "Find key 3 -> value=", $cnf->anons("3",undef), "\n";
-print "Find key 4 -> value=", $cnf->anons("4",undef), "\n";
-print "Find key 5 -> value=", $cnf->anons("5",undef), "\n";
-foreach my $k (sort keys %anons){
-    print "Key->[$k=", $anons{$k},"]\n";
 }
-eval{(keys %anons) == 5} or die "Error annons count mismatch!";
 
-}
+
+
+
 sub testAnons {
 
 my $cnf = CNFParser->new($ENV{'PWD'}."/databaseAnonsTest.cnf");

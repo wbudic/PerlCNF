@@ -43,10 +43,10 @@ require CNFParser;
 #     }
 
 
-
-
 my $today = DateTime->now;   
 my $cnf = new CNFParser($ENV{'PWD'}.'/databaseProgresSQL.cnf');
+print "resw".$cnf->isReservedWord('TABLE');
+print "resw:".$cnf->isReservedWord();
 my $DSN = $cnf->anons('DBI_SOURCE');
 my $alin= $cnf->anons('AUTO_LOGIN');
 my $sql = $cnf->tableSQL('BITCOIN');

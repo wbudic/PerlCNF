@@ -218,43 +218,40 @@ CNF supports basic SQL Database structure statement generation. This is done via
 2. INDEX
 
     ```HTML
-        <<MyAliasTable<INDEX
-            idx_alias on MyAliasTable (ALIAS);
-        >>>
+        <<MyAliasTable<INDEX<idx_alias on MyAliasTable (ALIAS);>>>
     ```
 
 3. SQL
      1. SQL statements are actual full SQL placed in the tag body value.
 
     ```HTML
-        <<VW_ALIASES>VIEW
+        <<VW_ALIASES>SQL
             CREATE VIEW VW_ALIASES AS SELECT ID,ALIAS ORDER BY ALIAS;
         >>>
     ```
 
 4. DATA
-    1. Data is specifically parsed, not requiring quoted strings and delimited new lines.
-    2. Data rows are ended with the **~** delimiter. In the tag body.
-    3. Data columns are delimited with the invert quote **`** (back tick) within a row.
-    4. These should appear as last in the config file as they are translated into insert statements.
-    5. First column is taken as the unique and record identity column (UID).
-    6. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
+    1. Data is specifically parsed, not requiring quoted strings and isn't delimited by new lines alone.
+    2. Data rows are ended with the **"~"** delimiter. In the tag body.
+    3. Data columns are delimited with the invert quote **"`"** (back tick) making the row.
+    4. First column is taken as the unique and record identity column (UID).
+    5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
        1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
        2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
 
     ```HTML
         <<MyAliasTable<DATA
-        01`admin`admin@inc.com`Super User
-        02`chef`chef@inc.com`Bruno Allinoise
-        03`juicy`sfox@inc.com`Samantha Fox
+        01`admin`admin@inc.com`Super User~
+        02`chef`chef@inc.com`Bruno Allinoise~
+        03`juicy`sfox@inc.com`Samantha Fox~
         >>
     ```
 
 5. FILE
    1. Expects a file name assigned value, file containing actual further CNF DATA rows instructions, separately.
-   2. The file is expected to be located next to the main config file.
+   2. The file is expected to be located next to the config file.
    3. File is to be sequentially buffer read and processed instead as a whole in one go.
-   4. The same principles apply in the file as to the DATA instruction CNF tag format, expected to be contained in it.
+   4. The same principles apply in the file as to the DATA instruction CNF tag format, that is expected to be contained in it.
 
     ```HTML
         <<MyItemsTbl<FILE data_my_app.cnf>
