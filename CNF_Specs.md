@@ -123,6 +123,11 @@ Which is pretty much welcomed and encouraged.
         {value\n...valuen\n}>>>
    ```
 
+   ```HTML
+        <<{name}<{INSTRUCTION}
+        {value\n...valuen\n}>>>
+   ```
+
 ### Full Tag
 
 ```javascript
@@ -166,16 +171,16 @@ Which is pretty much welcomed and encouraged.
 
     Examples:
     # Following provides an array of listed animal types.
-    <<@<@animals>Cat,"Dog","Pigeon",Horse>>>
+    <<@<@animals<Cat,"Dog","Pigeon",Horse>>>
     # Following provides an array with numbers from 0..8
-    <<@<@numbers>1,2,3,4,5
+    <<@<@numbers<1,2,3,4,5
     6
     7
     8
     >>>
 
     # Following is hashing properties. Notice the important % signifier for the hash name as %settings.
-    <<@<%settings>
+    <<@<%settings<
         AppName = "UDP Server"
         port    = 3820
         buffer_size = 1024
@@ -277,6 +282,18 @@ CNF supports basic SQL Database structure statement generation. This is done via
     ```
 
 ## Sample Perl Language Usage
+
+7. *DO*
+   1. CNF DO instruction is *experimental*, purely perl programming language related.
+   2. It provides perl code evaluation during parsing giving also access to parser and its variables as do's there sequentially appear.
+   3. It is recommended to comment out this feature, if never is to be used or found not safe to have such thing enabled.
+   4. These if named are assigned as anons, with the last processed value as the return. Making them evaluated and processed ever only once.
+
+```perl
+<<<DO
+print "Hello form CNF, you have ".(scalar %anons) ." anons so far.\n"
+>>>
+```
 
 **~/my_application.pl** file contents:
 
