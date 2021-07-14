@@ -1,0 +1,35 @@
+!CNF2.2
+
+<<@<@animals<Cat,"Dog","Pigeon",Horse, Sea Cucumber >>>
+
+<<@<%settings<
+    AppName = "UDP Server"
+    port    = 3820
+    buffer_size = 1024
+    pool_capacity = 1000    
+>>
+  //
+ // We can do per code now directly.
+//
+<<CNF_PROCESSING_DATE<DO
+my $date = `date '+%D %R:%S'`;
+return $date;
+#$properties{'%settings'}{'pool_capacity'});
+>>>
+
+<<<DO
+print "///\n\nThis text has been brought to you by CNF2.2\n\n///\n"
+>>>
+
+// If in your main have defined a sub taking arguments, here we call it.
+// NOTICE -> This is perl, not OOP based language where this is frowned up, 
+// and not considered an capability (they don't do it). :)
+// Basically the CNF parser evaluates during parsing of this configuration file the following code:
+// And it calls an unknown to the parser a subroutine in the code bellow.
+//
+<<<DO
+main::cnfCalled($properties{'%settings'});
+>>>
+<<<DO
+print "Hello form CNF, you have ".(scalar %anons) ." anons so far.\n"
+>>>

@@ -18,32 +18,6 @@ use lib "system/modules";
 use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
 require CNFParser;
 
-# my $content = q(
-# <<<CONST
-# $APP_NAME=CNF Configuration Toll Testing
-# $APP_VER=1.0
-# $RELEASE_VER = 2.2`Current CNF version under test.
-# >>
-# );
-
-# my $content = q(
-# <<BITCOIN<TABLE
-# date timestamp without time zone NOT NULL,
-# value integer NOT NULL
-# >>
-# );
-
-
-#     my @tags =  ($content =~ m/(<<)(\$*<*.*?)(>>+)/gms);
-            
-#     foreach my $tag (@tags){             
-# 	  next if not $tag;
-#       next if $tag =~ m/^(>+)|^(<<)/;
-#       print $tag."\n";
-#     }
-
-
-my $today = DateTime->now;   
 my $cnf = new CNFParser($ENV{'PWD'}.'/databaseProgresSQL.cnf');
 print "resw".$cnf->isReservedWord('TABLE');
 print "resw:".$cnf->isReservedWord();
@@ -54,10 +28,15 @@ my ($u,$p) = split '/', $alin;
 my $db  =  DBI->connect($DSN, $u, $p, {AutoCommit => 1, RaiseError => 1, PrintError => 0, show_trace=>1});
 
 $cnf->initiDatabase($db);
+foreach my $const(keys %{$cnf->constants()}){
+    print $const, "\n";
+
+}
 
 
-
-
-
+our $APP_VER = $cnf->constant('$APP_VER'); $APP_VER++;
+print $APP_VER, "\n";
+our $APP_VER1 = $cnf->constant('$APP_VER');
+print $APP_VER1, "\n";
 
 1;
