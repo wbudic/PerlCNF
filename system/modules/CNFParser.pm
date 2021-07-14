@@ -17,10 +17,11 @@ our %mig    = ();
 our @sql    = ();
 our @files  = ();
 our %tables = ();
+our %views  = ();
 our %data   = ();
 our %lists  = ();
 our %anons  = ();
-our %prps   = ();
+our %properties   = ();
 
 
 sub new {
@@ -49,19 +50,12 @@ sub anons {
     }
     return %anons;
 }
-sub constant {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
-sub constants {my @ret = sort keys %consts; return @ret}
-sub SQLStatments {@sql}
-sub dataFiles {@files}
-sub tables {keys %tables}
-sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
-sub dataKeys {keys %data}
-sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
-sub migrations {%mig;}
-sub lists {\%lists}
-sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
-sub collections {\%prps}
-sub collection {my($self, $arr)=@_; %prps{$arr}}
+sub constant {my $s=shift;if(@_ > 0){$s=shift;} return %consts{$s}}
+sub constants {return \%consts}
+
+
+sub collections {\%properties}
+sub collection {my($self, $arr)=@_; return %properties{$arr}}
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
     my @p = @{$lists{$t}};
@@ -76,6 +70,16 @@ sub listDelimit {
     }
     return;            
 }
+sub lists {\%lists}
+sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
+
+#sub SQLStatments {@sql}
+#sub dataFiles {@files}
+#sub tables {keys %tables}
+#sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
+#sub dataKeys {keys %data}
+#sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
+#sub migrations {%mig;}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -144,18 +148,16 @@ try{
       if(index($tag,'<CONST')==0){#constant multiple properties.
 
             foreach  (split '\n', $tag){
-                my @prps = map {
+                my $k;#place holder trick for split.
+                my @properties = map {
                     s/^\s+\s+$//;  # strip unwanted spaces
                     s/^\"//;      # strip start quote
                     s/\"$//;      # strip end quote
                     s/<const\s//i; # strip  identifier
                     s/\s>>//;
                     $_          # return the modified string
-                }
-                split /\s*=\s*/, $_;
-
-                my $k;
-                foreach (@prps){
+                }   split /\s*=\s*/, $_;                
+                foreach (@properties){
                       if ($k){
                             $consts{$k} = $_ if not $consts{$k};
                             undef $k;
@@ -189,33 +191,31 @@ try{
                 if($st==-1){$st = index $content, "<<", $i}#Maybe still in old format CNF1.0
                 if(substr($content, $i,1)eq'\n'){$i++}#value might be new line steped?
                 $v = substr $content, $i, $st - $i ;
-
                 $anons{$e} = "<$t"."\n".$v;
                 next;
             }
             elsif(($e eq '@')){#evaluation of multiple properties
                 my $isArray = $t=~ m/^@/;
                 my $v = substr $kv[2], 0;
-                my @lst = ($isArray?split('("+.*"+)|[,\n]', $v):split('\n', $v));
+                my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
-                        s/^\s+|\s+$//;     # strip unwanted spaces
-                        s/^\s*\"//;      # strip start quote
-                        s/\"\s*$//;      # strip end quote                    
+                        s/^\s+|\s+$//;   # strip unwanted spaces
+                        s/^\s*["']|['"]$//g;#strip qoutes                        
                         s/\s>>//;
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
                 if($isArray){
-                    my @arr=(); $prps{$t}=\@arr;
-                    foreach  my $p(@props){
-                        push @arr, $p if( length($p)>0);
+                    my @arr=(); $properties{$t}=\@arr;
+                    foreach  (@props){                        
+                        push @arr, $_ if( length($_)>0);
                     }
                 }else{
-                    my %hsh=(); $prps{$t}=\%hsh;
+                    my %hsh=(); $properties{$t}=\%hsh;
                     foreach  my $p(@props){
-                        if( length($p)>0 ){
+                        if( $p && length($p)>0 ){
                             my @pair = split(/\s*=\s*/, $p);
                             my $name = $pair[0]; $name =~ s/^\s*|\s*$//g;
-                            my $value = $pair[1]; 
+                            my $value = $pair[1];$value =~ s/^\s*["']|['"]$//g;#strip qoutes 
                             # my $ins= qq($t\{\"$name\"\}=\"$value\");                        
                             # eval ($ins);
                             $hsh{$name}=$value;
@@ -393,7 +393,9 @@ try{
                $st = "CREATE INDEX $v;";
             }
             elsif($t eq 'VIEW'){
-                $st = "CREATE VIEW $v;";
+                $st = "CREATE VIEW $e AS $v;";
+                $views{$e} = $st;
+                next;
             }
             elsif($t eq 'SQL'){
                 $st = $v;
@@ -403,6 +405,9 @@ try{
                    @m = () if(!@m);
                 push @m, $v;
                 $mig{$e} = [@m];
+            }
+            elsif($t eq 'DO'){
+                $anons{$e} = eval $v;
             }
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.   
@@ -430,9 +435,9 @@ try{
 }
 
 my %RESERVED_WORDS = ( DATA=>1,  FILE=>1, TABLE=>1, INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1 );
-sub isReservedWord {return $RESERVED_WORDS{$_[1]}?1:0}
+sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
 
-#sub isReservedWord {my $r = $RESERVED_WORDS{$_[1]}; $r = 0 if !$r;  return $r}
+
 
 our %curr_tables  = ();
 our $isPostgreSQL = 0;
@@ -453,14 +458,15 @@ sub initiDatabase {
 try{
 
     $isPostgreSQL = $db-> get_info( 17) eq 'PostgreSQL';
+
     if($isPostgreSQL){
-        my @tbls = $db->tables(undef, 'public');
+        my @tbls = $db->tables(undef, 'public'); #<- This is the proper way, via driver, doesn't work on sqlite.
         foreach (@tbls){
-            my $t = uc substr($_,7);
+            my $t = uc substr($_,7); $t =~ s/^["']|['"]$//g;
             $curr_tables{$t} = 1;
         }
     }
-    else{
+    else{        
         my $pst = selectRecords($db, "SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
         while(my @r = $pst->fetchrow_array()){
             $curr_tables{$r[0]} = 1;
@@ -501,7 +507,7 @@ try{
     }else{
         my $sel = $db->prepare('SELECT VALUE FROM CNF_CONFIG WHERE NAME LIKE ?;');
         my $ins = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
-        foreach my $key($self->constants()){
+        foreach my $key(sort keys %{$self->constants()}){
                 my ($dsc,$val);
                 $val = $self->constant($key);
                 my @sp = split '`', $val;
@@ -518,8 +524,8 @@ try{
     foreach my $tbl(keys %tables){
         if(!$curr_tables{$tbl}){
             $st = $tables{$tbl};
-            print "SQL: $st\n";
-            $db->do($tables{$tbl});
+            print "CNFParser-> SQL: $st\n";
+            $db->do($st);
             print "CNFParser-> Created table: $tbl\n";
         }
         else{
@@ -552,6 +558,19 @@ try{
         }
         $db->commit();
     }
+    foreach my $view(keys %views){
+        if(!$curr_tables{$view}){
+            $st = $views{$view};
+            print "CNFParser-> SQL: $st\n";
+            $db->do($st);
+            print "CNFParser-> Created view: $view\n";
+        }
+    }
+    # Following is not been kept no more for external use.
+    undef %tables;
+    undef %views;
+    undef %mig;
+    undef %data;
 }
 catch{
   CNFParserException->throw(error=>$@, show_trace=>1);   
@@ -561,7 +580,7 @@ $self -> constant('$RELEASE_VER');
 
 sub hasEntry{
     my ($sel, $uid) = @_; 
-    $uid=~s/^'//g;$uid=~s/'$//g;
+    $uid=~s/^["']|['"]$//g;
     $sel->execute($uid);
     return scalar( $sel->fetchrow_array() );
 }
@@ -608,7 +627,7 @@ sub selectRecords {
                 CNFParserException->throw(error=>"Database error encountered!\n ERROR->$@\n SQL-> $sql DSN:".$db, show_trace=>1);
     };
 }
-
+#@deprecated
 sub tableExists {
     my ($self, $db, $tbl) = @_;
     try{
