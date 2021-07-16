@@ -1,0 +1,64 @@
+
+!CNF2.2
+
+
+
+<@<@LIST_OF_COUNTRIES<
+Australia, USA, "Great Britain", 'Ireland', "Germany", Austria
+Serbia
+Russia
+Thailand, Greece
+>>>
+
+
+<<<CONST
+$APP_NAME=Bitcoin Watch Stats Plot
+$APP_VER=     1.0
+$RELEASE_VER = 1.0`Current CNF version under test.
+>>
+
+<<DBI_SOURCE<DBI:Pg:host=localhost;dbname=lifelog>>>
+<<AUTO_LOGIN<admin/admin>>>
+<<CNF_PROCESSING_DATE<DO
+my $date = `date '+%D %R:%S'`;
+>>>
+<<@<@DIM_SET_BITCOIN<1200,480>>>
+<<@<%HSH_SET_BITCOIN_LINE_PLOT_RANGE<
+
+title             = 'Current Bitcoin Price State $$$@CNF_PROCESSING_DATE$$$'
+x_label           = 'Days'
+y_label           = 'Price'
+y_max_value       = 67000
+y_tick_number     = 10
+x_all_ticks       = 1
+y_all_ticks       = 1
+x_label_skip      = 5
+line_width        = 2
+
+
+>>>
+
+<--- Columns max,min,avg are the plot lines, dt is the x period line in last 30 days -->
+<<SEL_BITCOIN_30_DAY_RANGE<SQL<
+SELECT 
+  concat(date_part('day', dt), '/', date_part('month', dt)),
+  max::numeric(10,2), 
+  min::numeric(10,2), 
+  avg::numeric(10,2) 
+FROM public."DAILY_AVG_BITCOIN" 
+  WHERE dt >= (now() - '30 days'::interval)::date
+ORDER BY dt DESC;
+>>>
+
+
+<<SEL_BITCOIN_3_MONTH_RANGE<SQL>
+SELECT 
+  concat(date_part('day', dt), '/', date_part('month', dt)),
+  max::numeric(10,2), 
+  min::numeric(10,2), 
+  avg::numeric(10,2) 
+FROM public."DAILY_AVG_BITCOIN" 
+  WHERE dt >= (now() - '3 month'::interval)::date 
+ORDER BY dt;
+>>>
+
