@@ -24,17 +24,22 @@ our %anons  = ();
 our %properties   = ();
 
 
-sub new {
-    my $class = shift;
-    my $path = shift;
-    my $self = {};
+sub new { my ($class, $path, %settings, $self) = @_; 
+
+    if (%settings){
+        $self = %settings; 
+
+    }else{
+        $self = {}; 
+    }
+    
     bless $self, $class;
     $self->parse($path) if($path);
     return $self;
 }
 
 
-sub anons {
+sub anon {
     my ($self, $n, @arg)=@_;
     if($n){
         my $ret = $anons{$n};
@@ -53,9 +58,9 @@ sub anons {
 sub constant {my $s=shift;if(@_ > 0){$s=shift;} return %consts{$s}}
 sub constants {return \%consts}
 
-
 sub collections {\%properties}
-sub collection {my($self, $arr)=@_; return %properties{$arr}}
+sub collection {my($self, $arr)=@_;return %properties{$arr}}
+
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
     my @p = @{$lists{$t}};
@@ -101,7 +106,7 @@ sub addENVList {
 
 
 sub template {
-    my ($self, $property, %macros) = @_;
+    my ($self, $property, %macros) = @_;    
     my $val = anons($self, $property);
     if($val){       
        foreach my $m(keys %macros){
@@ -134,26 +139,28 @@ sub template {
 
 sub parse {
         my ($self, $cnf, $content) = @_;
-        open(my $fh, "<:perlio", $cnf )  or  CNFParserException->throw("Can't open $cnf -> $!");
-        read $fh, $content, -s $fh;
-        close $fh;
+        my $DO_enabled = %{$self}{'DO_enabled'};
+        if(!$content){
+                        open(my $fh, "<:perlio", $cnf )  or  CNFParserException->throw("Can't open $cnf -> $!");
+                        read $fh, $content, -s $fh;
+                        close $fh;
+        }
 try{
 
     my @tags =  ($content =~ m/(<<)(\$*<*.*?)(>>+)/gms);
-    # ($content =~ m/(<<)(\$*<?)(.*?)(>>+)/gms);
-            
+               
     foreach my $tag (@tags){             
 	  next if not $tag;
       next if $tag =~ m/^(>+)|^(<<)/;
-      if(index($tag,'<CONST')==0){#constant multiple properties.
+      if($tag=~m/^<CONST/){#constant multiple properties.
 
             foreach  (split '\n', $tag){
                 my $k;#place holder trick for split.
                 my @properties = map {
-                    s/^\s+\s+$//;  # strip unwanted spaces
+                    s/^\s+|\s+$//;  # strip unwanted spaces
                     s/^\"//;      # strip start quote
                     s/\"$//;      # strip end quote
-                    s/<const\s//i; # strip  identifier
+                    s/<CONST\s//; # strip  identifier
                     s/\s>>//;
                     $_          # return the modified string
                 }   split /\s*=\s*/, $_;                
@@ -169,34 +176,41 @@ try{
             }
 
         }
-        elsif(index($tag,'CONST<')==0){#single property multiline constant.
+        elsif($tag=~m/^CONST</){#single property multiline constant. Name is the instruction, This format is rare but possible.
             my $i = index $tag, "\n";
             my $k = substr $tag, 6, $i-6;
             my $v = substr $tag, $i, (rindex $tag, ">>")-$i;
             $consts{$k} = $v if not $consts{$k};
         }
         else{
+            my ($st,$e,$t,$v,$i) = 0;                     
+            my @vv = ($tag =~ m/(@|[@%]*\w*)(<|>)/g);
+            $e = $vv[$i++];
+            #Is it <name><tag>value?
+            while($vv[$i] eq '>' || length($vv[$i])==0){
+                $i++; 
+            }            
+            $i++;
+            $t = $vv[$i++]; 
+            $v = $vv[$i++];
+            if (!$t &&$v =~ /[><]/){ #it might be {tag}\n closed, instead with '>'
+                 my $l = length($e);
+                 $i = index $tag, "\n";
+                 $t = substr $tag, $l + 1 , $i -$l - 1;
+            }else{
+                 $i = length($e) + length($t) + ($i - 3);
+            }
 
-            my ($st,$v);
-            my @kv = split /</,$tag;
-            my $e = $kv[0];
-            my $t = $kv[1]; $t="" if !$t;
-            my $i = index   $t,"\n";            
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
-            if((@kv)==2 && $t =~ m/\w>$/){ # arbitary instructed and values
-                $i = index $content, $tag;
-                $i = $i + length($tag);
-                $st = index $content, ">>", $i;
-                if($st==-1){$st = index $content, "<<", $i}#Maybe still in old format CNF1.0
-                if(substr($content, $i,1)eq'\n'){$i++}#value might be new line steped?
-                $v = substr $content, $i, $st - $i ;
-                $anons{$e} = "<$t"."\n".$v;
-                next;
-            }
-            elsif(($e eq '@')){#evaluation of multiple properties
-                my $isArray = $t=~ m/^@/;
-                my $v = substr $kv[2], 0;
+            # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
+            $v = substr $tag, $i;
+            $v =~ s/^[><\s]*//g;
+
+           # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
+
+            if($e eq '@'){#collection processing.
+                my $isArray = $t=~ m/^@/;                
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
@@ -215,54 +229,15 @@ try{
                         if( $p && length($p)>0 ){
                             my @pair = split(/\s*=\s*/, $p);
                             my $name = $pair[0]; $name =~ s/^\s*|\s*$//g;
-                            my $value = $pair[1];$value =~ s/^\s*["']|['"]$//g;#strip qoutes 
-                            # my $ins= qq($t\{\"$name\"\}=\"$value\");                        
-                            # eval ($ins);
-                            $hsh{$name}=$value;
-                            #if($@) { die "Error with $ins\n$@"}
+                            my $value = $pair[1];$value =~ s/^\s*["']|['"]$//g;#strip qoutes                             
+                            $hsh{$name}=$value;                            
                         }
                     }
                 }
                 next;
             }  
 
-
-            #TODO This section is problematic, a instruction is not the value of the property. Space is after the instruction on single line.
-            if($i==-1){#It is single line
-                my $te = index $t, " ";
-                if($te>0){
-                    $v = substr($t, $te+1, (rindex $t, ">>")-($te+1));
-                    if(isReservedWord($v)){
-                        $t = substr($t, 0, $te);                       
-                    }
-                    else{
-                        $v = $t =substr $t, 0, (rindex $t, ">>");#single line declared anon most likely.                     
-                    }                    
-                }
-                else{
-                     my $ri = (rindex $t, ">>>");
-                        $ri = (rindex $t, ">>") if($ri==-1);
-                        if($ri>-1){$t = $v = substr $t, 0, $ri}else{$v=$t};
-                }
-            }
-            else{
-               my $ri = (rindex $t, ">>>");
-               $ri = (rindex $t, ">>") if($ri==-1);
-               #print "[[1[$t]]]\n";
-               if($ri>$i){
-                    $v = substr $t, $i;
-                    #opting to trim on multilines, just in case number of ending "<<" count is scripted in a mismatch!
-                    $v =~ s/\s*>+$//g; 
-                   # print "[[2[$e->$v]]\n";
-               }
-               else{
-                    $v = substr $t, $i+1;#substr $t, $i+1, $ri - ($i+2);
-               }
-               $t = substr $t, 0, $i;
-            }
-
-          # print "Ins($i): with $e do $t|\n";
-
+                
 
            if($t eq 'CONST'){#Single constant with mulit-line value;
                $v =~ s/^\s//;
@@ -316,7 +291,7 @@ try{
             }         
             elsif($t eq 'FILE'){
 
-                    my $path = $cnf;
+                    my ($i,$path) = $cnf;
                     $v=~s/\s+//g;
                     $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
                     push @files, $path;
@@ -327,7 +302,7 @@ try{
                    my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
                    foreach my $tag (@tags){
                      next if not $tag;
-                            @kv = split /</,$tag;
+                            my @kv = split /</,$tag;
                             $e = $kv[0];
                             $t = $kv[1];
                             $i = index $t, "\n";
@@ -398,7 +373,7 @@ try{
                 next;
             }
             elsif($t eq 'SQL'){
-                $st = $v;
+                $anons{$e} = $v;
             }
             elsif($t eq 'MIGRATE'){
                 my @m = $mig{$e};
@@ -406,13 +381,19 @@ try{
                 push @m, $v;
                 $mig{$e} = [@m];
             }
-            elsif($t eq 'DO'){
+            elsif($DO_enabled && $t eq 'DO'){
                 $anons{$e} = eval $v;
             }
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.   
                 #print "Reg($e): $v\n";
-                if($e !~ /\$\$$/){ $anons{$e} = $v }
+                if($e !~ /\$\$$/){
+                    if($e=~/^\$/){
+                        $consts{$e} = $v;
+                    }else{
+                        $anons{$e} = $v 
+                    }
+                }
                 else{
                     $e = substr $e, 0, (rindex $e, "$$")-1;
                     # Following is confusing as hell. We look to store in the hash an array reference.
@@ -467,7 +448,7 @@ try{
         }
     }
     else{        
-        my $pst = selectRecords($db, "SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
+        my $pst = selectRecords($self, $db, "SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
         while(my @r = $pst->fetchrow_array()){
             $curr_tables{$r[0]} = 1;
         }
@@ -614,7 +595,7 @@ if(!@r){
 }
 
 sub selectRecords {
-    my ($db, $sql) = @_;
+    my ($self, $db, $sql) = @_;
     if(scalar(@_) < 2){
          die  "Wrong number of arguments, expecting CNFParser::selectRecords(\$db, \$sql) got Settings::selectRecords('@_').\n";
     }
