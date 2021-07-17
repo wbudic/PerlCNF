@@ -1,16 +1,5 @@
 
 !CNF2.2
-
-
-
-<@<@LIST_OF_COUNTRIES<
-Australia, USA, "Great Britain", 'Ireland', "Germany", Austria
-Serbia
-Russia
-Thailand, Greece
->>>
-
-
 <<<CONST
 $APP_NAME=Bitcoin Watch Stats Plot
 $APP_VER=     1.0

@@ -78,6 +78,15 @@ sub listDelimit {
 sub lists {\%lists}
 sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
 
+
+our %curr_tables  = ();
+our $isPostgreSQL = 0;
+
+sub isPostgreSQL{shift; $isPostgreSQL}# Enabled here to be called externally.
+my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
+                      INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1, MACRO=>1 );
+sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
+
 #sub SQLStatments {@sql}
 #sub dataFiles {@files}
 #sub tables {keys %tables}
@@ -147,7 +156,7 @@ sub parse {
         }
 try{
 
-    my @tags =  ($content =~ m/(<<)(\$*<*.*?)(>>+)/gms);
+    my @tags =  ($content =~ m/(<<)(<*.*?)(>>+)/gms);
                
     foreach my $tag (@tags){             
 	  next if not $tag;
@@ -158,8 +167,7 @@ try{
                 my $k;#place holder trick for split.
                 my @properties = map {
                     s/^\s+|\s+$//;  # strip unwanted spaces
-                    s/^\"//;      # strip start quote
-                    s/\"$//;      # strip end quote
+                    s/^\s*["']|['"]\s*$//g;#strip qoutes
                     s/<CONST\s//; # strip  identifier
                     s/\s>>//;
                     $_          # return the modified string
@@ -175,36 +183,33 @@ try{
                 }
             }
 
-        }
-        elsif($tag=~m/^CONST</){#single property multiline constant. Name is the instruction, This format is rare but possible.
-            my $i = index $tag, "\n";
-            my $k = substr $tag, 6, $i-6;
-            my $v = substr $tag, $i, (rindex $tag, ">>")-$i;
-            $consts{$k} = $v if not $consts{$k};
-        }
+        }        
         else{
             my ($st,$e,$t,$v,$i) = 0;                     
-            my @vv = ($tag =~ m/(@|[@%]*\w*)(<|>)/g);
+            my @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
             $e = $vv[$i++];
-            #Is it <name><tag>value?
-            while($vv[$i] eq '>' || length($vv[$i])==0){
-                $i++; 
-            }            
+            # Is it <name><tag>value? Notce here, we are using here perls feature to return undef on unset array elements,
+            # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
+            while($vv[$i] eq '>' || length($vv[$i])==0){ $i++; }            
             $i++;
             $t = $vv[$i++]; 
             $v = $vv[$i++];
-            if (!$t &&$v =~ /[><]/){ #it might be {tag}\n closed, instead with '>'
+            if(!$v&&!$t&& $tag =~ m/(.*)(<)(.*)/g){# Maybe it is the old format wee <<{name}<{instruction} {value}...
+               $t = $1; $v = $3; my $w = ($v=~/(^\w+)/)[0];
+               if($RESERVED_WORDS{$w}){$v=""}else{$t=$v}
+               $i = length($e) + length($t) + 1
+            }elsif (!$t && $v =~ /[><]/){ #it might be {tag}\n closed, as supposed to with '>'
                  my $l = length($e);
                  $i = index $tag, "\n";
                  $t = substr $tag, $l + 1 , $i -$l - 1;
-            }else{
-                 $i = length($e) + length($t) + ($i - 3);
+            }else{                  
+                 $i = length($e) + length($t) + ($i - 3)                 
             }
 
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
             # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
-            $v = substr $tag, $i;
+            $v = substr $tag, $i if $v ne $3;
             $v =~ s/^[><\s]*//g;
 
            # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
@@ -214,7 +219,7 @@ try{
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
-                        s/^\s*["']|['"]$//g;#strip qoutes                        
+                        s/^\s*["']|['"]$//g;#strip qoutes
                         s/\s>>//;
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
@@ -236,13 +241,11 @@ try{
                 }
                 next;
             }  
-
-                
+              
 
            if($t eq 'CONST'){#Single constant with mulit-line value;
                $v =~ s/^\s//;
-               $consts{$e} = $v if not $consts{$e};
-               next;
+               $consts{$e} = $v if not $consts{$e}; # Not allowed to overwrite constant.
            }
            elsif($t eq 'DATA'){
                $st ="";
@@ -385,17 +388,26 @@ try{
                 $anons{$e} = eval $v;
             }
             else{
-                #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.   
-                #print "Reg($e): $v\n";
-                if($e !~ /\$\$$/){
+                #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
+                if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
                     if($e=~/^\$/){
-                        $consts{$e} = $v;
+                        $consts{$e} = $v if !$consts{$e}; # Not allowed to overwrite constant.
                     }else{
-                        $anons{$e} = $v 
+                        if(defined $t){ #unknow tagged instructions value we parse for macros.
+                            foreach my $find($t =~ /(\$.*\$)/) {                                   
+                                        my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
+                                        my $r = $anons{$s};
+                                           $r = $consts{$s} if !$r;                                           
+                                        die "Unable to find property for $e-> $find\nConfig File:$cnf\n" if !$r;
+                                        $v = $t;
+                                        $v =~ s/\Q$find\E/$r/g;
+                            }     
+                        }
+                        $anons{$e} = $v # Allowed to overwite and abuse anon.
                     }
                 }
                 else{
-                    $e = substr $e, 0, (rindex $e, "$$")-1;
+                    $e = substr $e, 0, (rindex $e, '$$')-1;
                     # Following is confusing as hell. We look to store in the hash an array reference.
                     # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
                     my $a = $lists{$e};
@@ -414,16 +426,6 @@ try{
       CNFParserException->throw(error=>$_, show_trace=>1);
 }
 }
-
-my %RESERVED_WORDS = ( DATA=>1,  FILE=>1, TABLE=>1, INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1 );
-sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
-
-
-
-our %curr_tables  = ();
-our $isPostgreSQL = 0;
-
-sub isPostgreSQL{shift; $isPostgreSQL}
 
 ##
 # Required to be called when using CNF with an database based storage.

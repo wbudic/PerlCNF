@@ -14,7 +14,7 @@ Operating system environmental settings or variables are considered only as the 
 As these can hide and hold the unexpected value for a setting.
 
 With the CNF type of an application configuration system. Global settings can also be individual scripted with an meaningful description.
-Which is pretty much welcomed and encouraged. As the number of them can be quite large, and meanings and requirments, scattered around code comments or various documentation. Why not keep this information next to; where you also can set it.
+Which is pretty much welcomed and encouraged. As the number of them can be quite large, and meanings and requirements, scattered around code comments or various documentation. Why not keep this information next to; where you also can set it.
 
 CNF type tags are script based, parsed tags of text, everything else is ignored. DOM based parsed tags, require definitions and are hierarchy specific, path based. Even comments, have specified format. A complete different thing. However, in a CNF file you, can nest and tag, DOM based scripts. But not the other way. DOM based scripts are like HTML, XML. They might scream errors if you place in them CNF stuff.
 
@@ -28,7 +28,7 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 6. Standard markup of a macro is to enclose the property name or number with a triple dollar signifier **\$\$\$**{macro}**\$\$\$**.
     1. Precedence of resolving the property name/value is by first passed macros, then config anons and finally the looking up constance's.
     2. Nested macros resolving from linked in other properties is currently not supported.
-7. CNF full tag syntax format: **```<<{@|%}NAME{<INSTRUCTION>}{<any type of value>}>>```**, the name and instruction parts, sure open but don't have to be closed with **>** on a multiple line value.
+7. CNF full tag syntax format: **```<<{$|@|%}NAME{<INSTRUCTION>}{<any type of value>}>>```**, the name and instruction parts, sure open but don't have to be closed with **>** on a multiple line value.
 8. CNF instructions and constants are uppercase.
     1. Example 1 format with instruction: ```<<<CONST\n{name=value\n..}\n>>>``` autonomous const, with inner properties.
     2. Example 2 format with instruction: ```<<{$sig}{NAME}<CONST {multi line value}>>>``` A single const property with a multi line value.
@@ -191,6 +191,24 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
         pool_capacity = 1000    
     >>
    ```
+
+## Instructions & Reserved words
+
+    1. Reserved words relate to instructions, that a specially treated, and interpreted by the parse to perform extra or specifically ooricessing on the current value.
+    2. Current Reservet words list is.
+       1. CONST
+       2. DATA
+       3. FILE
+       4. TABLE
+       5. INDEX
+       6. VIEW
+       7. SQL
+       8. MIGRATE
+       9. MACRO
+          1.  Value is searched and replaced by an property value, outside the property scripted.
+          2.  Parsing abruptly stops if this abstract property specified is not found.
+          3.  Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
+
 
 ## Database and SQL Instruction Formatting
 

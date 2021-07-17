@@ -3,24 +3,33 @@
 
 --- Prerequisite is that CNF_TEST_DB is created and assigned to user postgres or what ever stated bellow:
 
-<<DBI_SOURCE<DBI:Pg:host=localhost;dbname=CNF_TEST_DB>>>
+<<!DBI_SOURCE<DBI:Pg:host=localhost;dbname=CNF_TEST_DB>>>
+<<DBI_SOURCE<DBI:SQLite:dbname=CNF_TEST_DB.db>>>
 <<AUTO_LOGIN<postgres/postgres>>>
 
 <<<CONST
 $APP_NAME=CNF Configuration Toll Testing
-$APP_VER=1.0
+$APP_VER=     1.0
 $RELEASE_VER = 2.2`Current CNF version under test.
 >>
 
 --- Primary key is important as we don't want duplicates in db from batch runs and transactions.
-<<BITCOIN<TABLE
+    If testing or using different database systems, don't forget keeping and enabling different column formats specs.
+    postfix -> _Pg marked is the currently disabled format for guess which database system. :)
+    Database systems should also meta-type compatible in sql format, but they are not, for many different reasons.
+<<BITCOIN_Pg<!TABLE <-- disabled TABLE created instruction with '!'
 date timestamp without time zone NOT NULL,
+value integer NOT NULL,
+PRIMARY KEY (date)
+>>
+<<BITCOIN<TABLE
+date datetime NOT NULL,
 value integer NOT NULL,
 PRIMARY KEY (date)
 >>
 --- The following view we can select on to plot min, max, avg in last three months of collected data.
 --- This one took me a while to figure out, there is no useful online help or examples for it.
-<<BITCOIN_DAILY_DATAPOINTS<VIEW
+<<BITCOIN_DAILY_DATAPOINTS_Pg<!VIEW
  SELECT date(t.date) AS date,
     max(t.value) AS max,
     min(t.value) AS min,
@@ -28,6 +37,27 @@ PRIMARY KEY (date)
    FROM bitcoin t
   GROUP BY (date(t.date));
 >>
+<<BITCOIN_DAILY_DATAPOINTS<VIEW
+ SELECT date(t.date) AS date,
+    max(t.value) AS max,
+    min(t.value) AS min,
+    avg(t.value) AS avg
+   FROM bitcoin t
+  GROUP BY (date(t.date));
+>>
+
+CREATE OR REPLACE VIEW public."AVG_BITCOIN2222"
+ AS
+ SELECT date(t.date) AS date,
+    max(t.value) AS max,
+    min(t.value) AS min,
+    avg(t.value::double precision)::numeric(10,2) AS avg
+   FROM bitcoin t
+  GROUP BY (date(t.date));
+
+ALTER TABLE public."AVG_BITCOIN2222"
+    OWNER TO postgres;
+
 <<BITCOIN<DATA
 2021-07-11 05:00:02`#33443~
 2021-07-11 04:00:03`#33453~
