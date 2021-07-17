@@ -194,8 +194,8 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 
 ## Instructions & Reserved words
 
-    1. Reserved words relate to instructions, that a specially treated, and interpreted by the parse to perform extra or specifically ooricessing on the current value.
-    2. Current Reservet words list is.
+   1. Reserved words relate to instructions, that are specially treated, and interpreted by the parse to perform extra or specifically processing on the current value.
+   2. Current Reservet words list is.
        1. CONST
        2. DATA
        3. FILE
@@ -205,9 +205,9 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
        7. SQL
        8. MIGRATE
        9. MACRO
-          1.  Value is searched and replaced by an property value, outside the property scripted.
-          2.  Parsing abruptly stops if this abstract property specified is not found.
-          3.  Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
+          1. Value is searched and replaced by an property value, outside the property scripted.
+          2. Parsing abruptly stops if this abstract property specified is not found.
+          3. Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
 
 
 ## Database and SQL Instruction Formatting
