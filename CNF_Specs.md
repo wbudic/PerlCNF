@@ -195,7 +195,7 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 ## Instructions & Reserved words
 
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parse to perform extra or specifically processing on the current value.
-   2. Current Reservet words list is.
+   2. Current Reserved words list is.
        1. CONST
        2. DATA
        3. FILE
