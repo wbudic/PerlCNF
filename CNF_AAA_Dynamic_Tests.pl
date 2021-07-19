@@ -12,22 +12,6 @@ use lib "system/modules";
 use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
 require CNFParser;
 
-# my %p = ('$path$'=>"__PATH__");
-# my $t= q($path$/replace
-# with $path$
-# );
-# if(defined $t){ #unknow tagged instructions value we parse for macros.
-#     foreach ($t =~ /(\$.*\$)/) {
-#         my $r = $p{$_};
-#         die "Unable to find property -> $_\n" if !$r;
-#         $t =~ s/$_/$r/g;
-#     }
-# }
-
-
-# print $t, "\n";
-
-
 my $cnf = new CNFParser();
 
 
@@ -54,16 +38,27 @@ eval(q!here we go again! eq $test) or die "Test on ->$test, failed!";
 print q!cnf -> constant('$TEST2')->!.$test, "\n";
 
 # Test instruction containing constance links.
-# my $s1='$$$$REPO_PATH$$$';
-# my $r ='/home/repo';
-# my $s2='$$$$REPO_PATH$$$/my_app';
-# $s2 =~ s/\Q$s1\E/$r/g;
 $cnf->parse(undef,q|<<<CONST $REPO_PATH=/home/repo>>>
 <<FULL_PATH<$$$$REPO_PATH$$$/my_app>>>
 |);
 $test = $cnf->anon('FULL_PATH');
 eval(q!/home/repo/my_app! eq $test) or die "Test on ->$test, failed!";
 print q!$cnf->anon('FULL_PATH')->!.$test, "\n";
+
+
+# Test MACRO containing.
+$cnf->parse(undef,q|<<<CONST M1=replaced_m1>>><<<CONST M2=replaced_m2>>>
+<<Test<MACRO>
+1. $$$M1$$$ line1.
+2. $$$M2$$$ line2 m2 here.
+3. $$$M1$$$ line1. m1 here too.>>
+|);
+$test = $cnf->anon('Test');
+print q!$cnf->anon('Test')->!.$test, "\n";
+eval(q!1. replaced_m1 line1.
+2. replaced_m2 line2 m2 here.
+3. replaced_m1 line1. m1 here too.! eq $test) or die "Test on ->$test, failed!";
+
 
 # Test Arrays
 $cnf->parse(undef, q|<<@<@LIST_OF_COUNTRIES>
@@ -81,11 +76,11 @@ q![Australia,Austria,Germany,Great Britain,Greece,Ireland,Russia,Serbia,Spain,Th
 print q!cnf -> collection('@LIST_OF_COUNTRIES')->!.$test, "\n";
 
 $cnf->parse(undef, q|<<tag_Some_html<
-\<p>HTML is Cool!</p> 
+<p>HTML is Cool!</p> 
 >>>|);
 $test = "[tag_Some_html:".$cnf->anon('tag_Some_html')."]";
 eval(    
-q([tag_Some_html:\<p>HTML is Cool!</p> 
+qq([tag_Some_html:\n<p>HTML is Cool!</p> 
 ]) eq $test 
 ) or die "Test on ->$test, failed!";
 print "$test\n";

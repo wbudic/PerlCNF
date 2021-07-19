@@ -26,8 +26,8 @@ require CNFParser;
 
 
 #testRef();
-testAnonsParser();
-#testAnons();
+#testAnonsParser();
+testAnons();
 
 
 sub my_srand {my ($rand) = @_; return sub {$rand = ($rand*21+1)%1000}}
@@ -93,14 +93,14 @@ my $cnf = CNFParser->new($ENV{'PWD'}."/databaseAnonsTest.cnf");
 
 # Test lifelog categories
 my $v = $cnf->anons('CAT', undef);
-if(length($v)==0|| $v!~/>\n/) {die "CAT is Missing!"}
+if(!$v) {die "CAT is Missing!"}
 print "\n--- CAT ---\n".$v;
 
 
-my $exe = $cnf->anons('list_cmd', $ENV{'PWD'});
-print "Exe is:$exe\n";
-$exe = `$exe`;
-print "Error failed system command!" if !$exe;
+my $cmd = $cnf->anons('list_cmd', $ENV{'PWD'});
+print "CMD is:$cmd\n";
+$cmd = `$cmd`;
+print "Error failed system command!" if !$cmd;
 #print "Listing:\n$exe\n";
 
 print "\n--LIST OF ALL ANONS ENCOUNTERED---\n";
@@ -108,14 +108,14 @@ my %anons = $cnf->anons();
 foreach my $k (keys %anons){
     print "Key->$k=", $anons{$k},"]\n";
 }
-eval((keys %anons) == 8) or die "Error annons count mismatch!";
+eval((keys %anons) == 12) or die "Error annons count mismatch![".scalar(keys %anons)."]";
 
 eval(length($cnf->constant('$HELP'))>0) or die 'Error missing multi-line valued constant property $HELP';
 
 my $template = $cnf ->  template( 'MyTemplate', (
                                                 'SALUTATION'=>'Mr',
                                                 'NAME'=>'Prince Clington',
-                                                'AMOUNT'=>"1,000,000\$",
+                                                'AMOUNT'=>"\$1,000,000",
                                                 'CRITERIA'=>"Section 2.2 (Eligibility Chapter)"
                                 )
                         );

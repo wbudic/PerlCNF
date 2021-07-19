@@ -148,14 +148,14 @@ sub template {
 
 sub parse {
         my ($self, $cnf, $content) = @_;
-        my $DO_enabled = %{$self}{'DO_enabled'};
-        if(!$content){
-                        open(my $fh, "<:perlio", $cnf )  or  CNFParserException->throw("Can't open $cnf -> $!");
-                        read $fh, $content, -s $fh;
-                        close $fh;
-        }
 try{
-
+    my $DO_enabled = %{$self}{'DO_enabled'};
+    my %instructs;
+    if(!$content){
+        open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
+        read $fh, $content, -s $fh;
+        close $fh;
+    }
     my @tags =  ($content =~ m/(<<)(<*.*?)(>>+)/gms);
                
     foreach my $tag (@tags){             
@@ -185,9 +185,10 @@ try{
 
         }        
         else{
-            my ($st,$e,$t,$v,$i) = 0;                     
+            my ($st,$e,$t,$v, $v3, $i) = 0;                     
             my @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
-            $e = $vv[$i++];
+            $e = $vv[$i++]; 
+            die "Encountered invalid tag formatation -> $tag" if(not defined$e);
             # Is it <name><tag>value? Notce here, we are using here perls feature to return undef on unset array elements,
             # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
             while($vv[$i] eq '>' || length($vv[$i])==0){ $i++; }            
@@ -195,22 +196,32 @@ try{
             $t = $vv[$i++]; 
             $v = $vv[$i++];
             if(!$v&&!$t&& $tag =~ m/(.*)(<)(.*)/g){# Maybe it is the old format wee <<{name}<{instruction} {value}...
-               $t = $1; $v = $3; my $w = ($v=~/(^\w+)/)[0];
-               if($RESERVED_WORDS{$w}){$v=""}else{$t=$v}
-               $i = length($e) + length($t) + 1
+               $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3; 
+               my $w = ($v=~/(^\w+)/)[0];
+               if(not defined $w){$w=""}
+               if($RESERVED_WORDS{$w}){                  
+                  $i = length($e) + length($t) + 1;                  
+               }else{                      
+                  if($v3){$i=-1;$t=$v} #$3 is containing the value, we set the tag to it..
+                  else{
+                          $i = length($e) + 1;
+                  }
+               }
+               $v = substr $tag, $i if $i>-1;   $v3 = '_V3_SET';            
             }elsif (!$t && $v =~ /[><]/){ #it might be {tag}\n closed, as supposed to with '>'
-                 my $l = length($e);
-                 $i = index $tag, "\n";
-                 $t = substr $tag, $l + 1 , $i -$l - 1;
+               my $l = length($e);
+                  $i = index $tag, "\n";
+                  $t = substr $tag, $l + 1 , $i -$l - 1;
+                  $v3 = '_SUBST_SET';
             }else{                  
-                 $i = length($e) + length($t) + ($i - 3)                 
+                  $i = length($e) + length($t) + ($i - 3)                 
             }
 
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
             # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
-            $v = substr $tag, $i if $v ne $3;
-            $v =~ s/^[><\s]*//g;
+            $v = substr $tag, $i if $v3 ne '_V3_SET';
+            $v =~ s/^[><\s]*//g if $v3 ne '_SUBST_SET';
 
            # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
 
@@ -240,14 +251,12 @@ try{
                     }
                 }
                 next;
-            }  
-              
+            }              
 
-           if($t eq 'CONST'){#Single constant with mulit-line value;
+            if($t eq 'CONST'){#Single constant with mulit-line value;
                $v =~ s/^\s//;
                $consts{$e} = $v if not $consts{$e}; # Not allowed to overwrite constant.
-           }
-           elsif($t eq 'DATA'){
+            }elsif($t eq 'DATA'){
                $st ="";
                my @tad = ();
                foreach(split /~\n/,$v){
@@ -291,8 +300,7 @@ try{
                    }
                    $data{$e} = [@tad] if scalar(@tad)>0;
                next;
-            }         
-            elsif($t eq 'FILE'){
+            }elsif($t eq 'FILE'){
 
                     my ($i,$path) = $cnf;
                     $v=~s/\s+//g;
@@ -387,23 +395,22 @@ try{
             elsif($DO_enabled && $t eq 'DO'){
                 $anons{$e} = eval $v;
             }
+            elsif($t eq 'MACRO'){
+                  %instructs = () if(not %instructs);
+                  $instructs{$e}=$v;  
+            }
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
                 if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
                     if($e=~/^\$/){
                         $consts{$e} = $v if !$consts{$e}; # Not allowed to overwrite constant.
                     }else{
-                        if(defined $t){ #unknow tagged instructions value we parse for macros.
-                            foreach my $find($t =~ /(\$.*\$)/) {                                   
-                                        my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
-                                        my $r = $anons{$s};
-                                           $r = $consts{$s} if !$r;                                           
-                                        die "Unable to find property for $e-> $find\nConfig File:$cnf\n" if !$r;
-                                        $v = $t;
-                                        $v =~ s/\Q$find\E/$r/g;
-                            }     
+                        if(defined $t && length($t)>0){ #unknow tagged instructions value we parse for macros.
+                            %instructs = () if(not %instructs);
+                            $instructs{$e}=$t;                                
+                        }else{
+                            $anons{$e} = $v # It is allowed to overwite and abuse anons.
                         }
-                        $anons{$e} = $v # Allowed to overwite and abuse anon.
                     }
                 }
                 else{
@@ -413,17 +420,29 @@ try{
                     my $a = $lists{$e};
                     if(!$a){$a=();$lists{$e} = \@{$a};}
                     push @{$a}, $v;
-                    #print "Reg($e): $v [$a]\n";                  
-                    
                 }
                 next;
             }
             push @sql, $st;#push as application statement.
         }
-	 }
-
+	}
+    if(%instructs){ my $v;
+        foreach my $e(keys %instructs){
+            my $t = $instructs{$e};
+            foreach my $find($t =~ /(\$.*\$)/g) {                                   
+                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
+                    my $r = $anons{$s};
+                    $r = $consts{$s} if !$r;                                           
+                    die "Unable to find property for $e-> $find\n" if !$r;
+                    $v = $t;
+                    $v =~ s/\Q$find\E/$r/g;
+                    $t = $v;
+            }
+            $anons{$e}=$v;
+        }undef %instructs;
+    }
 }catch{
-      CNFParserException->throw(error=>$_, show_trace=>1);
+      CNFParserException->throw(error=>$@, show_trace=>1);
 }
 }
 

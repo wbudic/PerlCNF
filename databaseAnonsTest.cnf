@@ -1,4 +1,8 @@
 !CNF2.0
+<<$HELP<CONST
+Multiple lines
+in this text.
+>>>
 <<list_cmd<ls -lh $$$1$$$|sort>>>
 <<LS<
 ls -l
@@ -17,10 +21,10 @@ very much too!
 >>>
 <<<CONST $DEF_PHONE_LINE=1800 800 xxx>>>
 
-<<$HELP<CONST
-Multiple lines
-in this text.
->>>
+<<CONST<$MULTY
+
+>>
+
 /* Following should return value: "3>\n..\n...90|Fitness...", not 3.
 <<CAT<3>
 01|Unspecified `For quick uncategorized entries.

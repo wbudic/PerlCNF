@@ -8,7 +8,7 @@ These are usually standard, property name and value pairs. Containing possible a
 It is designed to accommodate a parser to read and provide for CNF property tags. 
 
 These can be of four types, using all a textual similar presentation.
-In general are recognized as constants, anons, collections or lists, that re either arrays or hashes.
+In general are recognized as constants, anons, collections or lists, that are either arrays or hashes.
 
 Operating system environmental settings or variables are considered only as the last resort to provide for a property value.
 As these can hide and hold the unexpected value for a setting.
