@@ -14,6 +14,25 @@ require CNFParser;
 
 my $cnf = new CNFParser();
 
+#Test plain anon
+$cnf->parse(undef,q|<<anon<nona>>>|);
+my $test = $cnf->anon('anon');
+eval('nona' eq $test) or die "Test on ->$test, failed!";
+print q!cnf -> anon('anon')->!.$test, "\n";
+
+$cnf->parse(undef,q|<<anon2<nona2> >>|);
+my $test = $cnf->anon('anon2');
+eval('nona2' eq $test) or die "Test on ->$test, failed!";
+print q!cnf -> anon('anon2')->!.$test, "\n";
+
+$cnf->parse(undef,qq|<<anon3>\na1\nb2\nc3\n>>>|);
+my $test = $cnf->anon('anon3');
+eval(q|a1
+b2
+c3
+| eq $test) or die "Test on ->$test, failed!";
+print q!cnf -> anon('anon3')->!.$test, "\n";
+
 
 # Test constants
 $cnf->parse(undef,q|<<<CONST
@@ -22,9 +41,14 @@ $cnf->parse(undef,q|<<<CONST
 >>>|);
 
 $cnf->parse(undef,q|<<$SINGLE<CONST><just like that>>>|);
-my $test = $cnf->constant('$SINGLE');
+$test = $cnf->constant('$SINGLE');
 eval(q!just like that! eq $test) or die "Test on ->$test, failed!";
 print q!cnf -> constant('$SINGLE')->!.$test, "\n";
+
+$cnf->parse(undef,q|<<name<CONST>value>>>|);
+$test = $cnf->constant('name');
+eval('value' eq $test) or die "Test on ->$test, failed!";
+print q!cnf -> constant('name')->!.$test, "\n";
 
 $cnf->parse(undef,q|<<<CONST $TEST= "is best">>>|);
 $test = $cnf->constant('$TEST');
@@ -58,6 +82,8 @@ print q!$cnf->anon('Test')->!.$test, "\n";
 eval(q!1. replaced_m1 line1.
 2. replaced_m2 line2 m2 here.
 3. replaced_m1 line1. m1 here too.! eq $test) or die "Test on ->$test, failed!";
+
+
 
 
 # Test Arrays
