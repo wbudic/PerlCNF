@@ -30,7 +30,7 @@ sub new { my ($class, $path, $attrs, $self) = @_;
         $self = \%$attrs; 
 
     }else{
-        $self = {}; 
+        $self = {"DO_enabled"=>0}; # Enable/Disable DO instruction.
     }
     
     bless $self, $class;
@@ -179,28 +179,31 @@ try{
         else{
             my ($st,$e,$t,$v, $v3, $i) = 0;                     
             my @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
-            $e = $vv[$i++]; 
-            die "Encountered invalid tag formatation -> $tag" if(not defined$e);
+            $e = $vv[$i++]; $e =~ s/^\s*//g;
+            die "Encountered invalid tag formatation -> $tag" if(!$e);
             # Is it <name><tag>value? Notce here, we are using here perls feature to return undef on unset array elements,
             # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
-            while($vv[$i] eq '>' || length($vv[$i])==0){ $i++; }            
+            while(defined $vv[$i] && $vv[$i] eq '>'){ $i++; }            
             $i++;
             $t = $vv[$i++]; 
             $v = $vv[$i++];
             if(!$v&&!$t&& $tag =~ m/(.*)(<)(.*)/g){# Maybe it is the old format wee <<{name}<{instruction} {value}...
-               $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3; 
-               my $w = ($v=~/(^\w+)/)[0];
-               if(not defined $w){$w=""}
-               if($RESERVED_WORDS{$w}){        
-                  $t = $w;
-                  $i = length($e) + length($w) + 1;                  
-               }else{                      
-                  if($v3){$i=-1;$t=$v} #$3 is containing the value, we set the tag to it..
-                  else{
-                          $i = length($e) + 1;
-                  }
-               }
-               $v = substr $tag, $i if $i>-1;   $v3 = '_V3_SET';            
+                $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3;            
+                my $w = ($v=~/(^\w+)/)[0];
+                if(not defined $w){$w=""}
+                if($e eq $t && $t eq $w){
+                   $i=-1;$t="";
+                }elsif($RESERVED_WORDS{$w}){        
+                    $t = $w;
+                    $i = length($e) + length($w) + 1;                  
+                }else{                      
+                    if($v3){$i=-1;$t=$v} #$3 is containing the value, we set the tag to it..
+                    else{
+                            $i = length($e) + 1;
+                    }
+                }
+                $v = substr $tag, $i if $i>-1;  $v3 = '_V3_SET';
+                           
             }elsif (!$t && $v =~ /[><]/){ #it might be {tag}\n closed, as supposed to with '>'
                my $l = length($e);
                   $i = index $tag, "\n";
