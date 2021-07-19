@@ -428,7 +428,7 @@ try{
 	}
     if(%instructs){ my $v;
         foreach my $e(keys %instructs){
-            my $t = $instructs{$e};
+            my $t = $instructs{$e}; $v=$t; #<--Instructions assumed as a normal value, case: <<{name}<{instruction}>>>
             foreach my $find($t =~ /(\$.*\$)/g) {                                   
                     my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
                     my $r = $anons{$s};
