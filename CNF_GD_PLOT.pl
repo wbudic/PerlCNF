@@ -34,7 +34,7 @@ while( my @a = $stm->fetchrow_array() ){
    $c=0;
 }
 
-my @data = ([@DAT], [@MAX], [@AVG], [@MIN]);
+my @data = ([@DAT], [@MAX], [@MIN], [@AVG]);
 
 my @dim = @{$cnf->collection('@DIM_SET_BITCOIN')};
 my $graph = new GD::Graph::lines(@dim);
