@@ -16,7 +16,7 @@ require CNFParser;
 
 
 
-my $cnf = new CNFParser($ENV{'PWD'}.'/databaseBitcoinPlot.cnf');
+my $cnf = new CNFParser($ENV{'PWD'}.'/databaseBitcoinPlot.cnf',{DO_enabled=>1});
 my $DSN = $cnf->anon('DBI_SOURCE');
 my $alin= $cnf->anon('AUTO_LOGIN');
 my ($u,$p) = split '/', $alin;

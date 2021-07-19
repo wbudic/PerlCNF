@@ -24,10 +24,10 @@ our %anons  = ();
 our %properties   = ();
 
 
-sub new { my ($class, $path, %settings, $self) = @_; 
+sub new { my ($class, $path, $attrs, $self) = @_; 
 
-    if (%settings){
-        $self = %settings; 
+    if ($attrs){
+        $self = \%$attrs; 
 
     }else{
         $self = {}; 
@@ -84,16 +84,8 @@ our $isPostgreSQL = 0;
 
 sub isPostgreSQL{shift; $isPostgreSQL}# Enabled here to be called externally.
 my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
-                      INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1, MACRO=>1 );
+                      INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1, DO=>1, MACRO=>1 );
 sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
-
-#sub SQLStatments {@sql}
-#sub dataFiles {@files}
-#sub tables {keys %tables}
-#sub tableSQL {my $t=shift;if(@_ > 0){$t=shift;} return $tables{$t}}
-#sub dataKeys {keys %data}
-#sub data {my $t=shift;if(@_ > 0){$t=shift;} return @{$data{$t}}}
-#sub migrations {%mig;}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -149,7 +141,7 @@ sub template {
 sub parse {
         my ($self, $cnf, $content) = @_;
 try{
-    my $DO_enabled = %{$self}{'DO_enabled'};
+    my $DO_enabled = $self->{'DO_enabled'};
     my %instructs;
     if(!$content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
@@ -199,8 +191,9 @@ try{
                $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3; 
                my $w = ($v=~/(^\w+)/)[0];
                if(not defined $w){$w=""}
-               if($RESERVED_WORDS{$w}){                  
-                  $i = length($e) + length($t) + 1;                  
+               if($RESERVED_WORDS{$w}){        
+                  $t = $w;
+                  $i = length($e) + length($w) + 1;                  
                }else{                      
                   if($v3){$i=-1;$t=$v} #$3 is containing the value, we set the tag to it..
                   else{
@@ -212,16 +205,17 @@ try{
                my $l = length($e);
                   $i = index $tag, "\n";
                   $t = substr $tag, $l + 1 , $i -$l - 1;
-                  $v3 = '_SUBST_SET';
+                  $v3 = '_SUBS1_SET';
             }else{                  
-                  $i = length($e) + length($t) + ($i - 3)                 
+                  $i = length($e) + length($t) + ($i - 3);
+                  $v3 = '_SUBS2_SET';
             }
 
             #trim accidental spacing in property value or instruction tag
             $t =~ s/^\s+//g;
             # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
             $v = substr $tag, $i if $v3 ne '_V3_SET';
-            $v =~ s/^[><\s]*//g if $v3 ne '_SUBST_SET';
+            $v =~ s/^[><\s]*//g if $v3 ne '_SUBS1_SET';
 
            # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
 
@@ -240,12 +234,24 @@ try{
                         push @arr, $_ if( length($_)>0);
                     }
                 }else{
-                    my %hsh=(); $properties{$t}=\%hsh;
+                    my %hsh=(); $properties{$t}=\%hsh; my $macro = 0;
                     foreach  my $p(@props){
-                        if( $p && length($p)>0 ){
+                        if($p eq 'MACRO'){$macro=1}
+                        elsif( $p && length($p)>0 ){                            
                             my @pair = split(/\s*=\s*/, $p);
-                            my $name = $pair[0]; $name =~ s/^\s*|\s*$//g;
-                            my $value = $pair[1];$value =~ s/^\s*["']|['"]$//g;#strip qoutes                             
+                            die "Not '=' delimited-> $p" if scalar( @pair ) != 2;
+                            my $name  = $pair[0]; $name =~ s/^\s*|\s*$//g;
+                            my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip qoutes
+                            if($macro){
+                                foreach my $find($v =~ /(\$.*\$)/g) {                                   
+                                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
+                                    my $r = $anons{$s};                                    
+                                    $r = $consts{$s} if !$r;
+                                    $r = $instructs{$s} if !$r;
+                                    die "Unable to find property for $t.$name -> $find\n" if !$r;                                    
+                                    $value =~ s/\Q$find\E/$r/g;                                    
+                                }
+                            }
                             $hsh{$name}=$value;                            
                         }
                     }

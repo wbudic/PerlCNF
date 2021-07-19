@@ -12,9 +12,9 @@ $RELEASE_VER = 1.0`Current CNF version under test.
 my $date = `date '+%D %R:%S'`;
 >>>
 <<@<@DIM_SET_BITCOIN<1200,480>>>
-<<@<%HSH_SET_BITCOIN_LINE_PLOT_RANGE<
+<<@<%HSH_SET_BITCOIN_LINE_PLOT_RANGE<MACRO
 
-title             = 'Current Bitcoin Price State $$$@CNF_PROCESSING_DATE$$$'
+title             = 'Current Bitcoin Price State $$$CNF_PROCESSING_DATE$$$'
 x_label           = 'Days'
 y_label           = 'Price'
 y_max_value       = 67000
@@ -27,7 +27,8 @@ line_width        = 2
 
 >>>
 
-<--- Columns max,min,avg are the plot lines, dt is the x period line in last 30 days -->
+Columns max,min,avg are the plot lines, dt is the x period line in last 30 days
+
 <<SEL_BITCOIN_30_DAY_RANGE<SQL<
 SELECT 
   concat(date_part('day', dt), '/', date_part('month', dt)),
