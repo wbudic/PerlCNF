@@ -55,11 +55,11 @@ sub anon {
     }
     return %anons;
 }
-sub constant {my $s=shift;if(@_ > 0){$s=shift;} return %consts{$s}}
+sub constant {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
 sub constants {return \%consts}
 
 sub collections {\%properties}
-sub collection {my($self, $arr)=@_;return %properties{$arr}}
+sub collection {my($self, $attr)=@_;return $properties{$attr}}
 
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
@@ -672,6 +672,40 @@ return 0;
 #
 sub readNext(){
 return 0;
+}
+
+# Writes out to handle an property.
+sub writeOut { my ($self, $handle, $property) = @_;
+    my $prp = $properties{$property};
+    if($prp){
+        print $handle "<<@<$property><\n";
+        if(ref $prp eq 'ARRAY') {
+            my @arr = sort keys @$prp; my $n=0;
+            foreach (@arr){                
+                print $handle "\"$_\"";
+                if($arr[-1] ne $_){
+                   if($n++>5){print $handle "\n"; $n=0}
+                   else{print $handle ",";}
+                }
+            }   
+        }elsif(ref $prp eq 'HASH') {
+            my %hsh = %$prp;
+            my @keys = sort keys %hsh;
+            foreach my $key(@keys){                
+                print $handle $key . "\t= \"". $hsh{$key} ."\"\n";     
+            }
+        }
+        print $handle ">>>\n";
+
+      return 1;
+    }
+    else{
+      $prp = $anons{$property};
+      $prp = $consts{$property} if !$prp;
+      die "Property not found -> $property" if !$prp;
+      print $handle "<<$property><$prp>>\n";
+      return 0;
+    }
 }
 
 ###
