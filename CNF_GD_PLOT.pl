@@ -4,17 +4,11 @@ use warnings;
 use Try::Tiny;
 use Exception::Class ('CNFParserException');
 
-use DBI;
-use GD;      
-use GD::Graph::lines;
-
-
+use DBI; use GD; use GD::Graph::lines;
 #DEFAULT SETTINGS HERE!
 use lib "system/modules";
 use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
 require CNFParser;
-
-
 
 my $cnf = new CNFParser($ENV{'PWD'}.'/databaseBitcoinPlot.cnf',{DO_enabled=>1});
 my $DSN = $cnf->anon('DBI_SOURCE');
