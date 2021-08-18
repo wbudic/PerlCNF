@@ -5,7 +5,7 @@
 
 This is a simple and fast file format. That allows setting up of network and database applications with initial configuration values.
 These are usually standard, property name and value pairs. Containing possible also SQL database structures statements with basic data.
-It is designed to accommodate a parser to read and provide for CNF property tags. 
+It is designed to accommodate a parser to read and provide for CNF property tags.
 
 These can be of four types, using all a textual similar presentation.
 In general are recognized as constants, anons, collections or lists, that are either arrays or hashes.
@@ -35,7 +35,7 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
     3. Example 3 format with instruction: ```<<CONST<{$sig}{NAME}\n {multi line value}>>>``` A single const property with a multi line value.
     4. Example 4 format with instruction: ```<<{NAME}<{INSTRUCTION}<{value}>>>``` A anon.
     5. Example 5 format with instruction: ```<<{$sig}{NAME}<{INSTRUCTION}\n{value}\n>>>```.
-9.  CNF instructions are all uppercase and unique, to the processor.
+9. CNF instructions are all uppercase and unique, to the processor.
 10. A CNF constant in its property name is prefixed with an '**$**' signifier.
 11. Constants are usually scripted at the beginning of the file, or parsed first in a separate file.
 12. The instruction processor can use them if signifier $ surrounds the constant name. Therefore, replacing it with the constants value if further found in the file.
@@ -110,6 +110,20 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
                 <<Animals$$>Cat>
                 <<Animals$$>Dog>
                 <<Animals$$>Eagle>
+    ```
+
+30. Anon used as an **reserve** format is some applications internal meta property.
+    1. These are prefixed with an **^** to the anon property name.
+    2. They are not expected or in any specially part of the CNF processing, but have here an special mention.
+    3. It is not recommended to use reserve anons as their value settings, that is; can be modified in scripts for their value.
+    4. Reserve anon if present is usually a placeholder, lookup setting, that in contrast if not found there, might rise exceptions from the application using CNF.
+
+    ```HTML Example 2:
+                Notice to Admin, following please don't modify in any way! 
+                Start --> { 
+                <<^RELEASE>2.3>>
+                <<^REVISION>5>>
+                <<META><DATA>^INIT=1`^RUN=1`^STAGES_EXPECTED=5>> } <-- End 
     ```
 
 ## CNF Tag Formats
