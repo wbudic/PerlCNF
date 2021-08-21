@@ -1,11 +1,28 @@
 !CNF2.0
 
+<<@<@arr1<1,3,4,8,16,32>>>
+<<@<@arr2<"1,3,4",2>>>
+<<@<@arr3<
+    One, "Two"
+    Three
+    "1,3,4"
+>>>
+
+# Following evaluates to an perl hash global %hsh_test, which has to be declared.
+<<@<%hsh_test<
+     Name    = John
+     Surname = Smith
+     Age     = 21
+>>>
+
+# 1 empty value, two has instruction one
 <<1<>>>
 <<2<1>>>
 
-# Following anons 3, 4 and 5 should have same value of 33, 2 is instruction.<moth
+# Following anons 3, 4 and 5 should have same value of 33, 2 is instruction.
 <<3<2>33>>
 <<4<2
 33>>>
 <<5<2>
 33>>
+
