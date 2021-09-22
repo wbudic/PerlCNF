@@ -137,6 +137,17 @@ sub template {
     return;
 }
 
+package InstructedDataItem{
+    our $dataItemCounter = int(0);
+    sub new { my ($class, $ins, $val) = @_;
+        bless {
+                        aid => $dataItemCounter++,
+                        ins => $ins,
+                        val => $val
+        }, $class;        
+    }
+}
+
 
 sub parse {
         my ($self, $cnf, $content) = @_;
@@ -179,8 +190,34 @@ try{
         else{
             my ($st,$e,$t,$v, $v3, $i) = 0;                     
             my @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
-            $e = $vv[$i++]; $e =~ s/^\s*//g;
-            die "Encountered invalid tag formatation -> $tag" if(!$e);
+            $e = $vv[$i++]; $e =~ s/^\s*//g;            
+            die "Encountered invalid tag formation -> $tag" if(!$e);
+            if($e eq '$$' && $tag =~ m/(\w*)\$*<((\s*.*\s*)*)/){ #we have an autonumbered instructed list.
+               $e = $1;
+               $t = $2;
+               $v = $3;
+               if (!$v){
+
+
+                   if($tag =~ m/(\w*)\$*<(\s*.*\s*)>(\s*.*\s*)/){
+                      $t = $2; $v = $3;
+                   }
+                   elsif($tag =~ m/<((.*\s*)*)>((.*\s*)*)/){                       
+                      $t = $1; $v = $3;
+
+                   }
+                   elsif( $t=~m/(.*)>(.*)/ ){
+                         $t = $1; $v = $2;
+                   }
+                   else{
+                    $v=$tag
+                   }
+               }
+               my $a = $lists{$e};
+               if(!$a){$a=();$lists{$e} = \@{$a};}
+               push @{$a}, new InstructedDataItem($t,$v);
+               next;
+            }
             # Is it <name><tag>value? Notce here, we are using here perls feature to return undef on unset array elements,
             # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
             while(defined $vv[$i] && $vv[$i] eq '>'){ $i++; }            
