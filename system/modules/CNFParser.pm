@@ -275,8 +275,8 @@ try{
                     }
                 }else{
                     my %hsh=(); $properties{$t}=\%hsh; my $macro = 0;
-                    foreach  my $p(@props){
-                        if($p eq 'MACRO'){$macro=1}
+                    foreach  my $p(@props){ 
+                        if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){                            
                             my @pair = split(/\s*=\s*/, $p);
                             die "Not '=' delimited-> $p" if scalar( @pair ) != 2;
@@ -594,14 +594,14 @@ try{
         $st="SELECT * FROM $tbl where ".getPrimaryKeyColumnNameWherePart($db, $tbl); 
         print  "CNFParser-> $st\n";
         my $sel = $db->prepare($st);
-        @r = data($tbl);
+        @r = @{$data{$tbl}};
         $db->begin_work();
           foreach my $rs(@r){
             my @cols=split(',',$rs);
             # If data entry already exists in database, we skip and don't force or implement an update, 
             # as potentially such we would be overwritting possibly changed values, and inserting same pk's is not allowed as they are unique.
             next if hasEntry($sel, $cols[0]);
-            print "CNFParser-> Inserting into $tbl -> $rs\n";
+            print "CNFParser-> Inserting into $tbl -> @cols\n";
             $ins->execute(@cols);
         }
         $db->commit();
@@ -630,7 +630,8 @@ sub hasEntry{
     my ($sel, $uid) = @_; 
     $uid=~s/^["']|['"]$//g;
     $sel->execute($uid);
-    return scalar( $sel->fetchrow_array() );
+    my @r=$sel->fetchrow_array();
+    return scalar(@r);
 }
 sub getPrimaryKeyColumnNameWherePart {
     my ($db,$tbl) = @_; $tbl = lc $tbl;
