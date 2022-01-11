@@ -1,16 +1,17 @@
 #!/usr/bin/perl
 
-use warnings;
+use warnings; 
 use Try::Tiny;
 use Exception::Class ('CNFParserException');
 
 use DBI; use GD; use GD::Graph::lines;
 #DEFAULT SETTINGS HERE!
-use lib "system/modules";
-use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
+#LanguageServer doesn't like -> $ENV{'PWD'} settings.json should not be set for it withn an pwd.
+#use lib "/home/will/dev/PerlCNF/system/modules/";
+use lib "system/modules/";
 require CNFParser;
 
-my $cnf = new CNFParser($ENV{'PWD'}.'/databaseBitcoinPlot.cnf',{DO_enabled=>1});
+my $cnf = new CNFParser('/home/will/dev/PerlCNF/databaseBitcoinPlot.cnf', {DO_enabled=>1});
 my $DSN = $cnf->anon('DBI_SOURCE');
 my $alin= $cnf->anon('AUTO_LOGIN');
 my ($u,$p) = split '/', $alin;
@@ -28,14 +29,14 @@ while( my @a = $stm->fetchrow_array() ){
    $c=0;
 }
 
-my @data = ([@DAT], [@MAX], [@MIN], [@AVG]);
+my @data = ([@DAT], [@MAX], [@AVG], [@MIN]);
 
 my @dim = @{$cnf->collection('@DIM_SET_BITCOIN')};
 my $graph = new GD::Graph::lines(@dim);
 my %hsh = %{$cnf->collection('%HSH_SET_BITCOIN_LINE_PLOT_RANGE')};
 $graph->set(%hsh);
 $graph->set_legend_font(GD::gdFontTiny);
-$graph->set_legend('Max','Min','AVG');
+$graph->set_legend('Max','Avg', 'Min');
 my $gd = $graph->plot( \@data ) or die "Error encountered ploting graph: $!";
 
 my $OUT;

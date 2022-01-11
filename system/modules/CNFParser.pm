@@ -10,7 +10,7 @@ use warnings;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 
-our $VERSION = '2.2';
+our $VERSION = '2.3';
 
 our %consts = ();
 our %mig    = ();
@@ -39,8 +39,7 @@ sub new { my ($class, $path, $attrs, $self) = @_;
 }
 
 
-sub anon {
-    my ($self, $n, @arg)=@_;
+sub anon {  my ($self, $n, @arg)=@_;
     if($n){
         my $ret = $anons{$n};
         return if !$ret;
@@ -55,7 +54,7 @@ sub anon {
     }
     return %anons;
 }
-sub constant {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
+sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
 sub constants {return \%consts}
 
 sub collections {\%properties}
@@ -84,14 +83,13 @@ our $isPostgreSQL = 0;
 
 sub isPostgreSQL{shift; $isPostgreSQL}# Enabled here to be called externally.
 my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
-                      INDEX=>1, VIEW=>1, SQL=>1, MIGRATE=>1, DO=>1, MACRO=>1 );
+                      INDEX=>1, VIEW=>1,  SQL=>1,  MIGRATE=>1, DO=>1, MACRO=>1 );
 sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
 # Requires and array of variables to be passed.
-sub addENVList {
-    my ($self, @vars) = @_;
+sub addENVList { my ($self, @vars) = @_;
     if(@vars){
         foreach my $var(@vars){
             next if $consts{$var};##exists already.
@@ -106,8 +104,7 @@ sub addENVList {
 }
 
 
-sub template {
-    my ($self, $property, %macros) = @_;    
+sub template { my ($self, $property, %macros) = @_;    
     my $val = anons($self, $property);
     if($val){       
        foreach my $m(keys %macros){
@@ -149,8 +146,7 @@ package InstructedDataItem{
 }
 
 
-sub parse {
-        my ($self, $cnf, $content) = @_;
+sub parse { my ($self, $cnf, $content) = @_;
 try{
     my $DO_enabled = $self->{'DO_enabled'};
     my %instructs;
@@ -289,10 +285,10 @@ try{
                                     $r = $consts{$s} if !$r;
                                     $r = $instructs{$s} if !$r;
                                     die "Unable to find property for $t.$name -> $find\n" if !$r;                                    
-                                    $value =~ s/\Q$find\E/$r/g;                                    
+                                    $value =~ s/\Q$find\E/$r/g;                    
                                 }
                             }
-                            $hsh{$name}=$value;                            
+                            $hsh{$name}=$value;  print "macro $t.$name->$value\n" 
                         }
                     }
                 }
@@ -439,11 +435,11 @@ try{
                 $mig{$e} = [@m];
             }
             elsif($DO_enabled && $t eq 'DO'){
-                $anons{$e} = eval $v;
+                $_ = eval $v; chomp $_; $anons{$e} = $_
             }
             elsif($t eq 'MACRO'){
                   %instructs = () if(not %instructs);
-                  $instructs{$e}=$v;  
+                  $instructs{$e}=$v;                  
             }
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
@@ -476,7 +472,7 @@ try{
         foreach my $e(keys %instructs){
             my $t = $instructs{$e}; $v=$t; #<--Instructions assumed as a normal value, case: <<{name}<{instruction}>>>
             foreach my $find($t =~ /(\$.*\$)/g) {                                   
-                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
+                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;# <- MACRO TAG
                     my $r = $anons{$s};
                     $r = $consts{$s} if !$r;                                           
                     die "Unable to find property for $e-> $find\n" if !$r;
@@ -497,11 +493,9 @@ try{
 # This subrotine is also a good example why using generic driver is not recomended. 
 # Various SQL db server flavours meta info is def. handled differently and not updated in them.
 #
-sub initiDatabase {
-    my($self,$db,$do_not_auto_synch)=@_;
+sub initiDatabase { my($self,$db,$do_not_auto_synch)=@_;
     my $st = shift;
-    my $dbver = shift;
-    
+    my $dbver = shift;    
 #Check and set CNF_CONFIG
 try{
 
@@ -626,15 +620,13 @@ catch{
 $self -> constant('$RELEASE_VER');
 }
 
-sub hasEntry{
-    my ($sel, $uid) = @_; 
+sub hasEntry{  my ($sel, $uid) = @_; 
     $uid=~s/^["']|['"]$//g;
     $sel->execute($uid);
     my @r=$sel->fetchrow_array();
     return scalar(@r);
 }
-sub getPrimaryKeyColumnNameWherePart {
-    my ($db,$tbl) = @_; $tbl = lc $tbl;
+sub getPrimaryKeyColumnNameWherePart { my ($db,$tbl) = @_; $tbl = lc $tbl;
     my $sql = $isPostgreSQL ? qq(SELECT c.column_name, c.data_type
 FROM information_schema.table_constraints tc 
 JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
@@ -662,8 +654,7 @@ if(!@r){
     }
 }
 
-sub selectRecords {
-    my ($self, $db, $sql) = @_;
+sub selectRecords { my ($self, $db, $sql) = @_;
     if(scalar(@_) < 2){
          die  "Wrong number of arguments, expecting CNFParser::selectRecords(\$db, \$sql) got Settings::selectRecords('@_').\n";
     }
@@ -677,8 +668,7 @@ sub selectRecords {
     };
 }
 #@deprecated
-sub tableExists {
-    my ($self, $db, $tbl) = @_;
+sub tableExists { my ($self, $db, $tbl) = @_;
     try{
         $db->do("select count(*) from $tbl;");
         return 1;
@@ -694,8 +684,7 @@ sub tableExists {
 # Buffer loads initiated a file for sql data instructions.
 # TODO 2020-02-13 Under development.
 #
-sub initLoadDataFile {
-    my($self, $path) = @_;
+sub initLoadDataFile { my($self, $path) = @_;
 return 0;
 }
 ###
