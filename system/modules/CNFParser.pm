@@ -6,7 +6,7 @@
 package CNFParser;
 
 use strict;
-use warnings;
+use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 
@@ -23,9 +23,7 @@ our %lists  = ();
 our %anons  = ();
 our %properties   = ();
 
-
-sub new { my ($class, $path, $attrs, $self) = @_; 
-
+sub new { my ($class, $path, $attrs, $self) = @_;
     if ($attrs){
         $self = \%$attrs; 
 
@@ -37,7 +35,6 @@ sub new { my ($class, $path, $attrs, $self) = @_;
     $self->parse($path) if($path);
     return $self;
 }
-
 
 sub anon {  my ($self, $n, @arg)=@_;
     if($n){
@@ -75,7 +72,7 @@ sub listDelimit {
     return;            
 }
 sub lists {\%lists}
-sub list {my $t=shift;if(@_ > 0){$t=shift;} return @{$lists{$t}}}
+sub list  {my $t=shift;if(@_ > 0){$t=shift;} my $a = $lists{$t}; return @{$a} if defined $a; die "Error: List name '$t' not found!"}
 
 
 our %curr_tables  = ();
@@ -144,7 +141,6 @@ package InstructedDataItem{
         }, $class;        
     }
 }
-
 
 sub parse { my ($self, $cnf, $content) = @_;
 try{
@@ -493,14 +489,10 @@ try{
 # This subrotine is also a good example why using generic driver is not recomended. 
 # Various SQL db server flavours meta info is def. handled differently and not updated in them.
 #
-sub initiDatabase { my($self,$db,$do_not_auto_synch)=@_;
-    my $st = shift;
-    my $dbver = shift;    
+sub initiDatabase { my($self, $db, $do_not_auto_synch, $st) = @_;
 #Check and set CNF_CONFIG
-try{
-
+try{    
     $isPostgreSQL = $db-> get_info( 17) eq 'PostgreSQL';
-
     if($isPostgreSQL){
         my @tbls = $db->tables(undef, 'public'); #<- This is the proper way, via driver, doesn't work on sqlite.
         foreach (@tbls){
@@ -684,7 +676,7 @@ sub tableExists { my ($self, $db, $tbl) = @_;
 # Buffer loads initiated a file for sql data instructions.
 # TODO 2020-02-13 Under development.
 #
-sub initLoadDataFile { my($self, $path) = @_;
+sub initLoadDataFile {# my($self, $path) = @_;
 return 0;
 }
 ###
