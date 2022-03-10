@@ -10,7 +10,7 @@ use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 
-our $VERSION = '2.3';
+use constant VERSION => '2.4';
 
 our %consts = ();
 our %mig    = ();
@@ -22,15 +22,15 @@ our %data   = ();
 our %lists  = ();
 our %anons  = ();
 our %properties   = ();
+our $CONSTREQ = 0;
 
 sub new { my ($class, $path, $attrs, $self) = @_;
     if ($attrs){
-        $self = \%$attrs; 
-
+        $self = \%$attrs;
+        $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
     }else{
         $self = {"DO_enabled"=>0}; # Enable/Disable DO instruction.
-    }
-    
+    }    
     bless $self, $class;
     $self->parse($path) if($path);
     return $self;
@@ -51,10 +51,11 @@ sub anon {  my ($self, $n, @arg)=@_;
     }
     return %anons;
 }
-sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s}}
+sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s} unless $CONSTREQ; 
+               my $r=$consts{$s}; return $r if defined($r); die "Required constants variable ' $s ' not defined in config!"}
 sub constants {return \%consts}
 
-sub collections {\%properties}
+sub collections {return \%properties}
 sub collection {my($self, $attr)=@_;return $properties{$attr}}
 
 sub listDelimit {                 
@@ -71,17 +72,17 @@ sub listDelimit {
     }
     return;            
 }
-sub lists {\%lists}
+sub lists {return \%lists}
 sub list  {my $t=shift;if(@_ > 0){$t=shift;} my $a = $lists{$t}; return @{$a} if defined $a; die "Error: List name '$t' not found!"}
 
 
 our %curr_tables  = ();
 our $isPostgreSQL = 0;
 
-sub isPostgreSQL{shift; $isPostgreSQL}# Enabled here to be called externally.
+sub isPostgreSQL{shift; return $isPostgreSQL}# Enabled here to be called externally.
 my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
                       INDEX=>1, VIEW=>1,  SQL=>1,  MIGRATE=>1, DO=>1, MACRO=>1 );
-sub isReservedWord {if(defined $_[1]){$RESERVED_WORDS{$_[1]}?1:0}}
+sub isReservedWord {if(defined $_[1]){return $RESERVED_WORDS{$_[1]}?1:0} return 0}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -97,7 +98,7 @@ sub addENVList { my ($self, @vars) = @_;
                 $anons{$var} = $ENV{$var};
             }
         }
-    }
+    }return;
 }
 
 
@@ -131,14 +132,14 @@ sub template { my ($self, $property, %macros) = @_;
     return;
 }
 
-package InstructedDataItem{
+package InstructedDataItem {
     our $dataItemCounter = int(0);
     sub new { my ($class, $ins, $val) = @_;
         bless {
-                        aid => $dataItemCounter++,
-                        ins => $ins,
-                        val => $val
-        }, $class;        
+                aid => $dataItemCounter++,
+                ins => $ins,
+                val => $val
+        }, $class;  return $class;      
     }
 }
 
@@ -609,7 +610,7 @@ try{
 catch{
   CNFParserException->throw(error=>$@, show_trace=>1);   
 }
-$self -> constant('$RELEASE_VER');
+return $self -> constant('$RELEASE_VER');
 }
 
 sub hasEntry{  my ($sel, $uid) = @_; 
@@ -618,6 +619,7 @@ sub hasEntry{  my ($sel, $uid) = @_;
     my @r=$sel->fetchrow_array();
     return scalar(@r);
 }
+
 sub getPrimaryKeyColumnNameWherePart { my ($db,$tbl) = @_; $tbl = lc $tbl;
     my $sql = $isPostgreSQL ? qq(SELECT c.column_name, c.data_type
 FROM information_schema.table_constraints tc 
@@ -657,21 +659,16 @@ sub selectRecords { my ($self, $db, $sql) = @_;
         return $pst;
     }catch{
                 CNFParserException->throw(error=>"Database error encountered!\n ERROR->$@\n SQL-> $sql DSN:".$db, show_trace=>1);
-    };
+    }
 }
 #@deprecated
 sub tableExists { my ($self, $db, $tbl) = @_;
     try{
         $db->do("select count(*) from $tbl;");
         return 1;
-
-     }catch{
-        return 0;
-    }
+     }catch{}
+     return 0;
 }
-
-
-
 ###
 # Buffer loads initiated a file for sql data instructions.
 # TODO 2020-02-13 Under development.

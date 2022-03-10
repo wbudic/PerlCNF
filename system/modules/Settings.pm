@@ -6,28 +6,25 @@
 # Open Source License -> https://choosealicense.com/licenses/isc/
 #
 package Settings;
-
-use v5.14;
+use v5.30; #use diagnostics;
+use warnings; no warnings 'experimental';
 use strict;
-use warnings;
+use CGI::Carp qw(fatalsToBrowser set_message);
 use Exception::Class ('SettingsException','LifeLogException','SettingsLimitSizeException');
 use Syntax::Keyword::Try;
+
 use CGI;
 use CGI::Session '-ip_match';
-use CGI::Carp qw ( fatalsToBrowser );
 use DateTime;
 use DateTime::Format::SQLite;
 use DateTime::Duration;
-
 use DBI;
 use Scalar::Util qw(looks_like_number);
-use experimental 'switch';
-use CGI::Carp qw(fatalsToBrowser set_message);
 BEGIN {
    sub handle_errors {
       my $msg = shift;
       print "<html><body><h2>LifeLog Server Error</h2>";
-      print "<pre>@[$ENV{PWD}].Error: $msg</pre></body></html>";
+      print "<pre>@[$ENV{PWD}].Error: $msg</pre></body></html>"; return
  
   }
   set_message(\&handle_errors);
@@ -56,7 +53,7 @@ use constant META => '^CONFIG_META';
 
 
 # DEFAULT SETTINGS HERE! These settings kick in if not found in config file. i.e. wrong config file or has been altered, things got missing.
-our $RELEASE_VER  = '2.4';
+our $RELEASE_VER  = '2.5';
 our $TIME_ZONE    = 'Australia/Sydney';
 our $LANGUAGE     = 'English';
 our $PRC_WIDTH    = '60';
@@ -164,7 +161,7 @@ try {
     $CGI::POST_MAX = 1024 * 1024 * 5;  # max 5GB file post size limit.
     $cgi     = $cgi = CGI->new();
     $sss     = shift; #shift will only and should, ONLY happen for test scripts.
-    $sss= new CGI::Session("driver:File", $cgi, {Directory=>$LOG_PATH, SameSite=>'Lax'}) if !$sss;
+    $sss     = CGI::Session->new("driver:File", $cgi, {Directory=>$LOG_PATH, SameSite=>'Lax'}) if !$sss;
     $sid     = $sss->id();    
     $alias   = $sss->param('alias');
     $pass    = $sss->param('passw');
@@ -233,7 +230,7 @@ sub setTimezone {
     if(!$anons{'auto_set_timezone'}){
        if($TIME_ZONE_MAP){
             if(!%tz_map){
-                %tz_map={}; chomp($TIME_ZONE_MAP);
+                %tz_map=(); chomp($TIME_ZONE_MAP);
                 foreach (split('\n',$TIME_ZONE_MAP)){
                     my @p = split('=', $_);
                     $tz_map{trim($p[0])} = trim($p[1]);
@@ -398,15 +395,12 @@ return qq(
     );
 )}
 #Selects the actual database set configuration for the application, these kick in overwritting those from the config file.
-sub getConfiguration {
-    my ($db, $hsh) = @_;
-    my $fh;
-    my $ftzmap = 'tz.map'; 
+sub getConfiguration { my ($db, $hsh) = @_;
+    my @r; my $ftzmap = 'tz.map';    
     try {
-        my $st = $db->prepare("SELECT ID, NAME, VALUE FROM CONFIG;");
-           $st->execute();
-        while ( my @r = $st->fetchrow_array() ){
-                given ( $r[1] ) {
+        my $st = $db->prepare("SELECT ID, NAME, VALUE FROM CONFIG;");  $st->execute();
+        while( @r = $st->fetchrow_array() ){
+               given ( $r[1] ) {
                 when ("RELEASE_VER") {$RELEASE_VER  = $r[2]}
                 when ("TIME_ZONE")   {$TIME_ZONE    = $r[2]}
                 when ("PRC_WIDTH")   {$PRC_WIDTH    = $r[2]}
@@ -439,7 +433,7 @@ sub getConfiguration {
             $TIME_ZONE_MAP = $m{'TIME_ZONE_MAP'}; #This can be a large mapping we file it to tz.map, rather then keep in db.
             delete($m{'TIME_ZONE_MAP'});
             if($TIME_ZONE_MAP && !(-e $ftzmap)) {
-                open($fh, '>', $ftzmap) or LifeLogException->throw( "Can't write to $ftzmap: $!");
+                open(my $fh, '>', $ftzmap) or die "Can't write to '$ftzmap': $!";
                 print $fh $TIME_ZONE_MAP;
                 close $fh;
             }#else{
@@ -467,15 +461,15 @@ sub getConfiguration {
 
         }
         elsif #At times not passing in the hash of expected anons we read in the custom tz map file if it exists.
-        (-e $ftzmap){ open($fh, "<:perlio", $ftzmap) or LifeLogException->throw( "Can't open $ftzmap: $!");
+        (-e $ftzmap){ open(my $fh, "<:perlio", $ftzmap) or die "Can't open '$ftzmap': $!";
             read  $fh, $TIME_ZONE_MAP, -s $fh;
             close $fh;
         }
         &setTimezone;
     }
     catch {
-        SettingsException->throw(error=>"DSN:$DSN &getConfiguration.ERR->[$@]", show_trace=>$DEBUG);
-    };
+        SettingsException->throw(error=>"DSN:$DSN \@Settings::getConfiguration.ERR ->[$@]", show_trace=>$DEBUG);
+    };return
 }
 
 sub timeFormatSessionValue {
@@ -837,13 +831,13 @@ sub saveCurrentTheme {
         open (my $fh, '>', $LOG_PATH.'current_theme') or die $!;
         print $fh $theme;
         close($fh);
-    }
+    }return;
 }
 sub loadLastUsedTheme {    
     open my $fh, '<', $LOG_PATH.'current_theme' or return $THEME;
     $THEME = <$fh>;
     close($fh);    
-    &setupTheme;
+    &setupTheme; return
 }
 sub saveReserveAnons {
     my $meta = $anons{META}; #since v.2.3
@@ -859,11 +853,11 @@ sub saveReserveAnons {
         while(my @r=$dbs->fetchrow_array()){
             print $fh "$r[0]|$r[1] = $r[2]\n" if $r[0] =~ /^\^/;
         }
-        close($fh);
+        close($fh);return
 
     }catch{           
-       LifeLogException->throw(error=>"<p>Error->$@</p><br><pre>DSN: $DSN</pre>",  show_trace=>1);
-    }
+       LifeLogException->throw(error=>"<p>Error->$@</p><br><pre>DSN: $DSN</pre>",  show_trace=>$DEBUG);
+    }return
 }
 sub loadReserveAnons(){    
     try{        
@@ -877,7 +871,7 @@ sub loadReserveAnons(){
                     while(my @r=$dbs->fetchrow_array()){
                     $reservs{$r[1]} = $r[2] if !$reservs{$r[1]}
                     }
-                    open (my $fh, '<', $LOG_PATH.'config_meta_'.(lc($dr[1])).'_'.$dbname) or return 0;               
+                    open (my $fh, '<', $LOG_PATH.'config_meta_'.(lc($dr[1])).'_'.$dbname);
                     while (my $line = <$fh>) {
                         chomp $line;
                         my @p = $line =~ m[(\S+)\s*=\s*(\S+)]g;
@@ -891,15 +885,15 @@ sub loadReserveAnons(){
                             }
                         }
                     }
-        $db->commit();
-        close($fh);
+                    close($fh);
+        $db->commit();       
     }catch{       
        LifeLogException->throw(error=>"<p>Error->$@</p><br><pre>DSN: $DSN</pre>",  show_trace=>1);
     }
     return 1;    
 }
 
-sub dump(){
+sub dumpVars {
     # Following will not help, as in perl package variables are codes 
     # and the web container needs sudo permissions for memory access.
     # my $class = shift;    
@@ -907,8 +901,8 @@ sub dump(){
     # use DBG;
     # dmp $self;
     #
-    # We need to do manually:
-    qq/
+    # We need to do it manually:
+    return qq/
 release        {$RELEASE_VER}
 logPath        {$LOG_PATH} 
 logPathSet     {$LOG_PATH}
