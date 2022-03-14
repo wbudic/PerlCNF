@@ -9,6 +9,7 @@ use strict;
 use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
+use Scalar::Util;
 
 use constant VERSION => '2.4';
 
@@ -52,7 +53,7 @@ sub anon {  my ($self, $n, @arg)=@_;
     return %anons;
 }
 sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s} unless $CONSTREQ; 
-               my $r=$consts{$s}; return $r if defined($r); die "Required constants variable ' $s ' not defined in config!"}
+               my $r=$consts{$s}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $s ' not defined in config!")}
 sub constants {return \%consts}
 
 sub collections {return \%properties}
@@ -145,14 +146,18 @@ package InstructedDataItem {
 
 sub parse { my ($self, $cnf, $content) = @_;
 try{
+    my @tags;
     my $DO_enabled = $self->{'DO_enabled'};
-    my %instructs;
+    my %instructs; 
     if(!$content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
         read $fh, $content, -s $fh;
         close $fh;
+    }elsif( Scalar::Util::reftype($content) eq 'ARRAY'){
+        $content = join  "",@$content;
     }
-    my @tags =  ($content =~ m/(<<)(<*.*?)(>>+)/gms);
+    @tags =  ($content =~ m/(<<)(<*.*?)(>>+)/gms);
+    
                
     foreach my $tag (@tags){             
 	  next if not $tag;

@@ -6,10 +6,11 @@
 use strict;
 use warnings;
 use Exception::Class ('CNFParserException');
+use Try::Tiny;
 
 use lib "system/modules/";
-require CNFParser;
-my $cnf = new CNFParser(undef, {DO_enabled=>1,CONSTANT_REQUIRED=>1});
+require system::modules::CNFParser;
+my $cnf = CNFParser->new(undef, {DO_enabled=>1,CONSTANT_REQUIRED=>1});
 $cnf->parse(undef,
 q{
 /*
@@ -28,5 +29,30 @@ my $APP_VER = $cnf->constant('$APP_VER');
 print "\$APP_VER=$APP_VER\n";
 #Better use:
 print "\$DEBUG=".$cnf->constant('$DEBUG')."\n";
-print "\$none=".$cnf->constant('$none')."\n";
-1;
+try {
+  print "\$none=".$cnf->constant('$none')."\n";
+}
+catch  {
+  print "call on \$none cause exception -> $_";
+  if ( $_->isa('CNFParserException') ) {
+        warn $_->trace->as_string, "\n";
+  }
+  
+};
+
+ my @content = <DATA>;
+$cnf->parse(undef, \@content);
+my $states = $cnf->collection('@AU_STATES');
+foreach(sort @$states){printf "\rState: $_\n"}
+
+__DATA__
+!CNF2.4
+This is the power of Perl, the perls source file can contain the config file itself!
+What you are now reading is the config __DATA__ section tha can be passed to the PerlCNF parser.
+Check it out it is better than JSON:
+<<@<@AU_STATES<
+NSW
+TAS,'WA'
+'SA'
+QLD, VIC
+>>
