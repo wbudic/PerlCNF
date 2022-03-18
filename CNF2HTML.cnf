@@ -1,0 +1,34 @@
+
+!CNF2.2
+<<<CONST
+$APP_NAME=CNF 2 HTML Page
+$APP_VER=     1.0
+$RELEASE_VER = 2.3`Current CNF version under test.
+>>
+
+Following are script types placed in the html header.
+Notice the CNF collection name is prefixed with '@', making it an array list type, can also be comma delimit.
+<<@<@JavaScripts
+src/mojo.js 
+src/jquery.min.js
+>>
+
+<<@<@StyleSheets
+css/main.css
+css/jquery.std.css
+>>
+
+
+<<page>
+[div=center
+  [div=top[section$$]]
+  [div=med]
+  [div=bottom]
+]
+>>
+
+<<section$$<
+<div>
+  <h2>Hello There!<h2>
+</div>
+>>
