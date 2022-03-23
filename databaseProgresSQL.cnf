@@ -3,8 +3,8 @@
 
 --- Prerequisite is that CNF_TEST_DB is created and assigned to user postgres or what ever stated bellow:
 
-<<!DBI_SOURCE<DBI:Pg:host=localhost;dbname=CNF_TEST_DB>>>
-<<DBI_SOURCE<DBI:SQLite:dbname=CNF_TEST_DB.db>>>
+<<DBI_SOURCE<DBI:Pg:host=localhost;dbname=lifelog>>>
+<<!DBI_SOURCE2<DBI:SQLite:dbname=CNF_TEST_DB.db>>>
 <<AUTO_LOGIN<postgres/postgres>>>
 
 <<<CONST

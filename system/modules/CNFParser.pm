@@ -10,6 +10,9 @@ use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 use Scalar::Util;
+# Do not remove the following no critic, no security or object issues possible. 
+# We can use perls default behaviour on return.
+##no critic qw(Subroutines::RequireFinalReturn)
 
 use constant VERSION => '2.4';
 
@@ -54,10 +57,11 @@ sub anon {  my ($self, $n, @arg)=@_;
 }
 sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s} unless $CONSTREQ; 
                my $r=$consts{$s}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $s ' not defined in config!")}
-sub constants {return \%consts}
+sub constants {\%consts}
 
-sub collections {return \%properties}
+sub collections {\%properties}
 sub collection {my($self, $attr)=@_;return $properties{$attr}}
+sub data {\%data}
 
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
@@ -73,7 +77,7 @@ sub listDelimit {
     }
     return;            
 }
-sub lists {return \%lists}
+sub lists {\%lists}
 sub list  {my $t=shift;if(@_ > 0){$t=shift;} my $a = $lists{$t}; return @{$a} if defined $a; die "Error: List name '$t' not found!"}
 
 
@@ -83,7 +87,7 @@ our $isPostgreSQL = 0;
 sub isPostgreSQL{shift; return $isPostgreSQL}# Enabled here to be called externally.
 my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
                       INDEX=>1, VIEW=>1,  SQL=>1,  MIGRATE=>1, DO=>1, MACRO=>1 );
-sub isReservedWord {if(defined $_[1]){return $RESERVED_WORDS{$_[1]}?1:0} return 0}
+sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -129,8 +133,7 @@ sub template { my ($self, $property, %macros) = @_;
            }
        }
        return $val;
-    }
-    return;
+    }    
 }
 
 package InstructedDataItem {
@@ -301,10 +304,9 @@ try{
                $v =~ s/^\s//;
                $consts{$e} = $v if not $consts{$e}; # Not allowed to overwrite constant.
             }elsif($t eq 'DATA'){
-               $st ="";
-               my @tad = ();
+
                foreach(split /~\n/,$v){
-                   my $i = "";
+                   my @a;
                    $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
                    foreach my $d (split /`/, $_){
                         $d =~ s/\\f/`/g; #escape back form feed to backtick.
@@ -313,37 +315,37 @@ try{
                             $v =  $d;            #capture spected value.
                             $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
                             if($v=~m/\$$/){
-                                $v = $consts{$d}
+                                $v = $consts{$d}; $v="" if not $v;
                             }
                             else{
                                 $v = $d;
                             }
-                            $i .= "'$v',";
+                            push @a, $v;
                         }
                         else{
                             #First is always ID a number and '#' signifies number.
                             if($t eq "\#") {
                                 $d = substr $d, 1;
                                 $d=0 if !$d; #default to 0 if not specified.
-                                $i .= "$d,"
+                                push @a, $d
                             }
                             else{
-                                $i .= "$d,";
+                              push @a, $d;
                             }
                         }
+                   }                   
+                   
+                   my $existing = $data{$e};
+                   if(defined $existing){
+                        my @rows = @$existing;
+                        push @rows, [@a] if scalar @a >0; 
+                        $data{$e} = \@rows
+                   }else{
+                        my @rows; push @rows, [@a];   
+                        $data{$e} = \@rows if scalar @a >0;   
                    }
-                   $i =~ s/,$//;
-                   push @tad, $i if $i;
                }
-                   my @existing = $data{$e};
-                   if(scalar(@existing)>1){
-                       @existing = @{$data{$e}};
-                       foreach my $i(@existing){
-                         push @tad, $i if $i;
-                       }
-                   }
-                   $data{$e} = [@tad] if scalar(@tad)>0;
-               next;
+                next;
             }elsif($t eq 'FILE'){
 
                     my ($i,$path) = $cnf;
@@ -354,13 +356,13 @@ try{
                     open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
                     read $fh, $content, -s $fh;
                     close $fh;
-                   my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
-                   foreach my $tag (@tags){
-                     next if not $tag;
-                            my @kv = split /</,$tag;
-                            $e = $kv[0];
-                            $t = $kv[1];
-                            $i = index $t, "\n";
+                    my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
+                    foreach my $tag (@tags){
+                        next if not $tag;
+                        my @kv = split /</,$tag;
+                        $e = $kv[0];
+                        $t = $kv[1];
+                        $i = index $t, "\n";
                         if($i==-1){
                             $t = $v = substr $t, 0, (rindex $t, ">>");
                         }
@@ -368,51 +370,50 @@ try{
                             $v = substr $t, $i+1, (rindex $t, ">>")-($i+1);
                             $t =  substr $t, 0, $i;
                         }
-
                         if($t eq 'DATA'){
-                            $st ="";
-                            my @tad = ();
                             foreach(split /~\n/,$v){
-                                my $i = "";
-                                $_ =~ s/\\`/\\f/g;#We escape to form feed  the escaped in file backtick.
-                                foreach my $d (split /`/, $_){
-                                        $d =~ s/\\f/`/g; #escape back form feed to backtick.
-                                        $t = substr $d, 0, 1;
-                                        if($t eq '$'){
-                                            $v =  $d;            #capture spected value.
-                                            $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
-                                            if($v=~m/\$$/){
-                                                $v = $consts{$d}
-                                            }
-                                            else{
-                                                $v = $d;
-                                            }
-                                            $i .= "'$v',";
+                                my @a;
+                                $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
+                                foreach my $d (split(/`/, $_)){
+                                    $d =~ s/\\f/`/g; #escape back form feed to backtick.
+                                    $t = substr $d, 0, 1;
+                                    if($t eq '$'){
+                                        $v =  $d;            #capture spected value.
+                                        $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
+                                        if($v=~m/\$$/){
+                                            $v = $consts{$d}; $v="" if not $v;
                                         }
                                         else{
-                                            #First is always ID a number and '#' signifies number.
-                                            if($t eq "\#") {
-                                                $i .= "$d," if $d;
-                                            }
-                                            else{
-                                                $i .= "'$d',";
-                                            }
+                                            $v = $d;
                                         }
-                                }
-                                $i =~ s/,$//;
-                                push @tad, $i if $i;
+                                        push @a, $v;
+                                    }
+                                    else{
+                                        #First is always ID a number and '#' signifies number.
+                                        if($t eq "\#") {
+                                            $d = substr $d, 1;
+                                            $d=0 if !$d; #default to 0 if not specified.
+                                            push @a, $d
+                                        }
+                                        else{
+                                        push @a, $d;
+                                        }                                                
+                                    }                   
+                                    
+                                    my $existing = $data{$e};
+                                    if(defined $existing){
+                                            my @rows = @$existing;
+                                            push @rows, [@a] if scalar @a >0; 
+                                            $data{$e} = \@rows
+                                    }else{
+                                            my @rows; push @rows, [@a];   
+                                            $data{$e} = \@rows if scalar @a >0;   
+                                    }
+                                }   
                             }
-                            my @existing = $data{$e};
-                            if(scalar(@existing)>1){
-                                @existing = @{$data{$e}};
-                                foreach my $i(@existing){
-                                    push @tad, $i if $i;
-                                }
-                            }
-                            $data{$e} = [@tad] if scalar(@tad)>0;
-                        }
-                   }
-                next;
+                        }       
+                    }
+              next  
             }
             elsif($t eq 'TABLE'){
                $st = "CREATE TABLE $e(\n$v);";

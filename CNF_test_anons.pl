@@ -14,7 +14,6 @@ use DateTime::Duration;
 
 #DEFAULT SETTINGS HERE!
 use lib "system/modules";
-
 use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
 require CNFParser;
 

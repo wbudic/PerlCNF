@@ -1,14 +1,15 @@
 #!/usr/bin/perl
 
+
 use warnings; 
 use Try::Tiny;
 use Exception::Class ('CNFParserException');
-
 use DBI; use GD; use GD::Graph::lines;
+
 #DEFAULT SETTINGS HERE!
 #LanguageServer doesn't like -> $ENV{'PWD'} settings.json should not be set for it withn an pwd.
 #use lib "/home/will/dev/PerlCNF/system/modules/";
-use lib "system/modules/";
+use lib "./system/modules/";
 require CNFParser;
 
 my $cnf = new CNFParser('/home/will/dev/PerlCNF/databaseBitcoinPlot.cnf', {DO_enabled=>1});
