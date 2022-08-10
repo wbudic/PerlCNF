@@ -68,4 +68,38 @@ Head Office Acme Bank Corporation Holdings Global
 
 >>>
 
+/*
+Macro instruction, instructs the parser to do the translation.
+*/
+<<GET_URL<MACRO>https://www.$$$1$$$.acme.com/$$$2$$$>>
+/*
+    Parser would in the past classify anons as automatic META instructions. This not anymore the case.
+    Following was in the past to be called with $parser->anon('GET_SUB_URL',[One,Two]) 
+    to dynamically macro translate via arguments to the anon function.
+    Note - This is not anymore how this is best or only way to be done. as using hashes or the MACRO instruction is better.
+    
+*/
 <<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>
+
+/*
+    Following is the in future hierarchical planed property format example.
+    For CNF3.0+
+    Accessed lke: $parser->anon('MyDoc/Node1');
+    or if called with $parser->anon('MyDoc/') will return private list of nodes. 
+    While calling $parser->anon('MyDoc'), will return it value, which again can be anything.
+    Reason for the folding '{{{' is obvious, the property value could contain 
+    itself brackets, we do not need to escape within the CNF script format.
+    Same with quotes, CNF script is not JSON, it is oblivious about those thanks to its intelligent design.
+    Doesn't need them.
+*/
+
+<<MyDoc<{{{
+    <<Node1<{instruction}>{value}>>
+    <<Node2<{instruction}>{value}>>
+    <<Node1<{instruction}>{value}>>
+    <<Node3<META>{{{
+        <<Node1<{value}>>>
+        <<Node2<{instruction}>{value}>>
+    }}}
+    
+}}}{Some value for MyDoc here can be placed}>>>

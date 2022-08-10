@@ -1,33 +1,22 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl -w
 #
 # Programed by: Will Budic
 # Open Source License -> https://choosealicense.com/licenses/isc/
 #
 package CNFParser;
 
-use strict;use warnings;#use warnings::unused;
+use strict;
+use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
-use Hash::Util qw(lock_hash unlock_hash);
-
-sub import {     
-    my $caller = caller;
-    
-    {    no strict 'refs';
-         *{"${caller}::configDumpENV"} = \&dumpENV;
-         *{"${caller}::anon"} = \&anon;
-    }
-    return 1;    
-}
-
-
+use Scalar::Util;
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
 ##no critic qw(Subroutines::RequireFinalReturn)
 
+use constant VERSION => '2.4';
 
-use constant VERSION => '2.5';
-
+our %consts = ();
 our %mig    = ();
 our @sql    = ();
 our @files  = ();
@@ -35,127 +24,43 @@ our %tables = ();
 our %views  = ();
 our %data   = ();
 our %lists  = ();
+our %anons  = ();
 our %properties   = ();
 our $CONSTREQ = 0;
 
-# Package fields are always global in perl!
-our %ANONS  = ();
-
-sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
+sub new { my ($class, $path, $attrs, $self) = @_;
     if ($attrs){
-        $self = \%$attrs;        
+        $self = \%$attrs;
+        $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
     }else{
-        $self = {
-                    DO_enabled=>0,       # Enable/Disable DO instruction.
-                    ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
-                    ENABLE_WARNINGS=>1   # 
-        }; 
-    }
-    $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
-    if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is are not static.
-         $self->{'__ANONS__'} = {};
-    }
-    bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
+        $self = {"DO_enabled"=>0}; # Enable/Disable DO instruction.
+    }    
+    bless $self, $class;
+    $self->parse($path) if($path);
     return $self;
 }
-#
 
-###
-# The metaverse is that further this can be expanded, 
-# to provide further dynamic meta processing of the property value of an anon.
-# When the future becomes life in anonimity, unknow variables best describe the meta state.
-##
-package META_PROCESS{
-    sub constance{
-         my($class, $set) = @_; 
-        if(!$set){
-            $set =  {anonymouse=>'*'}
-        }
-        bless $set, $class
-    }
-    sub process{
-        my($self, $property, $val) = @_;        
-        if($self->{anonymouse} ne '*'){
-           return  $self->{anonymouse}($property,$val)
-        }
-        return $val;
-    }
-}
-use constant META => META_PROCESS->constance();
-use constant META_TO_JSON => META_PROCESS->constance({anonymouse=>*_to_JSON});
-sub _to_JSON {
-my($property, $val) = @_;
-return <<__JSON
-{"$property"="$val"}
-__JSON
-}
-
-###
-# Anon properties are public variables. Constances are protected and instance specific.
-# Global by default, means they can also be static accessed, i.e. CNFParser::anon(NAME)
-##
-sub anon {  my ($self, $n, $args)=@_;
-    my $anechoic = \%ANONS;
-    if(ref($self) ne 'CNFParser'){
-        $n = $self;
-    }elsif (not $self->{'ANONS_ARE_PUBLIC'}){            
-            $anechoic = $self->{'__ANONS__'};        
-    }
+sub anon {  my ($self, $n, @arg)=@_;
     if($n){
-        my $ret = %$anechoic{$n};
+        my $ret = $anons{$n};
         return if !$ret;
-        if($args){
-            my $ref = ref($args);
-            if($ref eq 'META_PROCESS'){
-                my @arr = ($ret =~ m/(\$\$\$.+?\$\$\$)/gm);
-                foreach my $find(@arr) {# <- MACRO TAG translate. ->
-                        my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;# 
-                        my $r = %$anechoic{$s};
-                        if(!$r && exists $self->{$s}){#fallback to maybe constant property has been seeked?
-                            $r = $self->{$s};
-                        }
-                        if(!$r){
-                            warn "Unable to find property to translate macro expansion: $n -> $find\n" 
-                                 unless $self and not $self->{ENABLE_WARNINGS}
-                        }else{
-                            $ret =~ s/\Q$find\E/$r/g;                    
-                        }
-                }
-                $ret = $args->process($n,$ret);
-
-            }elsif($ref eq 'HASHREF'){
-                foreach my $key(keys %$args){                    
-                    if($ret =~ m/\$\$\$$key\$\$\$/g){
-                       my $val = %$args{$key};
-                       $ret =~ s/\$\$\$$key\$\$\$/$val/g;
-                    }                    
-                }
-            }elsif($ref eq 'ARRAY'){  #we rather have argument passed as an proper array then a list with perl
-                my $cnt = 1;
-                foreach(@$args){
-                    $ret =~ s/\$\$\$$cnt\$\$\$/$_/g;
-                    $cnt++;
-                }
-            }else{
-                my $val =  %$anechoic{$args};
-                $ret =~ s/\$\$\$$args\$\$\$/$val/g;
-                warn "Scalar argument passed $args, did you mean array to pass? For property $n=$ret\n" 
-                                 unless $self and not $self->{ENABLE_WARNINGS}                
+        if(@arg){
+            my $cnt = 1;
+            foreach(@arg){
+                $ret =~ s/\$\$\$$cnt\$\$\$/$_/g;
+                $cnt++;
             }
         }
         return $ret;
     }
-    return $anechoic;
+    return %anons;
 }
-#@DEPRECATED attributes are all the constants, externally can be read only.
-sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ; 
-               my $r=$self->{$c}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $c ' not defined in config!")}
-#@DEPRECATED 
-sub constants {my $s=shift;return %$s}
-
+sub constant  {my $s=shift;if(@_ > 0){$s=shift;} return $consts{$s} unless $CONSTREQ; 
+               my $r=$consts{$s}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $s ' not defined in config!")}
+sub constants {\%consts}
 
 sub collections {\%properties}
-sub collection {my($self, $prp)=@_;return $properties{$prp}}
+sub collection {my($self, $attr)=@_;return $properties{$attr}}
 sub data {\%data}
 
 sub listDelimit {                 
@@ -190,12 +95,12 @@ sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 sub addENVList { my ($self, @vars) = @_;
     if(@vars){
         foreach my $var(@vars){
-            next if $self->{$var};##exists already.
+            next if $consts{$var};##exists already.
             if((index $var,0)=='$'){#then constant otherwise anon
-                $self->{$var} = $ENV{$var};
+                $consts{$var} = $ENV{$var};
             }
             else{
-                anon()->{$var} = $ENV{$var};
+                $anons{$var} = $ENV{$var};
             }
         }
     }return;
@@ -203,7 +108,7 @@ sub addENVList { my ($self, @vars) = @_;
 
 
 sub template { my ($self, $property, %macros) = @_;    
-    my $val = $self->anon($property);
+    my $val = anons($self, $property);
     if($val){       
        foreach my $m(keys %macros){
            my $v = $macros{$m};
@@ -218,9 +123,9 @@ sub template { my ($self, $property, %macros) = @_;
                next;
            }
            undef $prev;
-           my $pv = $self->anon($m);
-           if(!$pv && exists $self->{$m}){
-               $pv =  $self->{$m}#constant($self, '$'.$m);
+           my $pv = anons($self, $m);
+           if(!$pv){
+               $pv = constant($self, '$'.$m);
            }
            if($pv){
                $m = "\\\$\\\$\\\$".$m."\\\$\\\$\\\$";
@@ -241,44 +146,22 @@ package InstructedDataItem {
         }, $class;  return $class;      
     }
 }
-#
 
-###
-# Parses a CNF file or a text content if specified, for this configuration object.
-##
-sub parse { 
-    my ($self, $cnf, $content, $del_keys) = @_;
-
+sub parse { my ($self, $cnf, $content) = @_;
+try{
     my @tags;
     my $DO_enabled = $self->{'DO_enabled'};
     my %instructs; 
-    my $anons;    
-    if($self->{'ANONS_ARE_PUBLIC'}){  
-       $anons = \%ANONS;
-    }else{          
-       $anons = $self->{'__ANONS__'};
-    }
-    
-    if(not $content){#open $cnf
+    if(!$content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
         read $fh, $content, -s $fh;
         close $fh;
-        $self->{CNF_CONTENT} = $cnf;
-    }else{
-        my $type =Scalar::Util::reftype($content);
-        if($type && $type eq 'ARRAY'){
-            $content = join  "",@$content;
-            $self->{CNF_CONTENT} = 'ARRAY';
-        }
+    }elsif( Scalar::Util::reftype($content) eq 'ARRAY'){
+        $content = join  "",@$content;
     }
-    $content =~ m/^\!(CNF\d+\.\d+)/;
-    my $CNF_VER = $1; $CNF_VER="Undefined!" if not $CNF_VER;
-    $self->{CNF_VERSION}=$CNF_VER if not defined $self->{CNF_VERSION};
-
-    unlock_hash(%$self);# We control from here the constances, need to unlock them if previous parse was run.
-
-    @tags =  ($content =~ m/(<<)(<*.*?>*)(>>)/gms);
+    @tags =  ($content =~ m/(<<)(<*.*?)(>>+)/gms);
     
+               
     foreach my $tag (@tags){             
 	  next if not $tag;
       next if $tag =~ m/^(>+)|^(<<)/;
@@ -295,7 +178,7 @@ sub parse {
                 }   split /\s*=\s*/, $_;                
                 foreach (@properties){
                       if ($k){
-                            $self->{$k} = $_ if not $self->{$k};
+                            $consts{$k} = $_ if not $consts{$k};
                             undef $k;
                       }
                       else{
@@ -306,15 +189,17 @@ sub parse {
 
         }        
         else{
-            my ($st,$e,$t, $v, $v3, $i) = 0;                     
-            my @vv = ($tag =~ m/(@|[\$@%]*[\w\-\.\:\$\(\)\{\}]*)(<|>)/g); # <- TODO new addition 20220808, we might need to change whole algy, because...
+            my ($st,$e,$t,$v, $v3, $i) = 0;                     
+            my @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
             $e = $vv[$i++]; $e =~ s/^\s*//g;            
-            die "Encountered invalid tag formation -> $tag" if(!$e);            
+            die "Encountered invalid tag formation -> $tag" if(!$e);
             if($e eq '$$' && $tag =~ m/(\w*)\$*<((\s*.*\s*)*)/){ #we have an autonumbered instructed list.
                $e = $1;
                $t = $2;
                $v = $3;
                if (!$v){
+
+
                    if($tag =~ m/(\w*)\$*<(\s*.*\s*)>(\s*.*\s*)/){
                       $t = $2; $v = $3;
                    }
@@ -329,18 +214,17 @@ sub parse {
                     $v=$tag
                    }
                }
-               my $ar = $lists{$e};
-               if(!$ar){$ar=();$lists{$e} = \@{$ar};}               
-               push @{$ar}, CNFParser::InstructedDataItem->new($t,$v);
+               my $a = $lists{$e};
+               if(!$a){$a=();$lists{$e} = \@{$a};}
+               push @{$a}, new InstructedDataItem($t,$v);
                next;
             }
-            # Is it <name><tag>value? Notice here, we are using here perls feature to return undef on unset array elements,
+            # Is it <name><tag>value? Notce here, we are using here perls feature to return undef on unset array elements,
             # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
             while(defined $vv[$i] && $vv[$i] eq '>'){ $i++; }            
             $i++;
             $t = $vv[$i++]; 
             $v = $vv[$i++];
-            
             if(!$v&&!$t&& $tag =~ m/(.*)(<)(.*)/g){# Maybe it is the old format wee <<{name}<{instruction} {value}...
                 $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3;            
                 my $w = ($v=~/(^\w+)/)[0];
@@ -362,10 +246,9 @@ sub parse {
                my $l = length($e);
                   $i = index $tag, "\n";
                   $t = substr $tag, $l + 1 , $i -$l - 1;
-                  $v3 = '_SUBS1_SET'; 
-                
+                  $v3 = '_SUBS1_SET';
             }else{                  
-                  $i = length($e) + length($t) + ($i - 3);                  
+                  $i = length($e) + length($t) + ($i - 3);
                   $v3 = '_SUBS2_SET';
             }
 
@@ -373,9 +256,7 @@ sub parse {
             $t =~ s/^\s+//g;
             # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
             $v = substr $tag, $i if $v3 ne '_V3_SET';
-            #if tag is closing properly  an instruction, further an opening one will be stripped '<'. We don't want that.
-            # was -> $v =~ s/^[<>\s]*//g if $v3 ne '_SUBS1_SET';
-            $v =~ s/^[<|>\s*]// if $v3 ne '_SUBS1_SET';
+            $v =~ s/^[><\s]*//g if $v3 ne '_SUBS1_SET';
 
            # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
 
@@ -385,13 +266,13 @@ sub parse {
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
                         s/^\s*["']|['"]$//g;#strip qoutes
-                        s/>+//;# strip ending CNF tag
+                        s/\s>>//;
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
                 if($isArray){
                     my @arr=(); $properties{$t}=\@arr;
                     foreach  (@props){                        
-                        push @arr, $_ if($_ && length($_)>0);
+                        push @arr, $_ if( length($_)>0);
                     }
                 }else{
                     my %hsh=(); $properties{$t}=\%hsh; my $macro = 0;
@@ -403,13 +284,12 @@ sub parse {
                             my $name  = $pair[0]; $name =~ s/^\s*|\s*$//g;
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip qoutes
                             if($macro){
-                                my @arr = ($value =~ m/(\$\$\$.+?\$\$\$)/gm);
-                                foreach my $find(@arr) {                                
+                                foreach my $find($v =~ /(\$.*\$)/g) {                                   
                                     my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
-                                    my $r = %$anons{$s};                                    
-                                    $r = $self->{$s} if !$r;
+                                    my $r = $anons{$s};                                    
+                                    $r = $consts{$s} if !$r;
                                     $r = $instructs{$s} if !$r;
-                                    CNFParserException->throw(error=>"Unable to find property for $t.$name -> $find\n",show_trace=>1) if !$r;
+                                    die "Unable to find property for $t.$name -> $find\n" if !$r;                                    
                                     $value =~ s/\Q$find\E/$r/g;                    
                                 }
                             }
@@ -422,8 +302,7 @@ sub parse {
 
             if($t eq 'CONST'){#Single constant with mulit-line value;
                $v =~ s/^\s//;
-               #print "[[$t]]=>{$v}\n";
-               $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
+               $consts{$e} = $v if not $consts{$e}; # Not allowed to overwrite constant.
             }elsif($t eq 'DATA'){
 
                foreach(split /~\n/,$v){
@@ -436,7 +315,7 @@ sub parse {
                             $v =  $d;            #capture spected value.
                             $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
                             if($v=~m/\$$/){
-                                $v = $self->{$d}; $v="" if not $v;
+                                $v = $consts{$d}; $v="" if not $v;
                             }
                             else{
                                 $v = $d;
@@ -473,7 +352,7 @@ sub parse {
                     $v=~s/\s+//g;
                     $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
                     push @files, $path;
-                    next if(!$self->{'$AUTOLOAD_DATA_FILES'});
+                    next if(!$consts{'$AUTOLOAD_DATA_FILES'});
                     open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
                     read $fh, $content, -s $fh;
                     close $fh;
@@ -502,7 +381,7 @@ sub parse {
                                         $v =  $d;            #capture spected value.
                                         $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
                                         if($v=~m/\$$/){
-                                            $v = $self->{$d}; $v="" if not $v;
+                                            $v = $consts{$d}; $v="" if not $v;
                                         }
                                         else{
                                             $v = $d;
@@ -550,7 +429,7 @@ sub parse {
                 next;
             }
             elsif($t eq 'SQL'){
-                $anons->{$e} = $v;
+                $anons{$e} = $v;
             }
             elsif($t eq 'MIGRATE'){
                 my @m = $mig{$e};
@@ -559,28 +438,33 @@ sub parse {
                 $mig{$e} = [@m];
             }
             elsif($DO_enabled && $t eq 'DO'){
-                $_ = eval $v; chomp $_; $anons->{$e} = $_
+                $_ = eval $v; chomp $_; $anons{$e} = $_
             }
-            elsif($t eq 'MACRO'){                  
+            elsif($t eq 'MACRO'){
+                  %instructs = () if(not %instructs);
                   $instructs{$e}=$v;                  
             }
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
                 if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
                     if($e=~/^\$/){
-                        $self->{$e} = $v if !$self->{$e}; # Not allowed to overwrite constant.
+                        $consts{$e} = $v if !$consts{$e}; # Not allowed to overwrite constant.
                     }else{
-                        $v = $t if not $v; 
-                        $anons->{$e} = $v 
+                        if(defined $t && length($t)>0){ #unknow tagged instructions value we parse for macros.
+                            %instructs = () if(not %instructs);
+                            $instructs{$e}=$t;                                
+                        }else{
+                            $anons{$e} = $v # It is allowed to overwite and abuse anons.
+                        }
                     }
                 }
                 else{
                     $e = substr $e, 0, (rindex $e, '$$')-1;
                     # Following is confusing as hell. We look to store in the hash an array reference.
                     # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
-                    my $ar = $lists{$e};
-                    if(!$ar){$ar=();$lists{$e} = \@{$ar};}
-                    push @{$ar}, $v;
+                    my $a = $lists{$e};
+                    if(!$a){$a=();$lists{$e} = \@{$a};}
+                    push @{$a}, $v;
                 }
                 next;
             }
@@ -589,37 +473,22 @@ sub parse {
 	}
     if(%instructs){ my $v;
         foreach my $e(keys %instructs){
-            my $t = $instructs{$e}; $v=$t; #<--Instructions assumed as the normal value, case: <<{name}<{instruction as value}>>>
-            my @arr = ($t =~ m/(\$\$\$.+?\$\$\$)/gm);
-            foreach my $find(@arr) {# <- MACRO TAG translate. ->
-                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;# 
-                    my $r = %$anons{$s};
-                    $r = $self->{$s} if !$r;                    
-                    if(!$r){
-                        warn "Unable to find property to translate macro expansion: $e -> $find\n" if $self->{ENABLE_WARNINGS}
-                    }else{
-                        $v =~ s/\Q$find\E/$r/g;                    
-                    }
+            my $t = $instructs{$e}; $v=$t; #<--Instructions assumed as a normal value, case: <<{name}<{instruction}>>>
+            foreach my $find($t =~ /(\$.*\$)/g) {                                   
+                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;# <- MACRO TAG
+                    my $r = $anons{$s};
+                    $r = $consts{$s} if !$r;                                           
+                    die "Unable to find property for $e-> $find\n" if !$r;
+                    $v = $t;
+                    $v =~ s/\Q$find\E/$r/g;
+                    $t = $v;
             }
-            $anons->{$e}=$v;
+            $anons{$e}=$v;
         }undef %instructs;
     }
-    ###
-    # Following is experimental. Not generally required, and it is a bit of an overkill.
-    ###
-    if(not $self->{'ANONS_ARE_PUBLIC'}){
-        # We clone of references of global ones which are public, for availability.
-        foreach(keys %ANONS){
-             next if $anons->{$_};
-             $anons->{$_}=\$ANONS{$_} #<- Interesting to see what happens when the global entry is changed later,
-                                    #   By another loaded repository, after this one. Having different values.
-        }
-    }
-    foreach (@$del_keys){
-        my $k=$_;
-        delete $self->{$k} if exists $self->{$k}
-    }
-    lock_hash(%$self);#Make them finally constances.
+}catch{
+      CNFParserException->throw(error=>$@, show_trace=>1);
+}
 }
 
 ##
@@ -853,18 +722,12 @@ sub writeOut { my ($self, $handle, $property) = @_;
       return 1;
     }
     else{
-      $prp = $ANONS{$property};
-      $prp = $self->{$property} if !$prp;
+      $prp = $anons{$property};
+      $prp = $consts{$property} if !$prp;
       die "Property not found -> $property" if !$prp;
       print $handle "<<$property><$prp>>\n";
       return 0;
     }
-}
-
-
-
-sub dumpENV{
-    foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
 }
 
 ###
@@ -873,7 +736,8 @@ sub dumpENV{
 #
 sub END {
 
-undef %ANONS;
+undef %anons;
+undef %consts;
 undef %mig;
 undef @sql;
 undef @files;
