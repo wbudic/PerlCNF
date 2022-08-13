@@ -30,36 +30,37 @@ my $manager = TestManager->new("Test Suit [ $0 ] (".(scalar localtime).")");
 print '-'x100, "\n";
 try{
     opendir my($dh), $TEST_LOCAL_DIR or die WHITE."Couldn't open dir '$TEST_LOCAL_DIR':".RED." $!";
-    my @files = grep { !/^\./ && /\.pl$/ && -f "./tests/$_" } readdir($dh);
+    #grep all prefixed test*.pl excluding this file, as it is running.
+    my @files = grep { !/^\./ && /^test.*?\.pl$/ && $0 !~ m/$_$/ && -f "./tests/$_" } readdir($dh);
     closedir $dh;
 
     my ($test_pass, $test_fail, $test_cases, @OUT, %WARN);
     
     foreach my $file(@files) {        
-        if($0 !~ m/$file$/){ 
-            $file = "./tests/$file";            
-            my ($in,$output, $warnings);
-            my @perl = ('/usr/bin/env','perl',$file);    
-            ###
-            run  (\@perl, \$in, \$output, '2>>', \$warnings);
-            ###
-            my @test_ret = $output=~m/(\d*)\|(.*)\|($file)$/g;
-            $output=~s/\d*\|.*\|$file\s$//g;
-            push @OUT, $output;
-             if ($warnings){
-                for(split "\n", $warnings){
-                    $WARN{$_} = $file;
-                }
-            }
-            if(@test_ret && $test_ret[1] eq 'SUCCESS'){
-                $test_pass++;
-                #This is actually global test cases pass before sequently hitting an fail.
-                $test_cases+= $test_ret[0];
-            }else{
-                $test_fail++;
-                print BOLD RED "Failed Test File -> ", WHITE, "$file\n", RESET
+        
+        $file = "./tests/$file";            
+        my ($in,$output, $warnings);
+        my @perl = ('/usr/bin/env','perl',$file);    
+        ###
+        run  (\@perl, \$in, \$output, '2>>', \$warnings);
+        ###
+        my @test_ret = $output=~m/(\d*)\|(.*)\|($file)$/g;
+        $output=~s/\d*\|.*\|$file\s$//g;
+        push @OUT, $output;
+            if ($warnings){
+            for(split "\n", $warnings){
+                $WARN{$_} = $file;
             }
         }
+        if(@test_ret && $test_ret[1] eq 'SUCCESS'){
+            $test_pass++;
+            #This is actually global test cases pass before sequently hitting an fail.
+            $test_cases+= $test_ret[0];
+        }else{
+            $test_fail++;
+            print BOLD RED "Failed Test File -> ", WHITE, "$file\n", RESET
+        }
+        
     }
     foreach(@OUT){        
             print $_;        

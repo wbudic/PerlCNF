@@ -10,7 +10,7 @@ use Term::ANSIColor qw(:constants);
 sub new {
      my ($class, $test_file, $self) = @_; 
      $test_file = $0 if not $test_file;
-     $self = bless {test_file=> $test_file,test_cnt=>1}, $class;
+     $self = bless {test_file=> $test_file,test_cnt=>1,sub_cnt=>0,sub_err=>0}, $class;
      print  BLUE."Running -> ".WHITE."$test_file\n".RESET;
      return $self;
 }
@@ -33,8 +33,21 @@ sub subcase {
 
 sub nextCase {
     my ($self) =@_;
+    return "Case ".$self->{test_cnt}." failed with ".$self->{sub_err} ." erros!" if $self->{sub_err} > 0;
     $self->{test_cnt}++;
     $self->{sub_cnt}=0
+}
+
+sub evaluate { 
+    my ($self, $aa, $bb, $cc)=@_;
+    if ($cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""};
+    if($aa eq $bb){        
+        print GREEN."\tTest ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
+    }else{    
+        $self->{sub_err}++;
+        print BLINK. BRIGHT_RED."Test Failed!".WHITE."\neval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;
+    }
+    
 }
 
 sub done {
@@ -76,8 +89,7 @@ sub dumpTermination {
         }
     }else{
      ($file,$lnErr) = ($comment =~ m/.*\s*at\s*(.*)\sline\s*(\d*)\.$/); 
-    }
-    
+    }    
     
     open (my $flh, '<:perlio', $file) or die("Error $! opening file: $file");
           my @slurp = <$flh>;
@@ -88,13 +100,13 @@ sub dumpTermination {
     for(my $i=0; $i<@slurp;$i++)  { 
         local $. = $i + 1;
         my $line = $slurp[$i]; 
-        if($. >= $lnErr+1){                  
+        if($. >= $lnErr+2){                  
            print $comment, RESET.frmln($.).$line;
            print "[".$file."]\n\t".BRIGHT_RED."Failed\@Line".WHITE." $i -> ", $slurp[$i-1].RESET;
            last  
         }elsif($line=~m/^\s*(\#.*)/){
             if( $1 eq '#'){
-                $comment .= "\n".RESET.frmln($.).ITALIC.YELLOW.'#' ;
+                $comment .= "".RESET.frmln($.).ITALIC.YELLOW."#\n" ;
                 $past = $cterminated = $clnt= 0 
             }
             elsif($past){
@@ -107,12 +119,18 @@ sub dumpTermination {
                 $past = $cterminated = 1;
             }
         }elsif($past){
-               $line= $slurp[$i];
-               if($ErrAt && $line =~ /$ErrAt/){
-                  $comment .= RESET.frmln($.).BOLD.RED.$line;
-               }else{
-                  $comment .= RESET.frmln($.).$line;
-               }
+            $line= $slurp[$i];
+            if($ErrAt && $line =~ /$ErrAt/){
+                $comment .= RESET.frmln($.).BOLD.RED.$line;
+            }else{
+                $comment .= RESET.frmln($.).$line;
+            }
+        }else{            
+            if($lnErr == $. || $ErrAt && $line =~ /$ErrAt/){
+                $comment .= RESET.frmln($.).BOLD.RED.$line;
+            }else{
+                $comment .= RESET.frmln($.).$line;
+            }
         }
         
         if(++$clnt>50 && $. < $lnErr-50){
@@ -120,6 +138,7 @@ sub dumpTermination {
              $comment ="" # trim excessive pre line collecting.
         }
     }
+    exit;
 }
 
 our $DEC =  "%-2d %s"; #under 100 lines pad like -> printf "%2d %s", $.

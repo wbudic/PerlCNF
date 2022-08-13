@@ -1,25 +1,21 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
+use Syntax::Keyword::Try;
+
 use lib "./tests";
 use lib "./system/modules";
 
-use lib "/home/will/dev/PerlCNF/tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
-
 require TestManager;
-use Syntax::Keyword::Try;
-
-
 my $test = TestManager -> new($0);
 my $cnf;
 
 require CNFParser;
 
-try{
+try{  
 
    ###
    # Test instance creation.
-   #
+   ###
    die $test->failed() if not $cnf = CNFParser->new();
    $test->case("Passed new instance CNFParser.");
    $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);
@@ -27,12 +23,31 @@ try{
    $test-> nextCase();
    #
 
+#CNFParser->new()->parse(undef,q(<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>));
+
+# CNFParser->new()->parse(undef,qq(
+# <<\$HELP<CONST
+# Multiple lines
+# in this text.
+# >>>
+# ));
+# CNFParser->new()->parse(undef,q(<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>));
+
    my $anons = $cnf->anon();
    die $test->failed() if %$anons; #The list is empty so far.
    $test->case("Obtained anons for repo.");
    #  
    $test-> nextCase();
    #
+
+   ###
+   # List entry with non word instructions.
+   ###
+   CNFParser->new()->parse(undef,q(<<list$$<20.05$>Spend in supermarket.>>));
+   #  
+   $test-> nextCase();
+   #
+
    $anons->{'The Added One'} = "Dynamically!";
    $cnf->anon()->{'The Added Two'} = "Dynamically2!";
    #  
@@ -119,13 +134,15 @@ die "Failed finding GET_SUB_URL" if not $find;
 # Test lifelog categories
 my $v = $cnf->anon('CAT');
 if(!$v) {die "CAT is Missing!"}
-print "\n--- CAT ---\n".$v;
+#print "\n--- CAT ---\n".$v;
+die "CAT values proper data is missing!" 
+if $v !~ m/90\|Fitness\s*\`Fitness steps, news, info, and useful links. Amount is steps.$/gm;
 
-
-my $cmd = $cnf->anon('list_cmd', $ENV{'PWD'});
+use Cwd;
+my $cmd = $cnf->anon('list_cmd', [getcwd] );
 print "CMD is:$cmd\n";
 $cmd = `$cmd`;
-print "Error failed system command!" if !$cmd;
+die "Error failed system command!" if !$cmd;
 #print "Listing:\n$exe\n";
 
 print "\n--LIST OF ALL ANONS ENCOUNTERED---\n";
@@ -150,9 +167,8 @@ print "\n--- TEMPLATE ---\n".$template;
 my $lst = ['tech','main.cgi'];
 my $url = $cnf->anon('GET_SUB_URL', ['tech','main.cgi']);
 # $url now should be: https://www.tech.acme.com/main.cgi
-eval ($url =~ m/https:\.*/)
-or warn "Failed to obtain expected URL when querying anon -> GET_SUB_URL";
-eval ($url eq 'https://www.tech.acme.com/main.cgi') or die "Error with: $url";
+die if $url !~ m/https:\.*/;
+die if $url ne 'https://www.tech.acme.com/main.cgi';
 
 
 }

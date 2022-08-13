@@ -1,13 +1,9 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
-use lib "./tests";
-use lib "./local";
+use Syntax::Keyword::Try;
+use lib "./system/modules";
 
 require TestManager;
-require CNFCentral;
-use Syntax::Keyword::Try;
-
-
 my $test = TestManager -> new($0);
 my $cnf;
 
