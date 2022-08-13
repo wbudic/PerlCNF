@@ -17,7 +17,7 @@ use Test::Vars;
 our $case;
 our $case_cnt = 0; 
 
-sub create { my ($class, $self_args) = @_;
+sub construct { my ($class, $self_args) = @_;
     die 'Arguments not passed -> {name=?:Name of this Manger., count=?:Current test count.}' if not $self_args;
     bless $self_args, $class;    
     return $self_args;
