@@ -146,12 +146,12 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
         {value\n...valuen\n}>>>
    ```
 
-### Full Tag
+### Full Tag 
 
 ```javascript
-    <<{$sig}{name}<{INSTRUCTION}
+    <<{$sig}{name}<{INSTRUCTION}>
         {value\n...value\n}
-    >>>
+    >>
 ```
 
 **Examples:**
@@ -169,6 +169,51 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
         >>
        <<PRINT_TO_HELP<true>>
 ```
+
+## Mauling Explained
+
+1. Mauling refers to allowing for/or encountering inadequate script format of an CNF property.
+    1. These still should pass the parsers scrutiny and are not in most cases errors.
+    2. There are in general three part expected to an CNF property.
+        1. Tag name.
+        2. Instruction.
+        3. Value
+    3. CNF property value tag turns the instruction the value, if the value is not separated from it.
+    4. CNF only instructed, will try to parse the whole value to make multiple property value pairs.
+        1. The newline is the separator for each on created.
+2. Example. Instruction is mauling value:
+
+    ```perl
+        <<CNF_COUNTRY_OF_ORIGIN<Australia>>>
+    ```
+
+3. Example. Instruction mauls into multi-new line value:
+
+    ```perl
+       <<APP_HELP_TXT<CONST
+       This is your applications help text in format of an constance. 
+       All you see here can't be dynamically changed.
+       You might be able to change it in the script though. 
+       And re-run your app.
+       >>        
+    ```
+
+4. Example. Tag name mauled:
+
+    ```perl
+       <<<CONST
+       $APP_HELP_TXT='This is your applications help text in format of an constance.'       
+       >>        
+    ```
+
+5. Example. Instruction mauled or being disabled for now:
+    1. This will fire warnings but isn't exactly an error.
+    2. Introduced with CNF release v.2.5.
+
+    ```perl
+       <<PWD<>path/to/something>>        
+    ```
+
 
 ## CNF Collections Formatting
 
@@ -222,7 +267,6 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
           1. Value is searched and replaced by an property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
           3. Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
-
 
 ## Database and SQL Instruction Formatting
 
@@ -382,8 +426,8 @@ $APP_NAME="My Application Sample"
 
 ***
 
-   Document is from project ->  <https://github.com/wbudic/LifeLog/>
+   Document is from project ->  <https://github.com/wbudic/CNF_Specs/>
 
    An open source application.
 
-<center>Sun Stage - v.2.2 2021</center>
+<center>Sun Stage - v.2.3 2021</center>
