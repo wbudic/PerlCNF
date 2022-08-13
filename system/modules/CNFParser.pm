@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
-#
+# Main Parser for the Configuration Network File Format.
+# This source file is copied and usually placed in a local directory, outside of its project.
+# So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
 # Programed by: Will Budic
 # Open Source License -> https://choosealicense.com/licenses/isc/
 #
@@ -40,6 +42,19 @@ our $CONSTREQ = 0;
 
 # Package fields are always global in perl!
 our %ANONS  = ();
+
+package InstructedDataItem {
+    
+    our $dataItemCounter = int(0);
+
+    sub new { my ($class, $ins, $val) = @_;
+        bless {
+                aid => $dataItemCounter++,
+                ins => $ins,
+                val => $val
+        }, $class    
+    }
+}
 
 sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     if ($attrs){
@@ -147,7 +162,7 @@ sub anon {  my ($self, $n, $args)=@_;
     }
     return $anechoic;
 }
-#@DEPRECATED attributes are all the constants, externally can be read only.
+#@DEPRECATED Attributes are all the constants, also externally can be read only from v.2.5+.
 sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ; 
                my $r=$self->{$c}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $c ' not defined in config!")}
 #@DEPRECATED 
@@ -173,16 +188,20 @@ sub listDelimit {
     return;            
 }
 sub lists {\%lists}
-sub list  {my $t=shift;if(@_ > 0){$t=shift;} my $a = $lists{$t}; return @{$a} if defined $a; die "Error: List name '$t' not found!"}
-
+sub list  {
+        my $t=shift;if(@_ > 0){$t=shift;} 
+        my $an = $lists{$t}; 
+        return @{$an} if defined $an; 
+        die "Error: List name '$t' not found!"
+}
 
 our %curr_tables  = ();
 our $isPostgreSQL = 0;
 
 sub isPostgreSQL{shift; return $isPostgreSQL}# Enabled here to be called externally.
-my %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
-                      INDEX=>1, VIEW=>1,  SQL=>1,  MIGRATE=>1, DO=>1, MACRO=>1 );
-sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
+our %RESERVED_WORDS = (CONST=>1, DATA=>1,  FILE=>1, TABLE=>1, 
+                       INDEX=>1, VIEW=>1,  SQL=>1,  MIGRATE=>1, DO=>1, MACRO=>1);
+sub isReservedWord {my ($self, $word)=@_; return %RESERVED_WORDS{$word}}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -208,8 +227,7 @@ sub template { my ($self, $property, %macros) = @_;
        foreach my $m(keys %macros){
            my $v = $macros{$m};
            $m ="\\\$\\\$\\\$".$m."\\\$\\\$\\\$";
-           $val =~ s/$m/$v/gs;
-       #    print $val;
+           $val =~ s/$m/$v/gs;       
        }
        my $prev;
        foreach my $m(split(/\$\$\$/,$val)){
@@ -229,17 +247,6 @@ sub template { my ($self, $property, %macros) = @_;
        }
        return $val;
     }    
-}
-
-package InstructedDataItem {
-    our $dataItemCounter = int(0);
-    sub new { my ($class, $ins, $val) = @_;
-        bless {
-                aid => $dataItemCounter++,
-                ins => $ins,
-                val => $val
-        }, $class;  return $class;      
-    }
 }
 #
 
@@ -290,7 +297,7 @@ sub parse {
                     s/^\s+|\s+$//;  # strip unwanted spaces
                     s/^\s*["']|['"]\s*$//g;#strip qoutes
                     s/<CONST\s//; # strip  identifier
-                    s/\s>>//;
+                    s/\s*>$//;
                     $_          # return the modified string
                 }   split /\s*=\s*/, $_;                
                 foreach (@properties){
@@ -306,78 +313,55 @@ sub parse {
 
         }        
         else{
-            my ($st,$e,$t, $v, $v3, $i) = 0;                     
-            my @vv = ($tag =~ m/(@|[\$@%]*[\w\-\.\:\$\(\)\{\}]*)(<|>)/g); # <- TODO new addition 20220808, we might need to change whole algy, because...
-            $e = $vv[$i++]; $e =~ s/^\s*//g;            
-            die "Encountered invalid tag formation -> $tag" if(!$e);            
-            if($e eq '$$' && $tag =~ m/(\w*)\$*<((\s*.*\s*)*)/){ #we have an autonumbered instructed list.
-               $e = $1;
-               $t = $2;
-               $v = $3;
-               if (!$v){
-                   if($tag =~ m/(\w*)\$*<(\s*.*\s*)>(\s*.*\s*)/){
-                      $t = $2; $v = $3;
-                   }
-                   elsif($tag =~ m/<((.*\s*)*)>((.*\s*)*)/){                       
-                      $t = $1; $v = $3;
-
-                   }
-                   elsif( $t=~m/(.*)>(.*)/ ){
-                         $t = $1; $v = $2;
-                   }
-                   else{
-                    $v=$tag
-                   }
-               }
-               my $ar = $lists{$e};
-               if(!$ar){$ar=();$lists{$e} = \@{$ar};}               
-               push @{$ar}, CNFParser::InstructedDataItem->new($t,$v);
-               next;
-            }
-            # Is it <name><tag>value? Notice here, we are using here perls feature to return undef on unset array elements,
-            # other languages throw exception. And reg. exp. set variables. So the folowing algorithm is for these languages unusable.
-            while(defined $vv[$i] && $vv[$i] eq '>'){ $i++; }            
-            $i++;
-            $t = $vv[$i++]; 
-            $v = $vv[$i++];
-            
-            if(!$v&&!$t&& $tag =~ m/(.*)(<)(.*)/g){# Maybe it is the old format wee <<{name}<{instruction} {value}...
-                $t = $1; if (defined $3){$v3 = $3}else{$v3 = ""} $v = $v3;            
-                my $w = ($v=~/(^\w+)/)[0];
-                if(not defined $w){$w=""}
-                if($e eq $t && $t eq $w){
-                   $i=-1;$t="";
-                }elsif($RESERVED_WORDS{$w}){        
-                    $t = $w;
-                    $i = length($e) + length($w) + 1;                  
-                }else{                      
-                    if($v3){$i=-1;$t=$v} #$3 is containing the value, we set the tag to it..
-                    else{
-                            $i = length($e) + 1;
+            #vars are e-element,t-token or instruction,v- for value, vv -array of the lot.
+            my ($e,$t,$v,$st,@vv);
+            # Before mauling into possible value types, let us go for the full expected tag specs first:
+            # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
+            # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
+            @vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
+            if(@vv == 3 && $RESERVED_WORDS{$vv[1]}){
+               $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
+            }# Nope!? Let's start mauling from here.
+            elsif($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
+                $e =$1; $v=$2; $t = $v;
+                warn "Encountered a mauled instruction tag: $tag\n" if $self->{ENABLE_WARNINGS};                
+            }else{# Nope!? Let's continue mauling. Life is cruel, tha's for sure.
+                @vv = ($tag =~ m/(@|[\$@%\W\w]*)<([.]*\s*)>*|(.*)>+|(.*)/gsm);
+                $e = shift @vv;#$e =~ s/^\s*//g;            
+                if(!$e){
+                    # From now on, parser mauls the tag before making out the value.
+                    @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
+                    $e = shift @vv; 
+                    $t = shift @vv;                    
+                    if(!$e){
+                            if($self->{ENABLE_WARNINGS}){
+                                warn "Encountered invalid tag formation -> <<$tag>>"
+                            }else{
+                                die  "Encountered invalid tag formation -> <<$tag>>"
+                            }
+                    }
+                    $v = shift @vv; 
+                }else{
+                    do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
+                    $v = shift @vv;                                           
+                    if(!$v){
+                        if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
+                            $v = $t
+                        }
+                        foreach(@vv){#<- Attach any valid fallback from complex rexp.
+                            $v .= $_ if $_;
+                        }
                     }
                 }
-                $v = substr $tag, $i if $i>-1;  $v3 = '_V3_SET';
-                           
-            }elsif (!$t && $v =~ /[><]/){ #it might be {tag}\n closed, as supposed to with '>'
-               my $l = length($e);
-                  $i = index $tag, "\n";
-                  $t = substr $tag, $l + 1 , $i -$l - 1;
-                  $v3 = '_SUBS1_SET'; 
-                
-            }else{                  
-                  $i = length($e) + length($t) + ($i - 3);                  
-                  $v3 = '_SUBS2_SET';
             }
-
-            #trim accidental spacing in property value or instruction tag
-            $t =~ s/^\s+//g;
-            # Here it gets tricky as rest of markup in the whole $tag could contain '<' or '>' as text characters, usually in multi lines.
-            $v = substr $tag, $i if $v3 ne '_V3_SET';
-            #if tag is closing properly  an instruction, further an opening one will be stripped '<'. We don't want that.
-            # was -> $v =~ s/^[<>\s]*//g if $v3 ne '_SUBS1_SET';
-            $v =~ s/^[<|>\s*]// if $v3 ne '_SUBS1_SET';
-
-           # print "<<$e>>\nt:<<$t>>\nv:<<$v>>\n\n";
+            #Do we have an autonumbered instructed list?            
+            if($e =~ /(.*?)\$\$$/){    
+                $e = $1;            
+                my $array = $lists{$e};
+                if(!$array){$array=();$lists{$e} = \@{$array};}               
+                push @{$array}, InstructedDataItem -> new($t, $v);
+                next;
+            }
 
             if($e eq '@'){#collection processing.
                 my $isArray = $t=~ m/^@/;                
@@ -424,6 +408,7 @@ sub parse {
                $v =~ s/^\s//;
                #print "[[$t]]=>{$v}\n";
                $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
+               next
             }elsif($t eq 'DATA'){
 
                foreach(split /~\n/,$v){
@@ -567,15 +552,15 @@ sub parse {
             else{
                 #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
                 if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
+                   $v = $t if not $v; 
                     if($e=~/^\$/){
                         $self->{$e} = $v if !$self->{$e}; # Not allowed to overwrite constant.
-                    }else{
-                        $v = $t if not $v; 
-                        $anons->{$e} = $v 
+                    }else{                        
+                        $anons->{$e} = $v
                     }
                 }
                 else{
-                    $e = substr $e, 0, (rindex $e, '$$')-1;
+                    $e = substr $e, 0, (rindex $e, '$$');
                     # Following is confusing as hell. We look to store in the hash an array reference.
                     # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
                     my $ar = $lists{$e};

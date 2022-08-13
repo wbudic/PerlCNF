@@ -426,7 +426,7 @@ $APP_NAME="My Application Sample"
 
 ***
 
-   Document is from project ->  <https://github.com/wbudic/CNF_Specs/>
+   Document is from project ->  <https://github.com/wbudic/PerlCNF/>
 
    An open source application.
 

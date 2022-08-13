@@ -3,7 +3,7 @@
 Multiple lines
 in this text.
 >>>
-<<list_cmd<ls -lh $$$1$$$|sort>>>
+<<list_cmd<>ls -lh $$$1$$$|sort>>
 <<LS<
 ls -l
 >>>
@@ -19,7 +19,7 @@ ls -l
 <<proper2<
 very much too!
 >>>
-<<<CONST $DEF_PHONE_LINE=1800 800 xxx>>>
+
 
 <<CONST<$MULTY
 
@@ -60,13 +60,16 @@ Giving you a more precise and accurate requirements and information.
 
 Looking forward, in future business with you.
 
-Sincerely your Mike Doolittle
+Sincerely yours Mike Doolittle
 Policy Approval Manager
 Head Office Acme Bank Corporation Holdings Global
 (p.h. $$$DEF_PHONE_LINE$$$)
 
 
 >>>
+
+//Following as constant should be the fallback value in the processed MyTemplate above.
+<<<CONST DEF_PHONE_LINE=1800 800 xxx>>>
 
 /*
 Macro instruction, instructs the parser to do the translation.
@@ -79,7 +82,7 @@ Macro instruction, instructs the parser to do the translation.
     Note - This is not anymore how this is best or only way to be done. as using hashes or the MACRO instruction is better.
     
 */
-<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>
+<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>
 
 /*
     Following is the in future hierarchical planed property format example.
