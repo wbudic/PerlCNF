@@ -1,0 +1,34 @@
+
+!CNF2.5
+
+
+/**
+ * Plugin instructions are last setup and processed,
+ * by placing the result into the plugins tag name.
+ */
+<<processor<PLUGIN>
+    library     : tests/DataProcessorPlugin.pm
+    subroutine  : process
+    property    : employees
+>>
+
+<<employees$$<DATA>
+ID`Full Name`DOB
+01`Taras Bulba`06/08/1983
+02`Marianne Brunswick`01/01/1988
+>>
+
+<<employees$$<DATA>
+03`Johnny Von Latecomeclan`31/12/1999
+>>
+
+/**
+ * Example perl library files processing plugin.
+ */
+tests/DataProcessorPlugin.pm {
+    sub process {
+        foreach(<>){
+            ....
+        }
+    }
+}

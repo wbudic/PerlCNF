@@ -5,12 +5,10 @@ use Syntax::Keyword::Try;
 use lib "./tests";
 use lib "./system/modules";
 
+require CNFParser;
 require TestManager;
 my $test = TestManager -> new($0);
 my $cnf;
-
-require CNFParser;
-
 try{  
 
    ###

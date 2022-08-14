@@ -6,6 +6,8 @@ use lib "./local";
 use lib "./system/modules";
 
 require TestManager;
+require CNFParser;
+
 my $test = TestManager -> new($0);
 my $cnf;
 
@@ -13,8 +15,8 @@ try{
     ###
     # Test instance creation.
     #
-    die $test->failed() if not $cnf = CNFParser->new();
-    $test->case("Passed new instance CNFParser.");
+    die $test->failed() if not $cnf = CNFParser->new('pluginTest.cnf',{DO_enabled=>1});
+    $test->case("Passed new instance CNFParser for:".$cnf->{CNF_CONTENT});
     #  
     $test-> nextCase();
     #   
