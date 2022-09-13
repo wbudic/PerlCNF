@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
+
 use lib "./tests";
 use lib "./system/modules";
 
@@ -33,9 +34,17 @@ try{
     #
 
 +    my $hasFailures = $test->nextCase(); die $hasFailures if $hasFailures;
-     
+    #
 
-
+    ###
+    $test->case("Check DATA instruction dnamically");
+    $cnf->parse(undef,qq(<<my\$\$<DATA>01`This comes from Cabramatta~\n>>));
+    $test->subcase("Contain 'my\$\$' as 'my' data property?");
+    my @data = @{%{$cnf->data()}{'my'}};
+    my @mydt = @{$data[0]};
+    $test->evaluate(\@mydt);    
+    $test->evaluate('01',$mydt[0]);
+    ###
     #   
     $test->done();    
     #
