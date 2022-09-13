@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
 use Syntax::Keyword::Try;
+
 use lib "./tests";
-use lib "./local";
 use lib "./system/modules";
 
 require TestManager;

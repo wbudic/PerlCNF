@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
-use v5.12;
-use warnings; use strict; 
+use v5.30;
+#use warnings; use strict; 
 use Syntax::Keyword::Try;
+use Date::Manip;
 use Term::ANSIColor qw(:constants);
 use IPC::Run qw( run timeout );
 
@@ -11,8 +12,8 @@ use lib "./tests";
 try{
     require TestManager;
 }catch{
-    print RED "Failed to require -> ".WHITE."./local/TestManager.pm".RED.
-    "\nDid you start this test suit from the project directory please?\n";
+    print RED "Failed to require -> ".WHITE."TestManager.pm".RED.
+    "\nPlease run tests from the project directory.\n";
     exit 1
 }
 

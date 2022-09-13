@@ -15,10 +15,10 @@ try{
    # Test instance creation.
    ###
    die $test->failed() if not $cnf = CNFParser->new();
-   $test->case("Passed new instance CNFParser.");
-   $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);
+       $test->case("Passed new instance CNFParser.");
+       $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);
    #  
-   $test-> nextCase();
+       $test-> nextCase();
    #
 
 #CNFParser->new()->parse(undef,q(<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>));

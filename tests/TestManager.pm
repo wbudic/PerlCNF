@@ -12,6 +12,7 @@ sub new {
      $test_file = $0 if not $test_file;
      $self = bless {test_file=> $test_file,test_cnt=>1,sub_cnt=>0,sub_err=>0}, $class;
      print  BLUE."Running -> ".WHITE."$test_file\n".RESET;
+     $self->{open}=0;
      return $self;
 }
 
@@ -23,7 +24,9 @@ sub failed {
 
 sub case { 
     my ($self, $out) =@_;
-    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n".RESET
+    nextCase($self) if $self->{open};
+    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n".RESET;
+    $self->{open}=1
 }
 sub subcase {
     my ($self, $out) =@_;
@@ -33,27 +36,57 @@ sub subcase {
 
 sub nextCase {
     my ($self) =@_;
-    return "Case ".$self->{test_cnt}." failed with ".$self->{sub_err} ." erros!" if $self->{sub_err} > 0;
+    
+    if($self->{sub_err} > 0){
+        my $errors = "errors";  $errors = "error" if $self->{sub_err} == 1;
+        print "\tCase ".$self->{test_cnt}.BRIGHT_RED." failed with ".$self->{sub_err} ." $errors!\n".RESET;
+        $self->{case_err} += $self->{sub_err};
+        $self->{sub_err} = 0;
+    }
     $self->{test_cnt}++;
-    $self->{sub_cnt}=0
+    $self->{sub_cnt}=0;
+    $self->{open}=0
 }
-
+###
+# Performs non critical evaluation test. 
+# As test cases file manages to die on critical errors 
+# or if test file should have an complete failed run and bail out, for immidiate attention.
+#
+# @return 1 on evaluation passed, 0 on failed.
+# NOTICE -> Pass scallars to evaluate or array parameters will autoexpand.
+###
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
     if ($cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""};
-    if($aa eq $bb){        
-        print GREEN."\tTest ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
+    if (not defined $bb){
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] is defined!\n"
+    }elsif($aa eq $bb){        
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
-        $self->{sub_err}++;
-        print BLINK. BRIGHT_RED."Test Failed!".WHITE."\neval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;
+        ++$self->{sub_err};
+        print BLINK. BRIGHT_RED."Test Failed!".WHITE."\n$self->{sub_err}.eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;
+        return 0;
     }
-    
+    return 1;    
 }
 
 sub done {
-    my ($self) =@_;
-    print BOLD "Test cases ($self->{test_cnt}) have ", BRIGHT_GREEN ,"PASSED",RESET," for test file:", RESET WHITE, " .$self->{test_file}\n", RESET;
-    print $self->{test_cnt}."|SUCCESS|".$self->{test_file},"\n"    
+    my ($self) =@_; 
+
+    my $result =  BOLD."Test cases ($self->{test_cnt}) have ";
+    if(defined($self->{sub_err}) && $self->{sub_err} > 0){
+        $self->{case_err} += $self->{sub_err};
+    }      
+        
+    if(defined($self->{case_err}) && $self->{case_err} > 0){
+      my $errors = "errors";  $errors = "error" if $self->{case_err} == 1;
+      $result .= $self->{case_err} . BRIGHT_RED . " evaluation $errors.".RESET.BOLD." Status is ";
+      print $result, BRIGHT_RED."FAILED".RESET." for test file:". RESET WHITE.$self->{test_file}."\n". RESET;
+      print $self->{test_cnt}."|FAILED|".$self->{test_file},"\n"
+    }else{
+      print $result, BRIGHT_GREEN."PASSED".RESET." for test file: ". RESET WHITE.$self->{test_file}."\n". RESET;
+      print $self->{test_cnt}."|SUCCESS|".$self->{test_file},"\n"    
+    }
 }
 sub doneFailed {
     my ($self) =@_;
@@ -88,10 +121,10 @@ sub dumpTermination {
            $ErrAt = "\\\@$1";
         }
     }else{
-     ($file,$lnErr) = ($comment =~ m/.*\s*at\s*(.*)\sline\s*(\d*)\.$/); 
+     ($trace,$file,$lnErr) = ($comment =~ m/(.*)\sat\s*(.*)\sline\s(\d*)\.$/); 
     }    
     
-    open (my $flh, '<:perlio', $file) or die("Error $! opening file: $file");
+    open (my $flh, '<:perlio', $file) or die("Error $! opening file: '$file'\n$comment");
           my @slurp = <$flh>;
     close $flh;
     print BOLD BRIGHT_RED "Test file failed -> $comment";
@@ -100,7 +133,7 @@ sub dumpTermination {
     for(my $i=0; $i<@slurp;$i++)  { 
         local $. = $i + 1;
         my $line = $slurp[$i]; 
-        if($. >= $lnErr+2){                  
+        if($. >= $lnErr+1){                  
            print $comment, RESET.frmln($.).$line;
            print "[".$file."]\n\t".BRIGHT_RED."Failed\@Line".WHITE." $i -> ", $slurp[$i-1].RESET;
            last  
