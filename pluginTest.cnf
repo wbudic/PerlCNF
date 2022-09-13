@@ -1,25 +1,33 @@
 
 !CNF2.5
 
+<<@<%Settings>
+Language=English
+DateFormat=AU
+>>
 
 /**
- * Plugin instructions are last setup and processed,
- * by placing the result into the plugins tag name.
+ * Plugin instructions are the last one setup and processed,
+ * by placing the actual result into the plugins tag name.
  */
 <<processor<PLUGIN>
-    library     : tests/DataProcessorPlugin.pm
+    package     : DataProcessorPlugin
     subroutine  : process
     property    : employees
 >>
 
 <<employees$$<DATA>
-ID`Full Name`DOB
-01`Taras Bulba`06/08/1983
-02`Marianne Brunswick`01/01/1988
+#ID`Full Name`@DOB~
+#`Taras Bulba`06/08/1983~
+22`Marianne Brunswick`19880101~
 >>
 
-<<employees$$<DATA>
-03`Johnny Von Latecomeclan`31/12/1999
+<<employees$$<DATA>#`Johnny Von Latecomeclan`30-12-1999>>
+<<employees$$<DATA>#`Robert Plant`today>>
+
+<<cat<DATA>
+01`test~
+02`plat~
 >>
 
 /**
