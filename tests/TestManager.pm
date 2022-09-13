@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+# @Author WillBudic
+# @Origin https://github.com/wbudic/PerlCNF/tests
+# @License  https://choosealicense.com/licenses/isc/
+# @Specs https://github.com/wbudic/PerlCNF/Test_Specs.md
 package TestManager;
 use warnings; use strict;
 use Term::ANSIColor qw(:constants);
