@@ -109,7 +109,7 @@ our $S_ ="";
 sub anons {keys %anons}
 #Check call with defined(Settings::anon('my_anon'))
 sub anon {$S_=shift; $S_ = $anons{$S_} if $S_;$S_}
-sub anonsSet {my $a = shift;%anons=%{$a}}
+sub anonsSet {my $ana = shift;%anons=%{$ana}}
 
 sub release        {$RELEASE_VER}
 sub logPath        {$LOG_PATH} # <-@2021-08-15 something was calling as setter, can't replicate. On reset of categories in config.cgi.

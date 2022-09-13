@@ -261,9 +261,10 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
        4. TABLE
        5. INDEX
        6. VIEW
-       7. SQL
-       8. MIGRATE
-       9. MACRO
+       7. PLUGIN
+       8. SQL
+       9. MIGRATE
+       10. MACRO
           1. Value is searched and replaced by an property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
           3. Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
@@ -315,34 +316,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
         >>>
     ```
 
-4. DATA
-    1. Data is specifically parsed, not requiring quoted strings and isn't delimited by new lines alone.
-    2. Data rows are ended with the **"~"** delimiter. In the tag body.
-    3. Data columns are delimited with the invert quote **"`"** (back tick) making the row.
-    4. First column is taken as the unique and record identity column (UID).
-    5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
-       1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
-       2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
-
-    ```HTML
-        <<MyAliasTable<DATA
-        01`admin`admin@inc.com`Super User~
-        02`chef`chef@inc.com`Bruno Allinoise~
-        03`juicy`sfox@inc.com`Samantha Fox~
-        >>
-    ```
-
-5. FILE
-   1. Expects a file name assigned value, file containing actual further CNF DATA rows instructions, separately.
-   2. The file is expected to be located next to the config file.
-   3. File is to be sequentially buffer read and processed instead as a whole in one go.
-   4. The same principles apply in the file as to the DATA instruction CNF tag format, that is expected to be contained in it.
-
-    ```HTML
-        <<MyItemsTbl<FILE data_my_app.cnf>
-    ```
-
-6. MIGRATE
+4. MIGRATE
    1. Migration are brute sql statements to be run based on currently installed previous version of the SQL database.
    2. Migration is to be run from version upwards as stated and in the previous database encountered.
       1. i.e. If encountered old v.1.5, it will be upgraded to v.1.6 first, then v.1.7...
@@ -361,9 +335,65 @@ CNF supports basic SQL Database structure statement generation. This is done via
         >>
     ```
 
+### Scripted Data Related Instructions
+
+1. DATA
+    1. Data is specifically parsed, not requiring quoted strings and isn't delimited by new lines alone.
+    2. Data rows are ended with the **"~"** delimiter. In the tag body.
+    3. Data columns are delimited with the invert quote **"`"** (back tick) making the row.
+    4. First column can be taken as the unique and record identity column (UID).
+        1. If no UID is set, or specified with # or, 0, ID is considered to be auto-numbered based on data position plus 1, so not to have zero id's.
+        2. When UID is specified, an existing previous assigned UID cannot be overridden, therefore can cause duplicates.
+        3. Data processing plugins can be installed to cater and change behavior on this whole concept.
+    5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
+       1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
+       2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
+
+    ```HTML
+        <<MyAliasTable<DATA
+        01`admin`admin@inc.com`Super User~
+        02`chef`chef@inc.com`Bruno Allinoise~
+        03`juicy`sfox@inc.com`Samantha Fox~
+        >>
+    ```
+
+2. FILE
+   1. Expects a file name assigned value, file containing actual further CNF DATA rows instructions, separately.
+   2. The file is expected to be located next to the config file.
+   3. File is to be sequentially buffer read and processed instead as a whole in one go.
+   4. The same principles apply in the file as to the DATA instruction CNF tag format, that is expected to be contained in it.
+
+    ```HTML
+        <<MyItemsTbl<FILE data_my_app.cnf>
+    ```
+
+3. PLUGIN
+    1. Plugin instruction is specific outside program that can be run for various configuration task, on post loading of all properties.
+        This can be special further.
+        1. Further processing of data, collections.
+        2. Issuing actions, revalues.
+        3. Checking structures , properties and values that are out of scope of the parser.
+    2. To a plugin parser itself will be passed to access.
+        1. Required attributes are:
+            1. package : Path or package name of plugin.
+            2. subroutine: Subroutine name to use to pass the parser, after plugin initialization.
+            3. property : property to be passed directly, if required, like with data processing.
+
+    ```HTML
+       /**
+        * Plugin instructions are the last one setup and processed,
+        * by placing the actual result into the plugins tag name.
+        */
+        <<processor<PLUGIN>
+            package     : DataProcessorPlugin
+            subroutine  : process
+            property    : employees
+        >>
+    ```
+
 ## Sample Perl Language Usage
 
-7. *DO*
+1. *DO*
    1. CNF DO instruction is *experimental*, purely perl programming language related.
    2. It provides perl code evaluation during parsing giving also access to parser and its variables as do's there sequentially appear.
    3. It is recommended to comment out this feature, if never is to be used or found not safe to have such thing enabled.

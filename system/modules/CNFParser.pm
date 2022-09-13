@@ -1,4 +1,3 @@
-#!/usr/bin/env perl
 # Main Parser for the Configuration Network File Format.
 # This source file is copied and usually placed in a local directory, outside of its project.
 # So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
@@ -36,8 +35,8 @@ our @files  = ();
 our %tables = ();
 our %views  = ();
 our %data   = ();
-our %lists  = ();
-our %properties   = ();
+our %lists;
+our %properties;
 our $CONSTREQ = 0;
 ###
 # Package fields are always global in perl!
@@ -113,6 +112,10 @@ package PropertValueStyle {
             warn "PropertyValue process what?"
         }
         bless $self, $class
+    }
+    sub result {
+        my ($self, $value) =  @_;
+        $self->{value} = $value;
     }
 }
 #
@@ -204,7 +207,7 @@ sub anon {  my ($self, $n, $args)=@_;
     }
     return $anechoic;
 }
-#@DEPRECATED Attributes are all the constants, also externally can be read only from v.2.5+.
+#@DEPRECATED Attributes are all the constants, also externally are read only from v.2.5+.
 sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ; 
                my $r=$self->{$c}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $c ' not defined in config!")}
 #@DEPRECATED 
@@ -212,7 +215,7 @@ sub constants {my $s=shift;return %$s}
 
 
 sub collections {\%properties}
-sub collection {my($self, $prp)=@_;return $properties{$prp}}
+sub collection {my($self, $prp)=@_;return %properties{$prp}}
 sub data {\%data}
 
 sub listDelimit {                 
@@ -359,53 +362,60 @@ sub parse {
             # Before mauling into possible value types, let us go for the full expected tag specs first:
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
-            @vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
-            if(@vv == 3 && $RESERVED_WORDS{$vv[1]}){
-               $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
-            }# Nope!? Let's start mauling from here.
-            elsif($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
-                $e =$1; $v=$2; $t = $v;
-                warn "Encountered a mauled instruction tag: $tag\n" if $self->{ENABLE_WARNINGS};                
-            }else{# Nope!? Let's continue mauling. Life is cruel, tha's for sure.
-                @vv = ($tag =~ m/(@|[\$@%\W\w]*)<([.]*\s*)>*|(.*)>+|(.*)/gsm);
-                $e = shift @vv;#$e =~ s/^\s*//g;            
-                if(!$e){
-                    # From now on, parser mauls the tag before making out the value.
-                    @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
-                    $e = shift @vv; 
-                    $t = shift @vv;                    
+            #@vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
+            @vv = ($tag =~ m/([@%\w\$]*|\w*?)[<|>]([@%\w\s]*)>*(.*)/gms);
+            $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
+            if(!$RESERVED_WORDS{$t} || @vv!=3){
+                if($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
+                    $e =$1; $v=$2; $t = $v;
+                    warn "Encountered a mauled instruction tag: $tag\n" if $self->{ENABLE_WARNINGS};                
+                }else{# Nope!? Let's continue mauling. Life is cruel, that's for sure.
+                    @vv = ($tag =~ m/(@|[\$@%\W\w]*)<([.]*\s*)>*|(.*)>+|(.*)/gsm);
+                    $e = shift @vv;#$e =~ s/^\s*//g;            
                     if(!$e){
-                            if($self->{ENABLE_WARNINGS}){
-                                warn "Encountered invalid tag formation -> <<$tag>>"
-                            }else{
-                                die  "Encountered invalid tag formation -> <<$tag>>"
-                            }
-                    }
-                    $v = shift @vv; 
-                }else{
-                    do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
-                    $v = shift @vv;                                           
-                    if(!$v){
-                        if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
-                            $v = $t
+                        # From now on, parser mauls the tag before making out the value.
+                        @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
+                        $e = shift @vv; 
+                        $t = shift @vv;                    
+                        if(!$e){
+                                if($self->{ENABLE_WARNINGS}){
+                                    warn "Encountered invalid tag formation -> <<$tag>>"
+                                }else{
+                                    die  "Encountered invalid tag formation -> <<$tag>>"
+                                }
                         }
-                        foreach(@vv){#<- Attach any valid fallback from complex rexp.
-                            $v .= $_ if $_;
+                        $v = shift @vv; 
+                    }else{
+                        do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
+                        $v = shift @vv;                                           
+                        if(!$v){
+                            if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
+                                $v = $t
+                            }
+                            foreach(@vv){#<- Attach any valid fallback from complex rexp.
+                                $v .= $_ if $_;
+                            }
                         }
                     }
                 }
             }
-            #Do we have an autonumbered instructed list?            
-            if($e =~ /(.*?)\$\$$/){    
-                $e = $1;            
-                my $array = $lists{$e};
-                if(!$array){$array=();$lists{$e} = \@{$array};}               
-                push @{$array}, InstructedDataItem -> new($t, $v);
-                next;
-            }
-
-            if($e eq '@'){#collection processing.
-                my $isArray = $t=~ m/^@/;                
+            #Do we have an autonumbered instructed list?   
+            #DATA best instructions are exempted and differently handled by existing to only one uniquely named property.
+            #So its name can't be autonumbered.
+            if ($e =~ /(.*?)\$\$$/){    
+                $e = $1;
+                if($t ne 'DATA'){
+                   my $array = $lists{$e};
+                   if(!$array){$array=();$lists{$e} = \@{$array};}               
+                   push @{$array}, InstructedDataItem -> new($t, $v);
+                   next
+                }   
+            }elsif ($e eq '@'){#collection processing.
+                my $isArray = $t=~ m/^@/;
+                if(!$v && $t =~ m/(.*)>(\s*.*\s*)/gms){
+                    $t = $1;
+                    $v = $2;
+                }               
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
@@ -414,17 +424,24 @@ sub parse {
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
                 if($isArray){
-                    my @arr=(); $properties{$t}=\@arr;
+                    my @arr=(); 
                     foreach  (@props){                        
                         push @arr, $_ if($_ && length($_)>0);
                     }
+                    $properties{$t}=\@arr;
                 }else{
-                    my %hsh=(); $properties{$t}=\%hsh; my $macro = 0;
+                    my %hsh;                    
+                    my $macro = 0;
+                    if(exists($properties{$t})){
+                       %hsh =  %{$properties{$t}}
+                    }else{
+                       %hsh =();                      
+                    }
                     foreach  my $p(@props){ 
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){                            
                             my @pair = split(/\s*=\s*/, $p);
-                            die "Not '=' delimited-> $p" if scalar( @pair ) != 2;
+                            die "Not '=' delimited property -> $p" if scalar( @pair ) != 2;
                             my $name  = $pair[0]; $name =~ s/^\s*|\s*$//g;
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip qoutes
                             if($macro){
@@ -438,9 +455,10 @@ sub parse {
                                     $value =~ s/\Q$find\E/$r/g;                    
                                 }
                             }
-                            $hsh{$name}=$value;  print "macro $t.$name->$value\n" 
+                            $hsh{$name}=$value;  print "macro $t.$name->$value\n" if $self->{DEBUG}
                         }
                     }
+                    $properties{$t}=\%hsh;
                 }
                 next;
             }              
@@ -458,6 +476,7 @@ sub parse {
                    $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
                    foreach my $d (split /`/, $_){
                         $d =~ s/\\f/`/g; #escape back form feed to backtick.
+                        $d =~ s/~$//; #strip dangling ~ if there was no \n
                         $t = substr $d, 0, 1;
                         if($t eq '$'){
                             $v =  $d;            #capture spected value.
@@ -633,25 +652,13 @@ sub parse {
                 $anons->{$e}=$v;
             }else{
                 my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){
-                    doPlugin($self, $e, $struct->{val}, $anons);
+                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
+                   $properties{$e} = doPlugin($self, $e, $struct->{val}, $anons);
                 }
             }
         }   
         undef %instructs;        
     }
-    # Do listed external know instructs.
-    #  if(%lists){
-    #      foreach my $e(keys %lists){
-    #         my @col = @{$lists{$e}};
-    #         foreach(@col){
-    #             my $struct = $_;
-    #             if($struct->{ins} eq '?'){
-    #                do?($e, $struct->{val}); 
-    #             }
-    #         }
-    #      }
-    # }
 
     ###
     # Following is experimental. Not generally required, and it is a bit of an overkill.
@@ -679,11 +686,25 @@ sub parse {
 sub doPlugin{
     my ($self, $elem, $script, $anons) = @_;
     my $plugin = PropertValueStyle->new($elem, $script);
-    my $lib = $plugin->{library};
+    my $pck = $plugin->{package};
     my $prp = $plugin->{property};
     my $sub = $plugin->{subroutine};
-    if($lib && $prp && $sub){
-        die "Sorry, the PLUGIN feature has not been Implemented Yet!"
+    if($pck && $prp && $sub){        
+        ## no critic (RequireBarewordIncludes)
+        require "$pck.pm";
+        my $obj;
+        my $settings = $self->collection('%Settings');
+        if($settings){
+           $obj = $pck->new(\%$settings);
+        }else{
+           $obj = $pck->new();
+        }        
+        my $res = $obj->$sub($self,$prp);
+        if($res){            
+            return $plugin;
+        }else{
+            die "Sorry, the PLUGIN feature has not been Implemented Yet!"
+        }
     }
     else{
         warn qq(Invalid plugin encountered '$elem' in "). $self->{'CNF_CONTENT'} .qq(
