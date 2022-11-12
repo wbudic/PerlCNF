@@ -63,7 +63,7 @@ sub evaluate {
     my ($self, $aa, $bb, $cc)=@_;
     if ($cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""};
     if (not defined $bb){
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] is defined!\n"
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] is not defined!\n"
     }elsif($aa eq $bb){        
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
