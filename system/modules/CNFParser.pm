@@ -62,7 +62,8 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         }; 
     }
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
-    if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is are not static.
+    if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is, anons are not static.
+         $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Cavet of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
          $self->{'__ANONS__'} = {};
     }
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
@@ -151,8 +152,14 @@ __JSON
 }
 
 ###
-# Anon properties are public variables. Constances are protected and instance specific.
-# Global by default, means they can also be static accessed, i.e. CNFParser::anon(NAME)
+# Anon properties are public variables. Constances are protected and instance specific, both config file provided (parsed in).
+# Anon properties of an config instance are global by default, means they can also be statically accessed, i.e. CNFParser::anon(NAME)
+# They can be; and are only dynamically set via the config instance directly.
+# That is, if it has the ANONS_ARE_PUBLIC property set, and by using the empty method of anon() with no arguments.
+# i.e. ${CNFParser->new()->anon()}{'MyDynamicAnon'} = 'something';
+# However a private config instance, will have its own anon's. And could be read only if it exist as a property, via this anon(NAME) method.
+# This hasn't been yet fully specifed in the PerlCNF specs.
+# i.e. ${CNFParser->new({ANONS_ARE_PUBLIC=>0})->anon('MyDynamicAnon') # <-- Will not be available.  
 ##
 sub anon {  my ($self, $n, $args)=@_;
     my $anechoic = \%ANONS;

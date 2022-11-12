@@ -3,7 +3,8 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "./tests";
-use lib "./system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
+
 
 require CNFParser;
 require TestManager;
@@ -17,6 +18,33 @@ try{
    die $test->failed() if not $cnf = CNFParser->new();
        $test->case("Passed new instance CNFParser.");
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);
+       ${$cnf->anon()}{Public} = 'yes';
+       $test->evaluate('$cnf->anon(Public) == "yes"',$cnf->anon('Public'),'yes');
+       $test->evaluate('$new->anon(Exclusive) == "yes"', CNFParser->new()->anon('Public'),'yes');
+   #  
+       $test-> nextCase();
+   #
+
+   ###
+   # Test private instance config.
+   ###
+   my $private = CNFParser->new(undef,{Exclusive=>'yes', ANONS_ARE_PUBLIC=>0});
+    $test->case("Test new private CNFParser.");
+    $test->evaluate('$private->{Exclusive} is string "yes"?', $private->{Exclusive},'yes');
+    $test->evaluate('$private->anon(Exclusive)?', $private->anon('Exclusive'),undef);
+    $test->evaluate('$cnf->{Public} is still string "no"?', $cnf->anon('Public'),'yes');
+    $test->evaluate('$private->{Public}', $private->anon('Public'),undef);    
+    # Not defined as it isn't coming from an config file.
+    $test->evaluate('Check $private->anon("Exlusive") is undef?',  $private->anon("Exclusive"),undef);
+    $private->parse(undef,qq/<<test<best>>>/);
+    $test->evaluate('Check $private->anon("test") is "best"?',  $private->anon("test"),'best');
+    $test->evaluate('Check $cnf->anon("test") is undef?',  $cnf->anon("test"),undef);
+    $test->subcase('new public #newInstance creation containing public assigned anon.');
+    my $newInstance =CNFParser->new();
+    $test->evaluate('Check $newInstance->anon("Exclusive") == $cnf->anon("Exclusive")?',  $newInstance->anon("Exclusive"), $private->anon("Exclusive"));
+     ${$private->anon()}{Exclusive2} = 'yes';
+    $test->case("Passed new private instance CNFParser.");
+
    #  
        $test-> nextCase();
    #
@@ -32,8 +60,10 @@ try{
 # CNFParser->new()->parse(undef,q(<<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>));
 
    my $anons = $cnf->anon();
-   die $test->failed() if %$anons; #The list is empty so far.
-   $test->case("Obtained anons for repo.");
+   die $test->failed() if keys %$anons == 0; 
+   my %h = %$anons;
+   my $out; $out.="$_ => $$anons{$_}" for (keys %$anons);
+   $test->case("Obtained \%anons{$out}");
    #  
    $test-> nextCase();
    #
@@ -117,8 +147,7 @@ sub testAnons {
 CNFParser->new()->parse(undef,qq(
     <<one<1>>><<two<2>>>  <-- Is same as saying: {One=>1,Two=>2}.    <<1<THE_ONE>>>
 ));
-# We hash to the global here, otherwise need to use in scalar context the variable like: my $anons = $obj->anon().
-my %anons = %{CNFParser::ANONS};
+
 
 my $cnf = CNFParser->new("databaseAnonsTest.cnf");
 my $find = $cnf->anon('GET_SUB_URL',CNFParser->META);
@@ -143,6 +172,10 @@ $cmd = `$cmd`;
 die "Error failed system command!" if !$cmd;
 #print "Listing:\n$exe\n";
 
+
+# We hash to the global here, otherwise need to use in scalar context the variable like: my $anons = $obj->anon().
+my %anons = %{CNFParser::ANONS};
+die "annons not valis!" if not %anons;
 print "\n--LIST OF ALL ANONS ENCOUNTERED---\n";
 foreach my $k (keys %anons){
     print "Key->$k=", $anons{$k},"]\n";
