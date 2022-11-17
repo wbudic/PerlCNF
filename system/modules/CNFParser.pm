@@ -27,7 +27,7 @@ sub import {
 ##no critic qw(Subroutines::RequireFinalReturn)
 
 
-use constant VERSION => '2.5';
+use constant VERSION => '2.6';
 
 our %mig    = ();
 our @sql    = ();
@@ -213,6 +213,15 @@ sub anon {  my ($self, $n, $args)=@_;
         return $ret;
     }
     return $anechoic;
+}
+
+# Validates and returns the a constant value as part of this configs instance.
+# Returns undef if not.
+sub const { my ($self,$c)=@_; 
+    if(exists $self->{$c}){
+       return  $self->{$c}
+    }
+    return undef;
 }
 #@DEPRECATED Attributes are all the constants, also externally are read only from v.2.5+.
 sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ; 
