@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# @Author WillBudic
+# @Author Will Budic
 # @Origin https://github.com/wbudic/PerlCNF/tests
 # @License  https://choosealicense.com/licenses/isc/
 # @Specs https://github.com/wbudic/PerlCNF/Test_Specs.md

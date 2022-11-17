@@ -1,0 +1,65 @@
+!CNF2.0
+
+Hello, you are looking at an Perl configuration network file sample.
+Let's create a CNF single specified constant: <<$IMMUTABLE<CONST> Hello World! >>
+That is right, any text with this file is of co concern to the parser, so CNF doesn't need commenting.
+But if you want to no one is stopping you. Like:
+
+/**
+        Following read the config to obtain the example constance $IMMUTABLE.
+**/
+
+use lib "./system/modules";
+require CNFParser;
+## Obtain parser instance
+my $cnf = CNFParser->new('./tests/example.cnf');            
+    say 'Constance $IMMUTABLE value is ', $cnf->{'$IMMUTABLE'});
+
+
+## Following will throw will fail -> Modification of a read-only value attempted ...
+$cnf->{'$IMMUTABLE'} = "change?";
+
+## Following will throw will fail -> Attempt to access disallowed key '$DYNAMIC_IMMUTABLE' in a restricted hash ...
+$cnf->{'$DYNAMIC_IMMUTABLE'} = "new";
+
+To add a program specific constance, it can been done in the context of construction of the parse instance.
+Otherwise use CNF anon's explained later.
+
+
+/**
+        Following read the config but also assign program specific constance's.
+**/
+
+my $cnf = CNFParser->new('./tests/example.cnf',{
+                            '$DYNAMIC_IMMUTABLE'=>'some application constance'}); 
+
+
+Anon's are normal default scripted Perl CNF property value pairs.
+
+<<I am an Anon<some value>>
+<<ME_TOO<>1024>>
+<<MULTI_LINED<
+1
+2
+3
+>>
+<<INSTRUCTED<test>
+1,2,3
+>>
+
+##
+# Following shows simple, reading and setting of anon's from the program.
+##
+
+ my $me_too = $cnf->anon('ME_TOO');
+
+ die "Should be same" unless $me_too eq $cnf->anon('ME_TOO'); 
+
+ # To modify the configs anon the following has can be done. 
+ # You are changing/adding to actually your $cnf objects hash value.
+ # Keeping all neatly central in one place.
+
+
+ ${$cnf->anon()}{'ME_TOO'} = 'modified';
+
+die "Should not be same" unless $me_too ne $cnf->anon('ME_TOO'); 

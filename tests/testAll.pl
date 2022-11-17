@@ -76,11 +76,16 @@ try{
 
     }elsif($test_pass){
         print BOLD BLUE "Test files ($test_pass of them), having $test_cases cases. Have all ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
-                    " (".(scalar localtime).")".BOLD.BLUE."\nFor Test Suit:", RESET WHITE, " $0\n", RESET
+                    " (".(scalar localtime).")".BOLD.BLUE."\nFor Test Suit:", RESET WHITE, " $0 [\n";
+            foreach (@files) {
+                 print WHITE, "\t\t\t$_\n",;
+            }
+            print "\t\t]\n",RESET;
                    
     }else{
         print BOLD BRIGHT_RED, "No tests have been run or found!", RESET WHITE, " $0\n", RESET;
     }
+
     if(%WARN){
         print BOLD YELLOW, "Buddy, sorry to tell you. But you got the following Perl Issues:\n",BLUE;
         foreach(keys %WARN){        
