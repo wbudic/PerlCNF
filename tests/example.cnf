@@ -23,7 +23,7 @@ $cnf->{'$IMMUTABLE'} = "change?";
 $cnf->{'$DYNAMIC_IMMUTABLE'} = "new";
 
 To add a program specific constance, it can been done in the context of construction of the parse instance.
-Otherwise use CNF anon's explained later.
+Otherwise use CNF anon's, this are explained later in this file.
 
 
 /**
@@ -33,11 +33,37 @@ Otherwise use CNF anon's explained later.
 my $cnf = CNFParser->new('./tests/example.cnf',{
                             '$DYNAMIC_IMMUTABLE'=>'some application constance'}); 
 
+Constance's can be scripted in a multiline scripted block, using the inbuilt CONST intruction.
+Usually these are found at the beginning of the config. And by convention are upper case and signified with -> '$'
+
+<<<CONST
+
+$NUMBER_OF_THREADS      =  8
+$DEBUG_LEVEL            =  3
+$TITLE_HEADING          = "Example Application"
+
+>>>
+
+Or be stand alone if have multiple line text assigned. 
+Useful if doing translation of text for your app for different languages.
+
+<<$FRENCH_PARAGRAPH<CONST>
+
+Bonjour, merci d'avoir visité
+ ce magnifique texte. 
+ Vos commentaires sont appréciés.
+
+>>
+
+
+
+## Anon's
+
 
 Anon's are normal default scripted Perl CNF property value pairs.
 
 <<I am an Anon<some value>>
-<<ME_TOO<>1024>>
+<<ME_TOO<1024>>
 <<MULTI_LINED<
 1
 2

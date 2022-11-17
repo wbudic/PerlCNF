@@ -4,6 +4,7 @@ use Syntax::Keyword::Try;
 
 use lib "./tests";
 use lib "./system/modules";
+use lib "/home/will/dev/PerlCNF/tests";
 
 require TestManager;
 require CNFParser;
@@ -21,6 +22,14 @@ try{
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);   
        $test->subcase('$cnf->{\'$IMMUTABLE\'} is '.$cnf->{'$IMMUTABLE'});   
        $test->evaluate('$IMMUTABLE == "Hello World! "',$cnf->{'$IMMUTABLE'},'Hello World! ');
+
+       $test->subcase("Test constance's instructed block.");   
+       my $samp = $cnf->{'$TITLE_HEADING'};
+       $test->evaluate('$TITLE_HEADING', $samp, 'Example Application');
+       $samp = $cnf->{'$FRENCH_PARAGRAPH'}; 
+       $test->isDefined('$FRENCH_PARAGRAPH',$samp);
+       $samp = $cnf->const('$CLINGTON_PARAGRAPH');
+       $test->isNotDefined('$NONE_EXISTANT',$samp);
     #
     $test->nextCase();  
     #

@@ -68,10 +68,45 @@ sub evaluate {
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
         ++$self->{sub_err};
-        print BLINK. BRIGHT_RED."Test Failed!".WHITE."\n$self->{sub_err}.eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;
+        print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. 
+              ": Failed!"." ($self->{sub_err}) ".RESET. RED.".eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;        
         return 0;
     }
     return 1;    
+}
+
+###
+# Performs non critical evaluation if an scalar has a defined value. 
+# Atributes are $var for variable name and, $val the actual variable.
+# @return 1 on evaluation passed, 0 on failed.
+###
+sub isDefined{
+    my ($self, $var, $val)=@_;     
+    if (defined $val){
+        print GREEN."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is defined.\n"
+    }else{        
+        ++$self->{sub_err};
+        print BLINK. BRIGHT_RED."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
+        return 0;
+    }
+    return 1;
+}
+
+###
+# Performs non critical evaluation if an scalar is undefined. 
+# Atributes are $var for variable name and, $val the actual variable.
+# @return 1 on evaluation passed, 0 on failed.
+###
+sub isNotDefined{
+    my ($self, $var, $val)=@_;
+    if (not defined $val){
+        print GREEN."\t   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is not defined.\n"
+    }else{        
+        ++$self->{sub_err};
+        print BLINK. BRIGHT_RED."\t   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is defined!\n";
+        return 0;
+    }
+    return 1;
 }
 
 sub done {
