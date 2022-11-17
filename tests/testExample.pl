@@ -4,7 +4,6 @@ use Syntax::Keyword::Try;
 
 use lib "./tests";
 use lib "./system/modules";
-use lib "/home/will/dev/PerlCNF/tests";
 
 require TestManager;
 require CNFParser;

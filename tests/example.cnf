@@ -33,7 +33,7 @@ Otherwise use CNF anon's, this are explained later in this file.
 my $cnf = CNFParser->new('./tests/example.cnf',{
                             '$DYNAMIC_IMMUTABLE'=>'some application constance'}); 
 
-Constance's can be scripted in a multiline scripted block, using the inbuilt CONST intruction.
+Constance's can be scripted in a multiline scripted block, using the inbuilt CONST instruction.
 Usually these are found at the beginning of the config. And by convention are upper case and signified with -> '$'
 
 <<<CONST
