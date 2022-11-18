@@ -68,3 +68,16 @@ print "App Name: ".$cnf->constant('$APP_NAME')."]";
 #prints -> App Name: Test Application
 
 ```
+
+## Run Test Cases
+
+* Tests are located in the projects **./test directory.
+* Example how to run them:
+
+    ```sh
+        perl ./tests/testAll.pl
+    ```
+
+* Check also the latest Perl CNF [example.cnf](./tests/example.cnf) scripted also as an tutorial.
+  * Yes! That is an actual valid configuration file.
+  * To only just run it or check use ``` perl ./tests/testExample.pl  ```
