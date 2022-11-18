@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/env perl
 #
 # Programed by: Will Budic
 # Open Source License -> https://choosealicense.com/licenses/isc/
@@ -13,8 +13,7 @@ use DateTime::Duration;
 
 
 #DEFAULT SETTINGS HERE!
-use lib "system/modules";
-use lib $ENV{'PWD'}.'/htdocs/cgi-bin/system/modules';
+use lib "/home/will/dev/PerlCNF/system/modules";
 require CNFParser;
 
 # my $random_iter1 = my_srand (100);
@@ -88,7 +87,7 @@ print "Is reserved(MIGRATE)==".$cnf->isReservedWord('MIGRATE')."\n";
 
 sub testAnons {
 
-my $cnf = CNFParser->new($ENV{'PWD'}."/databaseAnonsTest.cnf");
+my $cnf = CNFParser->new("databaseAnonsTest.cnf");
 
 # Test lifelog categories
 my $v = $cnf->anons('CAT', undef);

@@ -4,6 +4,7 @@
 $APP_NAME=CNF 2 HTML Page
 $APP_VER=     1.0
 $RELEASE_VER = 2.3`Current CNF version under test.
+$DEBUG=1
 >>
 
 Following are script types placed in the html header.

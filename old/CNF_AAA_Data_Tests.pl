@@ -18,7 +18,7 @@ use lib "$pwd/system/modules";
 require TestManager;
 
 
-our $test = TestManager->create({name=>$0,count=>0});
+our $test = TestManager->construct({name=>$0,count=>0});
 
 $test->checkPackage('CNFParser');
 $test->startCase('Test list item named "data"');

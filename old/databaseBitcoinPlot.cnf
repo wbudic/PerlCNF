@@ -7,7 +7,7 @@ $RELEASE_VER = 1.0`Current CNF version under test.
 >>
 
 <<DBI_SOURCE<DBI:Pg:host=localhost;dbname=lifelog>>>
-<<AUTO_LOGIN<admin/admin>>>
+<<AUTO_LOGIN<lifelog/lifelog>>>
 <<CNF_PROCESSING_DATE<DO
 my $date = `date +%c`;
 >>>
@@ -29,7 +29,7 @@ line_width        = 2
 
 Columns max,min,avg are the plot lines, dt is the x period line in last 30 days
 
-<<SEL_BITCOIN_30_DAY_RANGE<SQL<
+<<SEL_BITCOIN_30_DAY_RANGE<SQL>
 SELECT 
   concat(date_part('day', dt), '/', date_part('month', dt)),
   max::numeric(10,2), 
@@ -38,7 +38,7 @@ SELECT
 FROM public."DAILY_AVG_BITCOIN" 
   WHERE dt >= (now() - '30 days'::interval)::date
 ORDER BY dt DESC;
->>>
+>>
 
 
 <<SEL_BITCOIN_3_MONTH_RANGE<SQL>
@@ -50,7 +50,7 @@ SELECT
 FROM public."DAILY_AVG_BITCOIN" 
   WHERE dt >= (now() - '3 month'::interval)::date 
 ORDER BY dt;
->>>
+>>
 
 <<BITCOIN<SQL<
 

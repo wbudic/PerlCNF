@@ -9,14 +9,14 @@ It is included with the source of the project, and latest version in maintained 
 ## Requirements
 
 * Perl and some CPAN Modules
-    1. Term::ANSIColor
+    1. *Term::ANSIColor*
         * Our reports and output is in deluxe terminal color.
-    2. Date::Manip
+    2. *Date::Manipi*
         * For the comprehensive and rich, date manipulation, formatting and calculation.
 
 ## Crucial Files and Usage
 
-1. [tests/TestManager.pm](./tests/TestManager.pm) (Do not modify)
+1. [](./tests/TestManager.pm) (Do not modify)
     * Main manager and handler for the test cases.
 2. [tests/template_for_new_test.pl](./tests/template_for_new_test.pl)
     * Use a copy of this file to start a new test file, full of test cases.
