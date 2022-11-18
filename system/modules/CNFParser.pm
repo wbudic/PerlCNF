@@ -34,7 +34,6 @@ our @sql    = ();
 our @files  = ();
 our %tables = ();
 our %views  = ();
-our %data   = ();
 our %lists;
 our %properties;
 our $CONSTREQ = 0;
@@ -56,7 +55,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         $self = \%$attrs;        
     }else{
         $self = {
-                    DO_enabled=>0,       # Enable/Disable DO instruction. Wich could evaluated potentially execute destruction.
+                    DO_enabled=>0,       # Enable/Disable DO instruction. Wich could evaluated potentially an doom execute destruction.
                     ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
                     ENABLE_WARNINGS=>1   # 
         }; 
@@ -66,6 +65,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
          $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Cavet of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
          $self->{'__ANONS__'} = {};
     }
+    $self->{'__DATA__'}  = {};
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
@@ -232,7 +232,7 @@ sub constants {my $s=shift;return %$s}
 
 sub collections {\%properties}
 sub collection {my($self, $prp)=@_;return %properties{$prp}}
-sub data {\%data}
+sub data {shift->{'__DATA__'}}
 
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
@@ -486,7 +486,7 @@ sub parse {
                $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
                
             }elsif($t eq 'DATA'){
-
+               $v=~ s/^\n//; 
                foreach(split /~\n/,$v){
                    my @a;
                    $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
@@ -505,10 +505,9 @@ sub parse {
                             }
                             push @a, $v;
                         }
-                        else{
-                            #First is always ID a number and '#' signifies number.
-                            if($t eq "\#") {
-                                $d = substr $d, 1;
+                        else{                            
+                            if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
+                                $d = $1;#substr $d, 1;
                                 $d=0 if !$d; #default to 0 if not specified.
                                 push @a, $d
                             }
@@ -518,16 +517,16 @@ sub parse {
                         }
                    }                   
                    
-                   my $existing = $data{$e};
+                   my $existing = $self->{'__DATA__'}{$e};
                    if(defined $existing){
                         my @rows = @$existing;
                         push @rows, [@a] if scalar @a >0; 
-                        $data{$e} = \@rows
+                        $self->{'__DATA__'}{$e} = \@rows
                    }else{
                         my @rows; push @rows, [@a];   
-                        $data{$e} = \@rows if scalar @a >0;   
+                       $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
                    }
-               }
+               }           
                 
             }elsif($t eq 'FILE'){
 
@@ -572,9 +571,9 @@ sub parse {
                                     push @a, $v;
                                 }
                                 else{
-                                    #First is always ID a number and '#' signifies number.
-                                    if($t eq "\#") {
-                                        $d = substr $d, 1;
+                                    
+                                    if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
+                                        $d = $1;#substr $d, 1;
                                         $d=0 if !$d; #default to 0 if not specified.
                                         push @a, $d
                                     }
@@ -583,14 +582,14 @@ sub parse {
                                     }                                                
                                 }                   
                                 
-                                my $existing = $data{$e};
+                                my $existing = $self->{'__DATA__'}{$e};
                                 if(defined $existing){
                                         my @rows = @$existing;
                                         push @rows, [@a] if scalar @a >0; 
-                                        $data{$e} = \@rows
+                                        $self->{'__DATA__'}{$e} = \@rows
                                 }else{
                                         my @rows; push @rows, [@a];   
-                                        $data{$e} = \@rows if scalar @a >0;   
+                                        $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
                                 }
                             }   
                         }
@@ -823,7 +822,7 @@ try{
         $st="SELECT * FROM $tbl where ".getPrimaryKeyColumnNameWherePart($db, $tbl); 
         print  "CNFParser-> $st\n";
         my $sel = $db->prepare($st);
-        @r = @{$data{$tbl}};
+        @r = @{$self->{'__DATA__'}{$tbl}};
         $db->begin_work();
           foreach my $rs(@r){
             my @cols=split(',',$rs);
@@ -846,8 +845,7 @@ try{
     # Following is not been kept no more for external use.
     undef %tables;
     undef %views;
-    undef %mig;
-    undef %data;
+    undef %mig;    
 }
 catch{
   CNFParserException->throw(error=>$@, show_trace=>1);   
@@ -984,7 +982,6 @@ undef %mig;
 undef @sql;
 undef @files;
 undef %tables;
-undef %data;
 
 }
 
