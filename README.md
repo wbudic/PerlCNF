@@ -6,10 +6,18 @@ Useful for templates and providing initial properties and values for an applicat
 Has own textual data format. Therefore can also be useful for database data batch processing.
 
 This version doesn't parse the actual __DATA__ section of an perl file yet. Contact me if this is needed, and for any other possible, useful requests.
-It is at current v.2.2 specification implemented.
+It is at current v.2.6, and specification implemented.
 
-### [You can find the specification here](./CNF_Specs.md).
+### [You can find the specification here](./Specifications_For_CNF_ReadMe.md).
+
 ---
+
+NEWS (2022-11-18) - PerlCNF now provides custom test manager and test cases. 
+That will in future be used for all projects as an copy from this project.
+This is all available in the ./test directory and is not a Perl module.
+
+---
+
 ## Usage
 
 * Copy the system/modules/CNFParser.pm module into your project.
