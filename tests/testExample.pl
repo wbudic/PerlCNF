@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "./tests";
-use lib "./system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;
@@ -29,6 +29,8 @@ try{
        $test->isDefined('$FRENCH_PARAGRAPH',$samp);
        $samp = $cnf->const('$CLINGTON_PARAGRAPH');
        $test->isNotDefined('$NONE_EXISTANT',$samp);
+
+
     #
     $test->nextCase();  
     #
@@ -71,6 +73,35 @@ try{
     
     $test->evaluate("Changed in config ME_TOO == 1024 * 8", $cnf->anon('ME_TOO'), 1024 * 8);
     die "Should not be same" unless $me_too ne $cnf->anon('ME_TOO'); 
+
+    #
+    $test->nextCase();  
+    #
+
+
+    ###
+    # Test DATA instuctions and Plugin powers of PCNF.
+    ###
+   die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf', {
+            DO_enabled=>1,       # Disabled by default. Here we enable as we are using an plugin.
+            ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
+            ENABLE_WARNINGS=>1   # 
+        });
+       $test->case("Passed -> new instance CNFParser with DO_ENABLE set.");
+
+      my $data = $cnf->anon('ACME_SAMPLE_StaffTable');
+       $test->isNotDefined('ACME_SAMPLE_StaffTable',$data);
+       $data = %{$cnf->data()}{'ACME_SAMPLE_StaffTable'};
+       $test->isDefined('ACME_SAMPLE_StaffTable',$data);
+       # It is multi dimensional array and multi property stuff.  
+       print "## ACME_SAMPLE_StaffTable Members List\n";
+       foreach (@$data[0]){
+         my @rows = @$_;
+         foreach(@rows){
+            my @cols = @$_;
+            print $cols[1]."\t\t $cols[2]\n";
+         }
+       }
 
 
     #   

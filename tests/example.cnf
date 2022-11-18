@@ -1,5 +1,6 @@
 !CNF2.0
 
+
 Hello, you are looking at an Perl configuration network file sample.
 Let's create a CNF single specified constant: <<$IMMUTABLE<CONST> Hello World! >>
 That is right, any text with this file is of co concern to the parser, so CNF doesn't need commenting.
@@ -16,7 +17,7 @@ my $cnf = CNFParser->new('./tests/example.cnf');
     say 'Constance $IMMUTABLE value is ', $cnf->{'$IMMUTABLE'});
 
 
-## Following will throw will fail -> Modification of a read-only value attempted ...
+## Following will throw a fail -> Modification of a read-only value attempted ...
 $cnf->{'$IMMUTABLE'} = "change?";
 
 ## Following will throw will fail -> Attempt to access disallowed key '$DYNAMIC_IMMUTABLE' in a restricted hash ...
@@ -24,6 +25,12 @@ $cnf->{'$DYNAMIC_IMMUTABLE'} = "new";
 
 To add a program specific constance, it can been done in the context of construction of the parse instance.
 Otherwise use CNF anon's, this are explained later in this file.
+
+From v. 1.6 there is a const method, that verifies the desired constance to exist for you:
+
+if(my $IMMUTABLE = $cnf->const('$IMMUTABLE')){
+        # Then accept here and do something with it
+}
 
 
 /**
@@ -89,3 +96,64 @@ Anon's are normal default scripted Perl CNF property value pairs.
  ${$cnf->anon()}{'ME_TOO'} = 'modified';
 
 die "Should not be same" unless $me_too ne $cnf->anon('ME_TOO'); 
+
+
+## Doing DATA the better way
+
+Perl CNF does tabular data via the DATA instruction. 
+Similar but having slightly different rules to for example CSV, which is primitive.
+What Is a CSV File?
+
+A Comma Separated Values file is a text file that holds tabulated data. 
+CSV is a type of delimited data. As the name suggests, a comma “,” 
+is used to separate each field of data—or value—from its neighbors.
+
+For CNF, please see  ./Specifications_For_CNF_ReadMe.md -> ### Scripted Data Related Instructions section.
+
+Examples of PCNF data containing properties:
+
+
+<<CONTACTS<DATA>
+1`Johnny Lagaluga`AU``~
+5`Carl Posumson`US~`Call in morning EST~
+8`Kim Tundra`KR`
+Reach him at his Seoul office.~
+>>
+
+
+CONTACTS property shows that a data row can contain in script multiple lines for column values.
+
+<<ACME_SAMPLE_StaffTable<DATA>
+ID`Name            `Position	                   `Office        `Age   `Start date  `Salary~
+#`Airi Satou        `Accountant	           `Tokyo	  `33    `2008-11-28  `$162,700~
+#`Angelica Ramos    `Chief Executive Officer (CEO)`London	  `47    `2009-10-09  `$1,200,000~
+#`Ashton Cox        `Junior Technical Author      `San Francisco `66    `2009-01-12  `$86,000~
+#`Bradley Greer     `Software Engineer	           `London	  `41    `2012-10-13  `$132,000~
+#`Brenden Wagner    `Software Engineer	           `San Francisco `28    `2011-06-07  `$206,850~
+#`Brielle Williamson`Integration Specialist	   `New York	  `61    `2012-12-02  `$372,000~
+#`Bruno Nash	     `Software Engineer	           `London	  `38    `2011-05-03  `$163,500~
+>>
+
+As it isn't an anon property. To obtain the above property ACME_SAMPLE_StaffTable in raw form, 
+the data method must be used. As $cnf->anon() method might return it in CNF script form or as undef, 
+to preserve computer memory.
+
+my $data = %{$cnf->data()}{'ACME_SAMPLE_StaffTable'};
+
+
+Why is Perl CNF more sophisticated? Well, you can plugin a meta data processor.
+That the parser will run on each row of data.
+But that is an advanced topic.
+
+The #` is not a comment signifier here in CNF, like in the Perl language.
+You guessed it, it tells make it an autonumber holder for this column, usually an ID.
+And then you need a plugin that for example, assign's the actual id number.
+Or performs white-space stripings or trimming.
+
+
+<<processor<PLUGIN>
+    package     : DataProcessorPlugin
+    subroutine  : process
+    property    : ACME_SAMPLE_StaffTable
+>>
+
