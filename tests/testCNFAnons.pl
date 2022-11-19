@@ -148,7 +148,7 @@ CNFParser->new()->parse(undef,qq(
 ));
 
 
-my $cnf = CNFParser->new("databaseAnonsTest.cnf");
+my $cnf = CNFParser->new("./old/databaseAnonsTest.cnf");
 my $find = $cnf->anon('GET_SUB_URL',CNFParser->META);
 die "Failed finding GET_SUB_URL" if not $find;
 die "Missmatched found in GET_SUB_URL" if $find ne 'https://www.THE_ONE.acme.com/$$$2$$$';

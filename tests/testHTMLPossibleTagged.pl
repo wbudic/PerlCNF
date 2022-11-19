@@ -53,7 +53,7 @@ use Syntax::Keyword::Try; try {
     # Test central.cnf
     #
     ###
-    die $test->failed()  if not  $cnf = CNFParser->new('CNF2HTML.cnf');
+    die $test->failed()  if not  $cnf = CNFParser->new('./old/CNF2HTML.cnf');
     $test->case($cnf);
     $test->subcase("\$DEBUG=$cnf->{'$DEBUG'}");
     # CNF Constances can't be modifed anymore, let's test.

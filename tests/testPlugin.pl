@@ -15,7 +15,7 @@ try{
     ###
     # Test instance creation.
     #
-    die $test->failed() if not $cnf = CNFParser->new('pluginTest.cnf',{DO_enabled=>1});
+    die $test->failed() if not $cnf = CNFParser->new('./old/pluginTest.cnf',{DO_enabled=>1});
     $test->case("Passed new instance CNFParser for:".$cnf->{CNF_CONTENT});
     #  
     $test-> nextCase();
