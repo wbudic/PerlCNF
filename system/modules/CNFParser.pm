@@ -45,7 +45,7 @@ our %ANONS  = ();
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
 ###
-our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1, 
+our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1, TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
                        DO=>1,    PLUGIN=>1, MACRO=>1);
 ###
@@ -595,8 +595,10 @@ sub parse {
                         }
                     }       
                 }              
-            }
-            elsif($t eq 'TABLE'){
+            }elsif($t eq 'TREE'){
+                $instructs{$e} = CNFNode->new({name=>$e,value=>$v}); 
+
+            }elsif($t eq 'TABLE'){
                $st = "CREATE TABLE $e(\n$v);";
                $tables{$e} = $st;               
             }
@@ -617,11 +619,22 @@ sub parse {
                 push @m, $v;
                 $mig{$e} = [@m];
             }
-            elsif($DO_enabled && $t eq 'DO'){
-                $_ = eval $v; chomp $_; $anons->{$e} = $_
+            elsif($t eq 'DO'){
+                if($DO_enabled){
+                    ## no critic BuiltinFunctions::ProhibitStringyEval
+                    $v = eval $v;
+                    ## use critic
+                    chomp $v; $anons->{$e} = $_;
+                }elsif($self->{ENABLE_WARNINGS}){
+                    warn "Do_enabled is set to false to process property: $e\n" 
+                }
             }
-            elsif($DO_enabled && $t eq 'PLUGIN'){
-                $instructs{$e} = InstructedDataItem -> new('PLUGIN', $v);
+            elsif($t eq 'PLUGIN'){ 
+                if($DO_enabled){
+                    $instructs{$e} = InstructedDataItem -> new('PLUGIN', $v);                    
+                }elsif($self->{ENABLE_WARNINGS}){
+                    warn "Do_enabled is set to false to process plugin: $e\n" 
+                }                
             }
             elsif($t eq 'MACRO'){                  
                   $instructs{$e}=$v;                  
@@ -650,8 +663,17 @@ sub parse {
     # Do internal macro instructs.
     if(%instructs){ 
         foreach my $e(keys %instructs){
-            my $struct = $instructs{$e}; 
-            if(ref($struct) ne 'InstructedDataItem'){
+            my $struct = $instructs{$e};
+            my $type =  ref($struct);
+            if($type eq 'CNFNode'){
+               my $value = %$struct{value};               
+               $anons->{$e} = $struct->process($value);
+            }elsif(ref($struct) eq 'InstructedDataItem'){
+                my $t = $struct->{ins};
+                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
+                   $properties{$e} = doPlugin($self, $e, $struct->{val}, $anons);
+                }
+            }else{
                 my $v = $struct;
                 my @arr = ($v =~ m/(\$\$\$.+?\$\$\$)/gm);
                 foreach my $find(@arr) {# <- MACRO TAG translate. ->
@@ -665,11 +687,6 @@ sub parse {
                         }
                 }            
                 $anons->{$e}=$v;
-            }else{
-                my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
-                   $properties{$e} = doPlugin($self, $e, $struct->{val}, $anons);
-                }
             }
         }   
         undef %instructs;        

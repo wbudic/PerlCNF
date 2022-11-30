@@ -255,16 +255,17 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parse to perform extra or specifically processing on the current value.
    2. Current Reserved words list is.
-       1. CONST
-       2. DATA
-       3. FILE
-       4. TABLE
-       5. INDEX
-       6. VIEW
-       7. PLUGIN
-       8. SQL
-       9. MIGRATE
-       10. MACRO
+       - CONST
+       - DATA
+       - FILE
+       - TABLE
+       - TREE
+       - INDEX
+       - VIEW
+       - PLUGIN
+       - SQL
+       - MIGRATE
+       - MACRO
           1. Value is searched and replaced by an property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
           3. Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
@@ -391,6 +392,35 @@ CNF supports basic SQL Database structure statement generation. This is done via
         >>
     ```
 
+4. TREE (NEW FEATURE - 20221128)
+   1. Will create an CNF property having an Node object, that contains a tree structure list of anons/nodes with values.
+        1. Property can have its value, contain attributes, and also other properties within.
+        2. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
+        3. All attributes and sub properties have to have unique names.
+        4. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
+            - Attributes must specified on a single line.
+            - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
+   2. The TREE instruction will create an CNFNode object assigned to an unique anon.
+        1. Value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
+            - Each property start and end tag has to be on its own line.
+
+        ```HTML
+        <<doc<TREE>
+        thread: 28
+        title = My Application
+            [client]
+                address: 192.168.1.64
+                [paths]
+                    [#]
+                        ./dev
+                        ./sources
+                    [/#]
+                [\paths]
+            [/client]
+        >>
+
+        ```
+
 ## Sample Perl Language Usage
 
 1. *DO*
@@ -460,4 +490,4 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.3 2021</center>
+<center>Sun Stage - v.2.4 2022</center>
