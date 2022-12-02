@@ -395,9 +395,20 @@ CNF supports basic SQL Database structure statement generation. This is done via
 4. TREE (NEW FEATURE - 20221128)
    1. Will create an CNF property having an Node object, that contains a tree structure list of anons/nodes with values.
         1. Property can have its value, contain attributes, and also other properties within.
-        2. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
+            1. The property markup in the tree script is called body, and follows the PerlCNF style.
+               The difference is that both ' **<,>** ' and ' **[,]** ' are signifiers for the property or multiline value, start and end tags.
+                1. All tags require to be on a line of their own.
+                2. Current algorithm uses sub buffering to parse each properties body.
+                    So deeply nesting an large property body is not recommended and also not suitable for encapsulating there data.
+        2. The node characteristic is that each sub property is linked to its parent property
+           1. This is contained in the ' **@** ' attribute.
+           2. Node characteristic is also the tree can be searched via path.
+           3. Perl doesn't require type casting and conversion for node values, but for only few rare occasions.
         3. All attributes and sub properties have to have unique names.
-        4. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
+            1. Emphasis of having uniquely named properties is to avoid having a tree to be used as an collection.
+            2. A property can have its contained collection however, which are multiple sub properties placed into an ' **@@** ' field or attribute.
+        4. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
+        5. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
             - Attributes must specified on a single line.
             - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
    2. The TREE instruction will create an CNFNode object assigned to an unique anon.
@@ -408,15 +419,15 @@ CNF supports basic SQL Database structure statement generation. This is done via
         <<doc<TREE>
         thread: 28
         title = My Application
-            [client]
+            <client<
                 address: 192.168.1.64
-                [paths]
-                    [#]
+                [paths[
+                    [#[
                         ./dev
                         ./sources
-                    [/#]
-                [\paths]
-            [/client]
+                    ]#]
+                ]paths]
+            >client>
         >>
 
         ```

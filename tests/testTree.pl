@@ -21,16 +21,16 @@ try{
       $test->case("Check Tree Algorithm.");
 
       my $tree = q{
-      [node]   
+      [node[   
          a:1
          b=2
-         [1]
-            [#]Hello[/#]
-         [/1]
-         [2]
-            [#]World![/#]
-         [/2]
-      [/node]   
+         [1[
+            [#[Hello]#]
+         ]1]
+         [2[
+            [#[ World! ]#]
+         ]2]
+      ]node]   
    };
    
    my $property = CNFNode->new({name=>'TEST'})->process($tree);
@@ -41,7 +41,7 @@ try{
    # $node = node($node, 'node/1/2/3/a');
    my $hello = $property->find('node/1/#');
    my $node  = $property->find('node/2/#');
-   print "2->[[$$hello $$node]]\n";
+   $test -> evaluate("[[$$hello $$node]]",$$hello,'Hello');
       
     #
     $test->nextCase();  
@@ -51,11 +51,11 @@ try{
     <<DOC<TREE>
     a=1
     b:2
-      [c]
+      [c[
             1:a
             2:barracuda
-            [#]cccc[/#]
-      [/c]
+            [#[cccc]#]
+      ]c]
     >>
 ));
 
@@ -74,6 +74,44 @@ try{
    my $val = $doc->find('c/2');
 
    $test ->evaluate("Node 'DOC/c/2' eq 'barracuda'", $$val, 'barracuda');
+
+
+    #
+    $test->nextCase();  
+    #
+
+    $test->case("Test Array parsing.");
+
+    $tree = q{
+      <node<
+         <@@<
+            One value.
+         ]/@@]
+         [@@[
+            Second value.
+         ]/@@]
+         <prop<
+                  attribue = Something inbetween!
+         >prop>
+         [@@[
+            Third value.
+         ]/@@] 
+         [@@[
+           
+                        [p1[
+                                 a:1
+                                 b:2
+                        ]/p1]
+                        [#[ Fourth value. ]/#]
+         ]/@@]
+      >node>
+   };
+   $property = CNFNode->new({name=>'TEST ARRAY'})->process($tree);
+
+   $node  = $property->find('node/@Array');
+   $test ->isDefined('node/@Array', $node);
+   my $prop = $property->find('node/prop');
+   $test ->isDefined('node/prop', $prop);
 
     #   
     $test->done();    
