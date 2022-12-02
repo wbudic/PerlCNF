@@ -7,6 +7,13 @@ package TestManager;
 use warnings; use strict;
 use Term::ANSIColor qw(:constants);
 
+use Timer::Simple;
+
+
+my $timer = Timer::Simple->new(start => 0, string => 'human');
+
+
+
 ###
 #  Notice All test are to be run from the project directory.
 #  Not in the test directory.
@@ -30,12 +37,14 @@ sub case {
     my ($self, $out) =@_;
     nextCase($self) if $self->{open};
     print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n".RESET;
-    $self->{open}=1
+    $self->{open}=1;
+    return $self;
 }
 sub subcase {
     my ($self, $out) =@_;
     my $sub_cnt = ++$self->{sub_cnt};
-    print GREEN."\t   Case ".$self->{test_cnt}.".$sub_cnt: $out\n".RESET
+    print GREEN."\t   Case ".$self->{test_cnt}.".$sub_cnt: $out\n".RESET;
+    return $self;
 }
 
 sub nextCase {
@@ -50,6 +59,19 @@ sub nextCase {
     $self->{test_cnt}++;
     $self->{sub_cnt}=0;
     $self->{open}=0
+}
+###
+# Optionally mesure time a case needed.
+###
+sub start {    
+    my $self = shift;
+    $timer->start();
+    print BRIGHT_CYAN,"\tStarted Timer: ".$timer->hms('%01d h %01d m %02.2f s')."\n";
+}
+sub stop {
+    my $self = shift;
+    $timer->stop();    
+    print BRIGHT_CYAN,"\tStopped Timer: ".$timer->hms('%01d h %01d m %02.2f s')."\n";
 }
 ###
 # Performs non critical evaluation test. 
