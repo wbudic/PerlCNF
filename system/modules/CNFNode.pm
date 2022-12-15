@@ -2,8 +2,9 @@ package CNFNode;
 use strict;
 use warnings;
 
+
 sub new {
-    my ($class,$attrs,$self) = @_;
+    my ($class,$attrs, $self) = @_;
     $self = \%$attrs;
     bless $self, $class;
 }
@@ -11,101 +12,231 @@ sub name {
     my $self = shift;
     return $self->{'name'}
 }
+###
+# Convienience method, returns string scalar value dereferenced (a copy) of the property value.
+##
 sub val {
     my $self = shift;
-    return $self->{'#'}
+    my $ret = $self->{'#'};
+    if(ref($ret) eq 'SCALAR'){
+           $ret = $$ret;
+     }
+    return $ret
 }
 sub parent {
     my $self = shift;
     return $self->{'@'}
 }
-sub find {
-    my ($self, $path, $ret)=@_;
-    my $node = $self;
-    foreach my $name(split(/\//, $path)){        
-        $ret = $node->{$name};
-        if($ret){
-        # print ref($ret) ,"\n";
-        if(ref($ret) eq 'CNFNode'){
-            $node = $ret;
-        }         
-        }      
+
+
+sub attributes {
+    my $self = shift;
+    my @nodes;
+    foreach(sort keys %$self){
+        my $node = $self->{$_};
+        if($_ ne '@' && $_ ne '@$' && $_ ne '#' && $_ ne '_'){
+            $nodes[@nodes] = [$_, $node]
+        }
     }
-    return \$ret;
+    return @nodes;
 }
-
-
-sub process {
-
-    my ($self, $script)=@_;      
-    my ($sub, $val, $isArray,$body) = (undef,0,0,"");
-    my ($tag,$sta,$closing,$end);
-    my @array = ();
-    my @lines = split(/\n+\s*/, $script);
-    foreach my $ln(@lines){
-        $ln =~ s/^\s+|\s+$//g;
-        my $len =  length ($ln);
-        if($len>0){
-            #print $ln, "\n";
-            if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/){
-                $sta = $1;
-                $tag = $2;#substr($ln, 1, $len-2);
-                $end = $3;
-                $closing = ($sta =~ /[\>\]]/) ? 1 : 0;
-
-                if(!$body && $tag =~ /^#[<\[](.*)[>\]]#$/ ){
-                   $val = $1;                                      
+###
+# Search a path for node from a path statment.
+# It will allways return an array for even a single suproperty. 
+# The reason is several subproperties of the same name can be contained by the parent property.
+# If will return an array of list values (@@).
+# Or will return an scalar value of an attribute or an subproperty (#).
+###
+sub find {
+    my ($self, $path, $ret, $prev)=@_;
+    my @arr;
+    foreach my $name(split(/\//, $path)){  
+        if(ref($self) eq "ARRAY"){      
+            
+            if($name eq '#'){
+                return $prev->val();
+            }else{
+                #if(@$self == 1){
+                    $ret = $prev->{'@$'};
+               # }
+            }
+        }else{ 
+            
+            if ($name eq '@@') {
+                $ret =  $self->{'@@'};
+                next
+            }else{ 
+                $ret = $self->{'@$'}
+            }
+        }
+        if($ret){            
+            foreach(@$ret){
+                if (ref($_) eq "CNFNode" and $_->{'name'} eq $name){
+                    if($prev){                       
+                       if(ref($prev) eq "ARRAY"){
+                        @arr = @$prev;
+                       }else{ 
+                         @arr = ();
+                         $arr[@arr] = $self;  
+                       }
+                       $arr[@arr] = $_;
+                       $self = \@arr;
+                       $prev = $_;                       
+                    }else{ 
+                       $prev = $self = $_
+                    }                    
                 }
-                elsif($sta ne $end){
-                   $body .= qq($ln\n); next 
-                }     
-                elsif(!$sub){                
-                    
-                    if($tag =~ /@@/){
-                 
-                        $isArray = $isArray?0:1;
-                        $body="";
-                        next
-
-                    }
-                    $sub = $tag;  $body="";
-                    next
-
-                }elsif($closing&& $tag eq $sub){
-                    my $subProperty = CNFNode->new({name=>"$sub"});
-                    $subProperty->{'@'} = \$self;                    
-                    $self->{$sub} = $subProperty->process($body);
-                    undef $sub; $body = $val = "";
-                    next                
-                }
-                $body .= qq($ln\n)
-            }elsif($sub){
-                $body .= qq($ln\n)
-            }elsif($val){
-                $val = $self->{'#'};
-                if($val){
-                    $self->{'#'} = qq($val\n$ln\n);
-                }else{ 
-                    $self->{'#'} = qq($ln\n);
-                }
-            }elsif($isArray){
-                $array[@array] = $ln;
-            }        
-            else{ 
-                my @attr = ($ln =~m/(.*)[:=]+(.*)/);
-                if(@attr>1){
-                    my $n = $attr[0];
-                    my $v = $attr[1]; 
-                    $v =~  s/^\s+|\s+$//;
-                    $self->{$n} = $v;
+                # else{ 
+                #     #$self = $prev if $prev && $prev ne 1;
+                #     $self = $prev if $prev
+                # }
+            }
+        }else{ 
+            $ret = $self->{$name} ;
+        }   
+    }
+    return $ret;
+}
+sub node {
+    my ($self, $path, $ret)=@_;
+    foreach my $name(split(/\//, $path)){        
+        $ret = $self->{'@$'};
+        if($ret){
+            foreach(@$ret){
+                if ($_->{'name'} eq $name){
+                    $ret = $_; last
                 }
             }
         }
     }
+    return $ret;    
+}
+sub nodes {
+    my $self = shift;
+    my $ret = $self->{'@$'};
+    if($ret){
+        return @$ret;
+    }
+    return ();
+}
 
+
+
+
+sub process {
+
+    my ($self, $parser, $script)=@_;      
+    my ($sub, $val, $isArray,$body) = (undef,0,0,"");
+    my ($tag,$sta,$end);    
+    my @array = ();
+    my ($opening,$closing)=(0,0);
+
+    if($self->{'name'} eq '#'){
+       $val = $self->{'#'};
+       if($val){
+          $val .= "\n$script";
+       }else{ 
+          $val = $script;
+       }
+    }else{
+        my @lines = split(/\n+\s*/, $script);
+        foreach my $ln(@lines){
+            $ln =~ s/^\s+|\s+$//g;
+            my $len =  length ($ln);
+            if($len>0){
+                #print $ln, "\n";
+                if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/){
+                    $sta = $1;
+                    $tag = $2;
+                    $end = $3;
+                    my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
+                    if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
+                        if($1 eq '*'){
+                            my $link = $parser->anon($2);
+                            if($link){
+                                $self->{$2} = $link;
+                                next
+                            }else{ 
+                                warn "Anon link $2 not located with $ln for node ".$self->{'name'};
+                            }
+                         }elsif($1 eq '@@'){
+                                if($opening==$closing){
+                                   $array[@array] = $2; $val="";     
+                                   next                              
+                                }
+                         }else{ 
+                            $val = $2
+                         }                         
+                    }
+                    elsif($isClosing){
+                        $opening--;
+                        $closing++;
+                    }else{
+                        $opening++;
+                        $closing--;
+                    }
+                    if(!$sub){                
                         
-    $self->{'@Array'} = \@array if @array;
+                        if($tag =~ /@@/){
+                    
+                            $isArray = $isArray?0:1;
+                            $body="";
+                            next
+
+                        }
+                        $sub = $tag;  $body="";
+                        next
+
+                    }elsif($tag eq $sub){
+                        if($closing == 0){
+                            if($tag eq '#'){
+                                $self->{'#'} = \$body
+                            }else{                        
+                                my $subProperty = CNFNode->new({name=>"$sub"});
+                                $subProperty->{'@'} = \$self; 
+                                my @nodes;
+                                my $prev = $self->{'@$'};
+                                if($prev) {
+                                   @nodes = @$prev;
+                                }else{
+                                   @nodes = ();                                   
+                                }
+                                $nodes[@nodes] = $subProperty->process($parser, $body);
+                                $self->{'@$'} = \@nodes;
+                                undef $sub; $body = $val = "";
+                            }
+                            next   
+                        }             
+                    }
+                    $body .= qq($ln\n)
+                }elsif($sub){
+                    $body .= qq($ln\n)
+                }
+                elsif($val){
+                    $val = $self->{'#'};
+                    if($val){
+                        $self->{'#'} = qq($val\n$ln\n);
+                    }else{ 
+                        $self->{'#'} = qq($ln\n);
+                    }
+                }elsif($isArray){
+                    $array[@array] = $ln;
+                }        
+                else{ 
+                    my @attr = ($ln =~m/([\s\w]*?)\s*[=:]\s*(.*)\s*/);
+                    if(@attr>1){
+                        my $n = $attr[0];
+                        my $v = $attr[1];                         
+                        $self->{$n} = $v;
+                    }
+                }
+            }
+        }
+    }
+                        
+    $self->{'@@'} = \@array if @array;
     $self->{'#'} = $val if $val;
+    $self->{'_'} = 1;
     return $self;
 }
 

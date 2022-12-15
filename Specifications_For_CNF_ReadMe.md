@@ -379,6 +379,8 @@ CNF supports basic SQL Database structure statement generation. This is done via
             1. package : Path or package name of plugin.
             2. subroutine: Subroutine name to use to pass the parser, after plugin initialization.
             3. property : property to be passed directly, if required, like with data processing.
+    3. Requirements is for plugins to work to have the DO_enabled=>1 config attribute set.
+        1. Plugins currently also will require be last specified in the file, to have access to previous anons that are instructed.
 
     ```HTML
        /**
@@ -414,9 +416,19 @@ CNF supports basic SQL Database structure statement generation. This is done via
    2. The TREE instruction will create an CNFNode object assigned to an unique anon.
         1. Value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
             - Each property start and end tag has to be on its own line.
+   3. Tree can contain links to other various properties, anons, that means also to other trees then the current one.
+        1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
+        2. It is not recommended to make circular links, or to priorities properties themselves containing links.
+        3. To aid parsing priority a parse special instruction can be used if for example linking trees.
+            1. Specified best just after the tree instruction as -> ```<<...<TREE> _HAS_PROCESSING_PRIORITY_```.
+            2. This is currently a TREE instruction only inbuilt option, for the CNFNodes individuals script order of processing.
+   4. Tree Format Example:
 
         ```HTML
+        <<APP<My Nice Application by ACME Wolf PTY>>
+
         <<doc<TREE>
+        <*<APP>*>
         thread: 28
         title = My Application
             <client<
@@ -429,7 +441,6 @@ CNF supports basic SQL Database structure statement generation. This is done via
                 ]paths]
             >client>
         >>
-
         ```
 
 ## Sample Perl Language Usage
@@ -487,7 +498,7 @@ print "Welcome to ", $cnf->constant('$APP_NAME'), " version ", $cnf->constant('$
 ```HTML
 
 # List command anon with the name of 'list'.
-<<list>ls -lh dev|sort>
+<<list<ls -lh dev|sort>>>
 <<<CONST
 $RELEASE_VER = 1.0
 $APP_NAME="My Application Sample"
