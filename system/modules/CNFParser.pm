@@ -78,8 +78,9 @@ package InstructedDataItem {
     
     our $dataItemCounter = int(0);
 
-    sub new { my ($class, $ins, $val) = @_;
+    sub new { my ($class, $ele, $ins, $val) = @_;
         bless {
+                ele => $ele,
                 aid => $dataItemCounter++,
                 ins => $ins,
                 val => $val
@@ -340,7 +341,7 @@ sub parse {
     }
     $content =~ m/^\!(CNF\d+\.\d+)/;
     my $CNF_VER = $1; $CNF_VER="Undefined!" if not $CNF_VER;
-    $self->{CNF_VERSION}=$CNF_VER if not defined $self->{CNF_VERSION};
+    $self->{CNF_VERSION} = $CNF_VER if not defined $self->{CNF_VERSION};
 
     unlock_hash(%$self);# We control from here the constances, need to unlock them if previous parse was run.
 
@@ -423,7 +424,7 @@ sub parse {
                 if($t ne 'DATA'){
                    my $array = $lists{$e};
                    if(!$array){$array=();$lists{$e} = \@{$array};}               
-                   push @{$array}, InstructedDataItem -> new($t, $v);
+                   push @{$array}, InstructedDataItem -> new($e, $t, $v);
                    next
                 }   
             }elsif ($e eq '@'){#collection processing.
@@ -463,8 +464,8 @@ sub parse {
                             if($macro){
                                 my @arr = ($value =~ m/(\$\$\$.+?\$\$\$)/gm);
                                 foreach my $find(@arr) {                                
-                                    my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;
-                                    my $r = %$anons{$s};                                    
+                                    my $s = $find; $s =~ s/^\$\$\$|\$\$\$$//g;
+                                    my $r = $anons->{$s};                                    
                                     $r = $self->{$s} if !$r;
                                     $r = $instructs{$s} if !$r;
                                     CNFParserException->throw(error=>"Unable to find property for $t.$name -> $find\n",show_trace=>1) if !$r;
@@ -596,7 +597,7 @@ sub parse {
                     }       
                 }              
             }elsif($t eq 'TREE'){
-                $instructs{$e} = CNFNode->new({name=>$e,value=>$v}); 
+                $instructs{$e} = CNFNode->new({name=>$e,script=>$v}); 
 
             }elsif($t eq 'TABLE'){
                $st = "CREATE TABLE $e(\n$v);";
@@ -631,7 +632,7 @@ sub parse {
             }
             elsif($t eq 'PLUGIN'){ 
                 if($DO_enabled){
-                    $instructs{$e} = InstructedDataItem -> new('PLUGIN', $v);                    
+                    $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
                 }elsif($self->{ENABLE_WARNINGS}){
                     warn "Do_enabled is set to false to process plugin: $e\n" 
                 }                
@@ -660,20 +661,13 @@ sub parse {
             }            
         }
 	}
-    # Do internal macro instructs.
+    #Do smart instructions and property linking.
     if(%instructs){ 
+        my @ditms;
         foreach my $e(keys %instructs){
             my $struct = $instructs{$e};
             my $type =  ref($struct);
-            if($type eq 'CNFNode'){
-               my $value = %$struct{value};               
-               $anons->{$e} = $struct->process($value);
-            }elsif(ref($struct) eq 'InstructedDataItem'){
-                my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
-                   $properties{$e} = doPlugin($self, $e, $struct->{val}, $anons);
-                }
-            }else{
+           if($type eq 'String'){
                 my $v = $struct;
                 my @arr = ($v =~ m/(\$\$\$.+?\$\$\$)/gm);
                 foreach my $find(@arr) {# <- MACRO TAG translate. ->
@@ -687,8 +681,34 @@ sub parse {
                         }
                 }            
                 $anons->{$e}=$v;
+            }else{ 
+                $ditms[@ditms] = $struct;
             }
-        }   
+        }
+        for my $idx(0..$#ditms) {
+            my $struct = $ditms[$idx];
+            my $type =  ref($struct); 
+            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){
+               $anons->{$struct->{'name'}} = $struct->process($self, $struct->{'script'}) if (!$struct->{'_'});
+               splice @ditms, $idx,1;          
+            }
+        }
+
+        foreach my $struct(@ditms){
+            my $type =  ref($struct); 
+           if($type eq 'CNFNode'){               
+               $anons->{$struct->{'name'}} = $struct->process($self, $struct->{'script'}) if (!$struct->{'_'});
+            }
+        }
+        foreach my $struct(@ditms){
+            my $type =  ref($struct); 
+            if($type eq 'InstructedDataItem'){
+                my $t = $struct->{ins};
+                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
+                   $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
+                }
+            }
+        }
         undef %instructs;        
     }
 
@@ -716,7 +736,8 @@ sub parse {
 # @TODO Current Under development.
 ###
 sub doPlugin{
-    my ($self, $elem, $script, $anons) = @_;
+    my ($self, $struct, $anons) = @_;
+    my ($elem, $script) = ($struct->{'ele'}, $struct->{'val'});
     my $plugin = PropertValueStyle->new($elem, $script);
     my $pck = $plugin->{package};
     my $prp = $plugin->{property};
