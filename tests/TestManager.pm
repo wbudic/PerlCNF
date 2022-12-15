@@ -9,10 +9,7 @@ use Term::ANSIColor qw(:constants);
 
 use Timer::Simple;
 
-
 my $timer = Timer::Simple->new(start => 0, string => 'human');
-
-
 
 ###
 #  Notice All test are to be run from the project directory.
@@ -61,7 +58,7 @@ sub nextCase {
     $self->{open}=0
 }
 ###
-# Optionally mesure time a case needed.
+# Optionally measure time a case needed.
 ###
 sub start {    
     my $self = shift;
@@ -170,16 +167,19 @@ sub dumpTermination {
                 $trace .= ' 'x$i .RED.$st->as_string()."\n";
                 $i+=3;
             }else{
-                $trace = RED.$st->as_string()."\n";
+                $trace = RED.$st->as_string()."\n";                
                 $trace =~ s/called at/\n   thrown from \-\>/gs;
                 ($file,$lnErr) =($st->filename(),$st->line())
             }
-        }
-        $message = $comment->{'message'}.$trace;
-        $comment = $message;
+        }        
+        $comment = $message = $comment->{'message'}.$trace;
+        $comment =~ s/eval \{.+\} at/cought at/gs;
         #Old die methods could be present, caught by an Exception, manually having Error@{lno.} set.
         if($message =~ /^Error\@(\d+)/){ 
            $ErrAt = "\\\@$1";
+        }else{
+            my $error;
+            ($error,$file,$lnErr) = ($message =~ m/(.*)\sat\s*(.*)\sline\s(\d*)\./)
         }
     }else{
      ($trace,$file,$lnErr) = ($comment =~ m/(.*)\sat\s*(.*)\sline\s(\d*)\.$/); 
