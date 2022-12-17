@@ -327,7 +327,7 @@ sub parse {
        $anons = $self->{'__ANONS__'};
     }
     
-    if(not $content){#open $cnf
+    if(not $content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
         read $fh, $content, -s $fh;
         close $fh;

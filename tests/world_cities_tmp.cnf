@@ -1,0 +1,31 @@
+###
+# This is a tiny sample file only. With embedded data.
+###
+<<WorldCities<DATA>
+CITY`LAT`LAG`COUNTRY`DM~
+Tokyo''`35.6839`139.7744`Japan`JP~
+Jakarta`-6.2146`106.8451`Indonesia`ID~
+Delhi`28.6667`77.2167`India`IN~
+Manila`14.6`120.9833`Philippines`PH~
+Enterprise`36.0164`-115.2208`United States`US~
+Loja`-3.9906`-79.205`Ecuador`EC~
+Medford`42.3372`-122.8537`United States`US~
+N''Zerekore`7.76`-8.83`Guinea`GN~
+>>
+
+<<processor<PLUGIN>
+    package     : DataProcessorWorldCitiesPlugin
+    subroutine  : process
+    property    : WorldCities
+>>
+###
+# This is the actual large raw data file, in same PerlCNF format.
+# Doing the job some very faster and better then if it was embedded.
+###
+<<World_Cities_From_Data_File<tests/world_cities.data>>>
+
+<<file_load_processor<PLUGIN>
+    package     : DataProcessorWorldCitiesPlugin
+    subroutine  : loadAndProcess
+    property    : World_Cities_From_Data_File
+>>

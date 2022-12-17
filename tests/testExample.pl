@@ -5,6 +5,7 @@ use Syntax::Keyword::Try;
 use lib "./tests";
 use lib "/home/will/dev/PerlCNF/system/modules";
 
+
 require TestManager;
 require CNFParser;
 
@@ -14,7 +15,7 @@ my $cnf;
 try{
 
    ###
-   # Test instance with cnf file creation.
+   # Test instance with cnf a file.
    ###
    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf');
        $test->case("Passed new instance CNFParser.");
