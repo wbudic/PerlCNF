@@ -380,7 +380,8 @@ sub parse {
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
             #@vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
-            @vv = ($tag =~ m/([@%\w\$]*|\w*?)[<|>]([@%\w\s]*)>*(.*)/gms);
+            #@vv = ($tag =~ m/([@%\w\$]*|\w*?)[<>]([@%\w\s\W]*)>*(.*)/gms);
+            @vv = ($tag =~ m/([@%\w\$]*|\w*?)[<>]([@%\w]*)>*(.*)/gms);
             $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
             if(!$RESERVED_WORDS{$t} || @vv!=3){
                 if($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
@@ -403,18 +404,25 @@ sub parse {
                         }
                         $v = shift @vv; 
                     }else{
-                        do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
-                        $v = shift @vv;                                           
-                        if(!$v){
-                            if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
-                                $v = $t
-                            }
-                            foreach(@vv){#<- Attach any valid fallback from complex rexp.
-                                $v .= $_ if $_;
-                            }
-                        }
+                        if($e=~/[@%]/){
+                            $v =~ /^<(.*)>$/gms;    
+                            $v = $1 if $1;                        
+                        }else{
+                            do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
+                                $v = shift @vv;                                           
+                                if(!$v){
+                                    if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
+                                        $v = $t
+                                    }
+                                    foreach(@vv){#<- Attach any valid fallback from complex rexp.
+                                        $v .= $_ if $_;
+                                    }
+                                }
+                            }                   
                     }
                 }
+            }else{ 
+                $v =~ s/\s>$// ; #Strip if old format of instruction. Pre v.2.5.
             }
             #Do we have an autonumbered instructed list?   
             #DATA best instructions are exempted and differently handled by existing to only one uniquely named property.

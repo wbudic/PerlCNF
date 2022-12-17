@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "./tests";
-use lib "./system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 
 
@@ -21,6 +21,9 @@ try{
    die $test->failed() if not $cnf = CNFParser->new();
        $test->case("Passed new instance CNFParser.");
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);   
+
+
+
    
 
     ###
@@ -61,6 +64,18 @@ try{
     $test->evaluate('@array contains 4 elements?', scalar( @$array ),4);
     $test->evaluate('@array[0]==1',@$array[0],1);
     $test->evaluate('@array[-1]==4',@$array[-1],4);
+
+    $test->case("Old PerlCNF collection format.");
+     $cnf ->parse(undef, q(<<@<@config_files<
+file1.cnf
+file2.cnf
+>>>));
+$array = $cnf ->collection('@config_files');
+$test->evaluate('@array contains 2 elements?', scalar( @$array ), 2);
+$test->evaluate('@array last element is file2.cnf?', pop @$array , 'file2.cnf');
+
+
+
     #
     #   
     $test->done();    

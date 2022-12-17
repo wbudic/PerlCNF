@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "./tests";
-use lib "./system/modules";
+use lib "system/modules";
 
 require CNFParser;
 require TestManager;
