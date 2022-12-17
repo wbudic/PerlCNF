@@ -5,7 +5,7 @@ use Try::Tiny;
 use Exception::Class ('CNFParserException');
 
 #LanguageServer doesn't like -> $ENV{'PWD'} settings.json should not be set for it withn an pwd.
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 #use lib "system/modules";
 require CNFParser;
 no strict "refs";
