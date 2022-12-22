@@ -54,15 +54,15 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     if ($attrs){
         $self = \%$attrs;        
     }else{
-        $self = {
-                    DO_enabled=>0,       # Enable/Disable DO instruction. Wich could evaluated potentially an doom execute destruction.
+        $self = {   #Case Sensitive don't tell me you set Do_enabled and it ain't working?
+                    DO_enabled=>0,       # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
                     ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
-                    ENABLE_WARNINGS=>1   # 
+                    ENABLE_WARNINGS=>1   # Disable this one, and you will stare into the void, on errors or skipped.
         }; 
     }
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
     if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is, anons are not static.
-         $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Cavet of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
+         $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Caveat of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
          $self->{'__ANONS__'} = {};
     }
     $self->{'__DATA__'}  = {};
@@ -92,7 +92,7 @@ package InstructedDataItem {
 ###
 # PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
 ##
-package PropertValueStyle {    
+package PropertyValueStyle {    
     sub new {
         my ($class, $element, $script, $self) =  @_;
         $self = {} if not $self;
@@ -125,26 +125,26 @@ package PropertValueStyle {
 ###
 # The metaverse is that further this can be expanded, 
 # to provide further dynamic meta processing of the property value of an anon.
-# When the future becomes life in anonimity, unknow variables best describe the meta state.
+# When the future becomes life in anonymity, unknown variables best describe the meta state.
 ##
 package META_PROCESS {
     sub constance{
          my($class, $set) = @_; 
         if(!$set){
-            $set =  {anonymouse=>'*'}
+            $set =  {anonymous=>'*'}
         }
         bless $set, $class
     }
     sub process{
         my($self, $property, $val) = @_;        
-        if($self->{anonymouse} ne '*'){
-           return  $self->{anonymouse}($property,$val)
+        if($self->{anonymous} ne '*'){
+           return  $self->{anonymous}($property,$val)
         }
         return $val;
     }
 }
 use constant META => META_PROCESS->constance();
-use constant META_TO_JSON => META_PROCESS->constance({anonymouse=>*_to_JSON});
+use constant META_TO_JSON => META_PROCESS->constance({anonymous=>*_to_JSON});
 sub _to_JSON {
 my($property, $val) = @_;
 return <<__JSON
@@ -153,13 +153,13 @@ __JSON
 }
 
 ###
-# Anon properties are public variables. Constances are protected and instance specific, both config file provided (parsed in).
+# Anon properties are public variables. Constance's are protected and instance specific, both config file provided (parsed in).
 # Anon properties of an config instance are global by default, means they can also be statically accessed, i.e. CNFParser::anon(NAME)
 # They can be; and are only dynamically set via the config instance directly.
 # That is, if it has the ANONS_ARE_PUBLIC property set, and by using the empty method of anon() with no arguments.
 # i.e. ${CNFParser->new()->anon()}{'MyDynamicAnon'} = 'something';
 # However a private config instance, will have its own anon's. And could be read only if it exist as a property, via this anon(NAME) method.
-# This hasn't been yet fully specifed in the PerlCNF specs.
+# This hasn't been yet fully specified in the PerlCNF specs.
 # i.e. ${CNFParser->new({ANONS_ARE_PUBLIC=>0})->anon('MyDynamicAnon') # <-- Will not be available.  
 ##
 sub anon {  my ($self, $n, $args)=@_;
@@ -179,7 +179,7 @@ sub anon {  my ($self, $n, $args)=@_;
                 foreach my $find(@arr) {# <- MACRO TAG translate. ->
                         my $s= $find; $s =~ s/^\$\$\$|\$\$\$$//g;# 
                         my $r = %$anechoic{$s};
-                        if(!$r && exists $self->{$s}){#fallback to maybe constant property has been seeked?
+                        if(!$r && exists $self->{$s}){#fallback to maybe constant property has been seek'd?
                             $r = $self->{$s};
                         }
                         if(!$r){
@@ -328,15 +328,17 @@ sub parse {
     }
     
     if(not $content){
-        open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";
-        read $fh, $content, -s $fh;
+        open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";        
+        read $fh, $content, -s $fh;        
         close $fh;
-        $self->{CNF_CONTENT} = $cnf;
+        my @stat = stat($cnf);
+        $self->{CNF_STAT}    = \@stat; 
+        $self->{CNF_CONTENT} = $cnf;        
     }else{
         my $type =Scalar::Util::reftype($content);
         if($type && $type eq 'ARRAY'){
-            $content = join  "",@$content;
-            $self->{CNF_CONTENT} = 'ARRAY';
+           $content = join  "",@$content;
+           $self->{CNF_CONTENT} = 'ARRAY';
         }
     }
     $content =~ m/^\!(CNF\d+\.\d+)/;
@@ -444,7 +446,7 @@ sub parse {
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
-                        s/^\s*["']|['"]$//g;#strip qoutes
+                        s/^\s*["']|['"]$//g;#strip quotes
                         s/>+//;# strip dangling CNF tag
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
@@ -465,10 +467,10 @@ sub parse {
                     foreach  my $p(@props){ 
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){                            
-                            my @pair = split(/\s*=\s*/, $p);
-                            die "Not '=' delimited property -> $p" if scalar( @pair ) != 2;
-                            my $name  = $pair[0]; $name =~ s/^\s*|\s*$//g;
-                            my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip qoutes
+                            my @pair = ($p=~/\s*(.*)\s*=\s*(.*)/s);#split(/\s*=\s*/, $p);
+                            die "Not '=' delimited in property $t -> $p" if scalar( @pair ) != 2;
+                            my $name  = $pair[0]; $name =~ s/\s*$//g;
+                            my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip quotes
                             if($macro){
                                 my @arr = ($value =~ m/(\$\$\$.+?\$\$\$)/gm);
                                 foreach my $find(@arr) {                                
@@ -504,7 +506,7 @@ sub parse {
                         $d =~ s/~$//; #strip dangling ~ if there was no \n
                         $t = substr $d, 0, 1;
                         if($t eq '$'){
-                            $v =  $d;            #capture spected value.
+                            $v =  $d;            #capture specked value.
                             $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
                             if($v=~m/\$$/){
                                 $v = $self->{$d}; $v="" if not $v;
@@ -642,14 +644,14 @@ sub parse {
                 if($DO_enabled){
                     $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
                 }elsif($self->{ENABLE_WARNINGS}){
-                    warn "Do_enabled is set to false to process plugin: $e\n" 
+                    warn "Do_enabled is set to false to process following plugin: $e\n" 
                 }                
             }
             elsif($t eq 'MACRO'){                  
                   $instructs{$e}=$v;                  
             }
             else{
-                #Register application statement as either an anonymouse one. Or since v.1.2 an listing type tag.                 
+                #Register application statement as either an anonymous one. Or since v.1.2 an listing type tag.                 
                 if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
                    $v = $t if not $v; 
                     if($e=~/^\$/){
@@ -746,7 +748,7 @@ sub parse {
 sub doPlugin{
     my ($self, $struct, $anons) = @_;
     my ($elem, $script) = ($struct->{'ele'}, $struct->{'val'});
-    my $plugin = PropertValueStyle->new($elem, $script);
+    my $plugin = PropertyValueStyle->new($elem, $script);
     my $pck = $plugin->{package};
     my $prp = $plugin->{property};
     my $sub = $plugin->{subroutine};
