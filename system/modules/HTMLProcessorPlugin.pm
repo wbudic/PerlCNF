@@ -25,16 +25,16 @@ sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){
 # Process config data to contain expected fields and data.
 ###
 sub convert ($self, $parser, $property) {
-    my $header = $parser->{'HTTP_HEADER'};
+    my ($bfHDR,$style,$title, $link, $body_attrs)=("","","","","");
+     
     my $tree = $parser->anon($property);
     die "Tree property '$property' is not available!" if(!$tree or ref($tree) ne 'CNFNode');
 
 try{
-
-    my $title = $tree -> {'Title'};
-    my $link  = $tree -> {'HEADER'};
-     
-    my ($bfHDR,$style);
+    my $header = $parser->{'HTTP_HEADER'};$header = "" if !$header;
+    $title = $tree -> {'Title'};
+    $link  = $tree -> {'HEADER'};
+    $body_attrs .= " ". $tree -> {'Body'} if exists $tree -> {'Body'};
     if($link){
        if(ref($link) eq 'CNFNode'){
             my $arr = $link->find('CSS/@@');
@@ -46,28 +46,29 @@ try{
                 $bfHDR .= qq(\t<script src="$_"></script>\n);
             } 
             my $ps = $link  -> find('STYLE');
-            $style = "<style>\n".  @$ps[0]-> val()."</style>" if($ps);
+            $style = "<style>\n".  $ps -> val()."</style>" if($ps);
        }
        
        delete $tree -> {'HEADER'};       
     }
 
     my $buffer = qq($header
+<!DOCTYPE html>
 <head>
 <title>$title</title>
 $bfHDR
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 $style
 </head>
 );
-
-    $buffer .= "<body>\n";
+    
+    $buffer .= qq(<body$body_attrs><div class="main">
+                            <div class="divTableBody">);
         foreach 
         my $node($tree->nodes()){  
         my $bf   = build($node);     
         $buffer .= "$bf\n" if $node;
         }
-    $buffer .= "</body>\n</html>\n";
+    $buffer .= "</div></div>\n</body>\n</html>\n";
 
     $parser->data()->{$property} = \$buffer;
 }catch{
@@ -82,7 +83,8 @@ $style
 sub build {
     my $node = shift;
     my $bf;
-    if(isParagraphName($node->{'name'})){
+    my $name = lc $node->{'name'};
+    if(isParagraphName($name)){
         $bf .= "\t<div".placeAttributes($node).">\n<div>";
             foreach my $n($node->nodes()){
                 if($n->{'name'} ne '#'){
@@ -94,13 +96,29 @@ sub build {
                 my $v = $node->val();
                 $v =~ s/\n\n+/\<\/br>\n/gs;
                 $bf .= "\t<div>\n\t<p>\n".$v."</p>\n\t</div>\n"; 
-            }            
-
+            }
         $bf .= "\t</div>\t</div>"
-    }elsif( lc($node->{'name'}) eq 'img'){
+    }elsif( $name eq 'row' || $name eq 'cell' ){
+        $bf .= "\t<div class=\"$name\"".placeAttributes($node).">\n";
+            foreach my $n($node->nodes()){
+                if($n->{'name'} ne '#'){
+                    my $b = build($n);     
+                    $bf .= "$b\n" if $b;
+                }
+            }
+        $bf .= $node->val()."\n" if $node->{'#'};   
+        $bf .= "\t</div>"
+    }elsif( $name eq 'img' ){
         $bf .= "\t\t<img".placeAttributes($node)."/>\n";
+    }elsif($name eq 'list_images'){
+        my @images = glob($node ->{'path'}.'*.*');
+        foreach my $file(@images){
+            ($file=~/configs\/docs\/(.*)\.cnf$/);
+            $bf .= qq(<div class='row'><div class='cell'><img srv="$file" with='120' height='120'>$1</a><br>\n);
+            $bf .= qq(<a href="$file">$1</a><br>\n</div></div>\n);
+        }
+    
     }else{
-
         $bf .= "\t<".$node->{'name'}.placeAttributes($node).">\n";
             foreach my $n($node->nodes()){                 
                     my $b = build($n);

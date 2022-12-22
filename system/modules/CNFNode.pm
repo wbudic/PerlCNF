@@ -41,11 +41,13 @@ sub attributes {
     return @nodes;
 }
 ###
-# Search a path for node from a path statment.
-# It will allways return an array for even a single suproperty. 
+# Search a path for node from a path statement.
+# It will always return an array for even a single suproperty. 
 # The reason is several subproperties of the same name can be contained by the parent property.
-# If will return an array of list values (@@).
-# Or will return an scalar value of an attribute or an subproperty (#).
+# It will return an array of list values with (@@).
+# Or will return an array of its shallow list of child nodes with (@$). 
+# Or will return an scalar value of an attribute or an subproperty with (#).
+# NOTICE - 20221222 Future versions might provide also for more complex path statments with regular experssions enabled.
 ###
 sub find {
     my ($self, $path, $ret, $prev)=@_;
@@ -60,16 +62,16 @@ sub find {
                     $ret = $prev->{'@$'};
                # }
             }
-        }else{ 
-            
+        }else{             
             if ($name eq '@@') {
                 $ret =  $self->{'@@'};
                 next
             }else{ 
-                $ret = $self->{'@$'}
+                $ret = $self->{'@$'} #This will initiate further search in subproperties names.
             }
         }
-        if($ret){            
+        if($ret){
+            my $found = 0;            
             foreach(@$ret){
                 if (ref($_) eq "CNFNode" and $_->{'name'} eq $name){
                     if($prev){                       
@@ -81,16 +83,20 @@ sub find {
                        }
                        $arr[@arr] = $_;
                        $self = \@arr;
-                       $prev = $_;                       
+                       $prev = $_;  
+                       
                     }else{ 
                        $prev = $self = $_
-                    }                    
+                    }               
+                    $found = 1;
+                    $ret = $_  
                 }
                 # else{ 
                 #     #$self = $prev if $prev && $prev ne 1;
                 #     $self = $prev if $prev
                 # }
             }
+            $ret = $self->{$name} if(!$found && $name ne '@$');
         }else{ 
             $ret = $self->{$name} ;
         }   
@@ -119,10 +125,9 @@ sub nodes {
     }
     return ();
 }
-
-
-
-
+###
+# The parsing guts of the CNFNode, that from raw script, recursively creates and tree of nodes from it.
+###
 sub process {
 
     my ($self, $parser, $script)=@_;      
@@ -153,11 +158,17 @@ sub process {
                     if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $parser->anon($2);
-                            if($link){
-                                $self->{$2} = $link;
+                            $link    = $parser->{$2} if !$link; #Anon is passed as an unkonwn constance (immutable).
+                            if($link){                                
+                                if($opening){
+                                   $body .= qq([#[\n$ln\n]#]\n); 
+                                   $val = $link;
+                                }else{ 
+                                   $self->{$2} = $link;
+                                }
                                 next
                             }else{ 
-                                warn "Anon link $2 not located with $ln for node ".$self->{'name'};
+                                if(!$opening){warn "Anon link $2 not located with $ln for node ".$self->{'name'}};
                             }
                          }elsif($1 eq '@@'){
                                 if($opening==$closing){
@@ -168,13 +179,36 @@ sub process {
                             $val = $2
                          }                         
                     }
+                    elsif($tag =~ /^(.*)[\[<](.*)[\]>](.*)$/ && $1 eq $3){
+                        if($opening){
+                                $body .= qq($ln\n)
+                        }
+                        else{
+                                my $subProperty = CNFNode->new({name=>"$1"});
+                                $subProperty ->{'#'} = $2;
+                                $subProperty->{'@'} = \$self; 
+                                my @nodes;
+                                my $prev = $self->{'@$'};
+                                if($prev) {
+                                    @nodes = @$prev;
+                                }else{
+                                    @nodes = ();                                   
+                                }                        
+                                $nodes[@nodes] = $subProperty;
+                                $self->{'@$'} = \@nodes;
+                        }
+                        next
+                    }
                     elsif($isClosing){
                         $opening--;
                         $closing++;
-                    }else{
+                    }
+                    else{
                         $opening++;
                         $closing--;
                     }
+    
+
                     if(!$sub){                
                         
                         if($tag =~ /@@/){
@@ -190,7 +224,9 @@ sub process {
                     }elsif($tag eq $sub){
                         if($closing == 0){
                             if($tag eq '#'){
-                                $self->{'#'} = \$body
+                                if(!$val){
+                                    $self->{'#'} = \$body
+                                }
                             }else{                        
                                 my $subProperty = CNFNode->new({name=>"$sub"});
                                 $subProperty->{'@'} = \$self; 

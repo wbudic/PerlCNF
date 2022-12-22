@@ -32,13 +32,19 @@ my $for_html = q(
          >div>
       >div>
    >div>
+   [test[me too]test]
 );
 
 my $prp = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$for_html);
 my $nested = $prp->find('div/div/div/#');
 print "$nested\n";
 
-      my $tree = q{
+my $nada = $prp->find('nada');
+$test->isNotDefined("\$nada",$nada);
+$nada = $prp->find('@$');
+$test->isDefined("Name @\$ as property has subroperties",$nada);
+
+   my $tree = q{
       [node[   
          a:1
          b=2
@@ -51,6 +57,12 @@ print "$nested\n";
       ]node]   
    };
 
+
+   # my $tree = q{
+   #    [node[
+   #       [h1[ Hello World! ]h1]
+   #    ]node]   
+   # };
 
    #    my $tree = q{
    #    [node[   
@@ -99,8 +111,8 @@ print "$nested\n";
    my $doc = $cnf->anon('DOC');
    $test ->evaluate("\$doc->name() eg 'DOC'",$doc->name(),"DOC") ;
    my  $c = $doc->find('c');
-   $test ->isDefined("doc/c", $c); 
-   $test ->evaluate("Node 'DOC/c' eq 'cccc'", @$c[0]->val(), 'cccc');
+   $test ->isDefined("doc/c", $c);    
+   $test ->evaluate("Node 'DOC/c' eq 'cccc'", $c->val(), 'cccc');
    $test ->evaluate("App link is set", $doc->{APP},$app);
 
     #
@@ -150,8 +162,7 @@ print "$nested\n";
    $test->isDefined('node/@@', $node);
    $test->evaluate('node/@@', scalar(@$node),4);
    my $prop = $property->find('node/prop');
-   $test ->isDefined('node/prop', $prop);
-   $prop = @$prop[0];
+   $test ->isDefined('node/prop', $prop);  
    $test->evaluate('node/prop[{attribue}->val()', $prop->{'some attribute'}, 'Something inbetween!');
 $cnf = CNFParser->new()->parse(undef,qq(
     <<DOC<TREE>
