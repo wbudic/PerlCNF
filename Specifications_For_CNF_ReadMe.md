@@ -395,33 +395,37 @@ CNF supports basic SQL Database structure statement generation. This is done via
     ```
 
 4. TREE (NEW FEATURE - 20221128)
-   1. Will create an CNF property having an Node object, that contains a tree structure list of anons/nodes with values.
-        1. Property can have its value, contain attributes, and also other properties within.
+   1. Will create an CNF property having a CNFNode object, that contains further child nodes or attributes in a tree structure.
+        1. This is a hash of anons for attributes and a list of further nodes, all having is of one value.
+        2. Property can have its value, contain attributes, and also other properties within.
             1. The property markup in the tree script is called body, and follows the PerlCNF style.
                The difference is that both ' **<,>** ' and ' **[,]** ' are signifiers for the property or multiline value, start and end tags.
                 1. All tags require to be on a line of their own.
                 2. Current algorithm uses sub buffering to parse each properties body.
                     So deeply nesting an large property body is not recommended and also not suitable for encapsulating there data.
-        2. The node characteristic is that each sub property is linked to its parent property
+                3. An opening tag is opened being surround with the same signifier into the direction of the property body.
+                4. The closing tag is in the opposite direction same signifiers.
+                    * **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
+        3. The node characteristic is that each sub property is linked to its parent property
            1. This is contained in the ' **@** ' attribute.
            2. Node characteristic is also the tree can be searched via path.
            3. Perl doesn't require type casting and conversion for node values, but for only few rare occasions.
-        3. All attributes and sub properties have to have unique names.
+        4. All attributes and sub properties have to have unique names.
             1. Emphasis of having uniquely named properties is to avoid having a tree to be used as an collection.
             2. A property can have its contained collection however, which are multiple sub properties placed into an ' **@@** ' field or attribute.
-        4. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
-        5. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
+        5. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
+        6. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
             - Attributes must specified on a single line.
             - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
    2. The TREE instruction will create an CNFNode object assigned to an unique anon.
-        1. Value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
-            - Each property start and end tag has to be on its own line.
+        1. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
+            - Each properties start and end tag must stand and be on its own line, withing the body.
    3. Tree can contain links to other various properties, anons, that means also to other trees then the current one.
         1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
         2. It is not recommended to make circular links, or to priorities properties themselves containing links.
         3. To aid parsing priority a parse special instruction can be used if for example linking trees.
             1. Specified best just after the tree instruction as -> ```<<...<TREE> _HAS_PROCESSING_PRIORITY_```.
-            2. This is currently a TREE instruction only inbuilt option, for the CNFNodes individuals script order of processing.
+            2. This is currently a TREE instruction only inbuilt option in PerlCNF, for the CNFNodes individuals scripts order of processing.
    4. Tree Format Example:
 
         ```HTML
