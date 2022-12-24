@@ -230,9 +230,28 @@ sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ;
 #@DEPRECATED 
 sub constants {my $s=shift;return %$s}
 
-
+##
+# Collections are global, Reason for this is that any number of subsequent files parsed,
+# might contain properties that overwrite previous existing ones. 
+# Or require ones that don't includes, expecting thm to be there.
+# This overwritting can be erronous, but also is not expected to be very common to happen.
+# Following method, provides direct access to the properties, this method shouldn't be used in general.
 sub collections {\%properties}
-sub collection {my($self, $prp)=@_;return %properties{$prp}}
+
+# Collection now returns the contained type dereferenced.
+# Make sure you use the appropriate Perl type on the receiving end.
+# Note, if properties contain any scalar key entry, it sure hasn't been set by this parser.
+sub collection { my($self, $name) = @_;
+    if(exists($properties{$name})){
+       my $ret = $properties{$name};
+       if(ref($ret) eq 'ARRAY'){ 
+          return  @{$properties{$name}}
+       }else{
+          return  %{$properties{$name}}
+       }
+    }
+    return %properties{$name}
+}
 sub data {shift->{'__DATA__'}}
 
 sub listDelimit {                 
@@ -447,7 +466,7 @@ sub parse {
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
                         s/^\s*["']|['"]$//g;#strip quotes
-                        s/>+//;# strip dangling CNF tag
+                        #s/>+//;# strip dangling CNF tag
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
                 if($isArray){
@@ -467,9 +486,9 @@ sub parse {
                     foreach  my $p(@props){ 
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){                            
-                            my @pair = ($p=~/\s*(.*)\s*=\s*(.*)/s);#split(/\s*=\s*/, $p);
-                            die "Not '=' delimited in property $t -> $p" if scalar( @pair ) != 2;
-                            my $name  = $pair[0]; $name =~ s/\s*$//g;
+                            my @pair = ($p=~/\s*(\w*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
+                            next if (@pair != 2 || $pair[0] =~ m/^[#\\\/]+/m);#skip, it is a comment or not '=' delimited line.                            
+                            my $name  = $pair[0]; 
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip quotes
                             if($macro){
                                 my @arr = ($value =~ m/(\$\$\$.+?\$\$\$)/gm);
@@ -756,7 +775,7 @@ sub doPlugin{
         ## no critic (RequireBarewordIncludes)
         require "$pck.pm";
         my $obj;
-        my $settings = $self->collection('%Settings');
+        my $settings = $properties{'%Settings'};#Properties are global.
         if($settings){
            $obj = $pck->new(\%$settings);
         }else{
@@ -979,36 +998,77 @@ sub readNext(){
 return 0;
 }
 
-# Writes out to handle an property.
-sub writeOut { my ($self, $handle, $property) = @_;
+# Writes out to a handle an CNF property or this parsers constance's as default property.
+# i.e. new CNFParser()->writeOut(*STDOUT);
+sub writeOut { my ($self, $handle, $property) = @_;      
+    my $buffer;
+    if(!$property){
+        my @keys = sort keys %$self;        
+        $buffer = "<<<CONST\n";
+        my $with = 5;
+        foreach (@keys){
+           my $len = length($_);
+           $with = $len + 1 if $len > $with
+        }
+        foreach my $key(@keys){
+            my $spc = $with - length($key);
+            my $val = $self->{$key};
+            next if(ref($val) =~ /ARRAY|HASH/); #we write out only what is scriptable.
+            if(!$val){
+                $val = "\"\"";
+            }
+            elsif #Future versions of CNF will account also for multi line values for property attributes.
+            ($val =~ /\n/){
+               $val = "<#<\n$val>#>"
+            }
+            elsif($val !~ /^\d+/){
+                $val = "\"$val\""
+            }
+        
+            $buffer .= ' 'x$spc. $key .  " = $val\n";     
+        }
+        $buffer .= ">>\n";
+        return $buffer if !$handle;
+        print $handle $buffer;
+        return 1
+    }
     my $prp = $properties{$property};
     if($prp){
-        print $handle "<<@<$property><\n";
+        $buffer = "<<@<$property>\n";
         if(ref $prp eq 'ARRAY') {
             my @arr = sort keys @$prp; my $n=0;
             foreach (@arr){                
-                print $handle "\"$_\"";
+                $buffer .= "\"$_\"";
                 if($arr[-1] ne $_){
-                   if($n++>5){print $handle "\n"; $n=0}
-                   else{print $handle ",";}
+                   if($n++>5){
+                    $buffer .= "\n"; $n=0
+                   }else{
+                    $buffer .= ","
+                   }
                 }
             }   
         }elsif(ref $prp eq 'HASH') {
             my %hsh = %$prp;
             my @keys = sort keys %hsh;
             foreach my $key(@keys){                
-                print $handle $key . "\t= \"". $hsh{$key} ."\"\n";     
+                $buffer .= $key . "\t= \"". $hsh{$key} ."\"\n";     
             }
         }
-        print $handle ">>>\n";
-
-      return 1;
+        $buffer .= ">>\n";
+        return $buffer if !$handle;
+        print $handle $buffer;
+        return 1;
     }
     else{
       $prp = $ANONS{$property};
       $prp = $self->{$property} if !$prp;
-      die "Property not found -> $property" if !$prp;
-      print $handle "<<$property><$prp>>\n";
+      if (!$prp){
+         $buffer = "<<ERROR<$property>Property not found!>>>\n" 
+      }else{
+        $buffer = "<<$property><$prp>>\n";
+      }
+      return $buffer if !$handle;
+      print $handle $buffer;      
       return 0;
     }
 }
