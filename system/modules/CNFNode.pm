@@ -157,18 +157,33 @@ sub process {
                     my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
                     if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
-                            my $link = $parser->anon($2);
-                            $link    = $parser->{$2} if !$link; #Anon is passed as an unkonwn constance (immutable).
-                            if($link){                                
+                            my $link = $2;
+                            my $lval = $parser->anon($2);
+                            $lval    = $parser->{$2} if !$lval; #Anon is passed as an unknown constance (immutable).
+                            if($lval){                                
                                 if($opening){
-                                   $body .= qq([#[\n$ln\n]#]\n); 
-                                   $val = $link;
-                                }else{ 
-                                   $self->{$2} = $link;
+                                   $body .= qq($ln\n);                                   
+                                }else{
+                                    #Is this a child node?
+                                    if(exists $self->{'@'}){
+                                        my @nodes;
+                                        my $prev = $self->{'@$'};
+                                        if($prev) {
+                                            @nodes = @$prev;
+                                        }else{
+                                            @nodes = ();                                   
+                                        }
+                                        $nodes[@nodes] = CNFNode->new({name=>"$link", '*'=>$lval});
+                                        $self->{'@$'} = \@nodes;
+                                    }
+                                    else{
+                                        #Links scripted in main tree parent are copied main tree attributes.
+                                        $self->{$link} = $lval
+                                    }                                 
                                 }
                                 next
                             }else{ 
-                                if(!$opening){warn "Anon link $2 not located with $ln for node ".$self->{'name'}};
+                                if(!$opening){warn "Anon link $link not located with $ln for node ".$self->{'name'}};
                             }
                          }elsif($1 eq '@@'){
                                 if($opening==$closing){
