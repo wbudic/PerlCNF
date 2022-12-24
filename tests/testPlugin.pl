@@ -2,8 +2,8 @@
 use warnings; use strict; 
 use Syntax::Keyword::Try;
 
-use lib "./tests";
-use lib "./system/modules";
+use lib "tests";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;
@@ -18,7 +18,7 @@ try{
     die $test->failed() if not $cnf = CNFParser->new('./old/pluginTest.cnf',{DO_enabled=>1});
     $test->case("Passed new instance CNFParser for:".$cnf->{CNF_CONTENT});
     #  
-    $test-> nextCase();
+    #$test-> nextCase();
     #   
 
     #   

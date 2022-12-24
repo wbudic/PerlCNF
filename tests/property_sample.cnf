@@ -1,0 +1,10 @@
+<<property<TREE>
+    att1=1
+    atr2= 2
+    [sub]
+        a1=1
+        a2=2
+        [#]Subs Value[/#]
+    [/sub]
+[#]some value[/#]
+>>
