@@ -18,6 +18,7 @@ try{
 }
 
 my $TEST_LOCAL_DIR = './tests';
+my @failed;
 
 ###
 #  Notice - All test are to be run from the project directory.
@@ -59,7 +60,9 @@ try{
             $test_cases+= $test_ret[0];
         }else{
             $test_fail++;
-            print BOLD RED "Failed Test File -> ", WHITE, "$file\n", RESET
+            my $failed = BOLD. RED. "Failed Test File -> ". WHITE. $file."\n". RESET;
+            print $failed;
+            $failed[@failed] = $failed;
         }
         
     }
@@ -72,7 +75,8 @@ try{
         "\tFailed test file count: ", BOLD RED,"$test_fail\n",BLUE,
         "\tPassed test count: $test_pass\n",
         "\tNumber of test cases run: $test_cases\n",
-        WHITE, "Finished with test Suit ->$0\n", RESET;
+        join  "",@failed,
+        BOLD WHITE, "Finished with test Suit ->$0\n", RESET;
 
     }elsif($test_pass){
         print BOLD BLUE "Test files ($test_pass of them), having $test_cases cases. Have all ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
