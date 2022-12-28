@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 
 require TestManager;
@@ -14,6 +14,34 @@ my $test = TestManager -> new($0);
 my $cnf;my $err;
 
 try{
+
+   $test->case("Test nested multiline value.");
+   my $property = CNFNode->new({name=>'TEST'})->process(CNFParser->new(), qq(           
+         [a[
+           [b[
+                      [#[
+                        1
+                        2
+                        3
+
+                      ]#]
+           ]b]           
+         ]a]
+         [cell[
+            [#[
+                <img src="images/PerlCNF.png" style="float:left"/>
+                <a name="top"></a><a href="#bottom">To Bottom</a>
+            ]#]            
+         ]cell]      
+   ));
+   
+   my $prp = $property->find('cell');
+   $test ->isDefined('cell', $prp);
+   print $prp->val();
+   $prp = $property->find('a/b');
+   $test ->isDefined('a/b', $prp);
+   $test ->evaluate('a/b=1\n2\n3\n', $prp->val(),"1\n2\n3\n"); 
+   #
 
    ###
    # Test instance with cnf file creation.
@@ -30,32 +58,29 @@ my $for_html = q(
                   This sample is more HTML look alike type of scheme.
                ]#]
          >div>
+         <div<
+               [#[
+                  Other text
+               ]#]
+         >div>
       >div>
    >div>
    [test[me too]test]
 );
 
-my $prp = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$for_html);
-my $nested = $prp->find('div/div/div/#');
-print "$nested\n";
+$prp = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$for_html);
+my $nested = $prp->find('div/div/div/[0]/#');
+$test->evaluate("div/div/div/{0}/#",$nested,"This sample is more HTML look alike type of scheme.");
 
 my $nada = $prp->find('nada');
 $test->isNotDefined("\$nada",$nada);
 $nada = $prp->find('@$');
-$test->isDefined("Name @\$ as property has subroperties",$nada);
+$test->isDefined("TEST/@\$ properties subroperties",$nada);
+$nada = $prp->find('test/#');
+$test->evaluate("\$TEST/test",$nada,'me too');
 
-   my $tree = q{
-      [node[   
-         a:1
-         b=2
-         [1[
-            [#[Hello]#]
-         ]1]
-         [2[
-            [#[ World! ]#]
-         ]2]
-      ]node]   
-   };
+
+
 
 
    # my $tree = q{
@@ -74,8 +99,23 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
    #       >div>
    #    ]node]   
    # };
-   
-   my $property = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$tree);
+    my $tree = q{
+      [node[   
+         a:1
+         b=2
+         [1[
+            [#[Hello ]#]
+            [#[
+               my
+
+            ]#]
+         ]1]
+         [2[
+            [#[ World! ]#]
+         ]2]
+      ]node]   
+   };
+   $property = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$tree);
    # my %node = %${node($node, 'node/1/2/3')};
    # print "[[".$node{'#'}."]]\n";
    
@@ -83,7 +123,7 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
    # $node = node($node, 'node/1/2/3/a');
    my $hello = $property->find('node/1/#');
    my $world  = $property->find('node/2/#');
-   $test -> evaluate("[[$hello]]",$hello,'Hello');
+   $test -> evaluate("[[$hello]]",$hello, "Hello my\n"); #<- nl is simulated, not automaticaly assumed with multi values taged
    $test -> evaluate("[[$world]]",$world,' World! ');
       
     #
@@ -104,7 +144,7 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
     >>
 ));
 
-   $test->case("Test parser parsing.");
+   $test->case("Test parser parsing.");                                                #3
 
    my $app = $cnf->anon('APP');
 
@@ -119,7 +159,7 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
     $test->nextCase();  
     #
 
-   $test->case("Test find by path.");
+   $test->case("Test find by path.");                    #4
    my $val = $doc->find('c/2');
 
    $test ->evaluate("Node 'DOC/c/2' eq 'barracuda'", $val, 'barracuda');
@@ -129,7 +169,7 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
     $test->nextCase();  
     #
 
-    $test->case("Test Array parsing.");
+    $test->case("Test Array parsing.");                  #5
 
     $tree = q{
       <node<
@@ -151,37 +191,46 @@ $test->isDefined("Name @\$ as property has subroperties",$nada);
                         [p1[
                                  a:1
                                  b:2
-                        ]/p1]
-                        [#[ Fourth value. ]/#]
+                        ]p1]
+                        [#[ Fourth value. ]#]
          ]@@]
       >node>
    };
+   
+   # $tree = q{
+   #    <node< 
+   #       [@@[
+   #                      [p1[
+   #                               a:1
+   #                               b:2
+   #                      ]p1]
+   #                      [#[ Fourth value. ]/#]
+   #       ]@@]
+   #       [@@[
+   #                      [p2[
+   #                               aa:1
+   #                               b:2
+   #                      ]/p2]                        
+   #       ]@@]
+   #    >node>
+   # };
+   
    $property = CNFNode->new({name=>'TEST ARRAY'})->process($cnf,$tree);
 
    my $node  = $property->find('node/@@');
    $test->isDefined('node/@@', $node);
-   $test->evaluate('node/@@', scalar(@$node),4);
+   $test->evaluate('node/@@', scalar(@$node),5);
    my $prop = $property->find('node/prop');
    $test ->isDefined('node/prop', $prop);  
    $test->evaluate('node/prop[{attribue}->val()', $prop->{'some attribute'}, 'Something inbetween!');
-$cnf = CNFParser->new()->parse(undef,qq(
-    <<DOC<TREE>
-    a=1
-    b:2
-      [c[
-            1:a
-            2:barracuda
-            [#[cccc]#]
-      ]c]
-    >>
-));
-
-  #
-  #  $test->nextCase();  
-  #
-
-
    
+   $node  = $property->find('node/@@/p1');
+   $test->isDefined('node/@@/p1', $node);
+   $val  = $property->find('node/@@/p1/b');
+   $test->isDefined('node/@@/p1/b', $val);
+   $test->evaluate('node/@@/p1/b', $val, '2' );
+
+ 
 
    #   
     $test->done();    

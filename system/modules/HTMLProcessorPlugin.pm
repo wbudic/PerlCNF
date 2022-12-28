@@ -7,6 +7,7 @@ use Exception::Class ('HTMLProcessorPluginException');
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Date::Manip;
+use MIME::Base64;
 
 sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){      
 
