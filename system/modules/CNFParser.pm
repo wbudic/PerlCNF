@@ -626,7 +626,7 @@ sub parse {
                     }       
                 }              
             }elsif($t eq 'TREE'){
-                $instructs{$e} = CNFNode->new({name=>$e,script=>$v}); 
+                $instructs{$e} = CNFNode->new({'_'=>$e,script=>$v}); 
 
             }elsif($t eq 'TABLE'){
                $st = "CREATE TABLE $e(\n$v);";
@@ -717,16 +717,16 @@ sub parse {
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){
-               $anons->{$struct->{'name'}} = $struct->process($self, $struct->{'script'}) if (!$struct->{'_'});
+            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){                
+               $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
                splice @ditms, $idx,1;          
             }
         }
 
         foreach my $struct(@ditms){
             my $type =  ref($struct); 
-           if($type eq 'CNFNode'){               
-               $anons->{$struct->{'name'}} = $struct->process($self, $struct->{'script'}) if (!$struct->{'_'});
+           if($type eq 'CNFNode'){            
+               $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
             }
         }
         foreach my $struct(@ditms){
@@ -1015,16 +1015,19 @@ sub writeOut { my ($self, $handle, $property) = @_;
             my $val = $self->{$key};
             next if(ref($val) =~ /ARRAY|HASH/); #we write out only what is scriptable.
             if(!$val){
-                $val = "\"\"";
+                if($key =! /^is|^use|^bln|enabled$/i){
+                   $val = 0
+                }else{
+                   $val = "\"\""
+                }
             }
             elsif #Future versions of CNF will account also for multi line values for property attributes.
             ($val =~ /\n/){
-               $val = "<#<\n$val>#>"
+                $val = "<#<\n$val>#>"
             }
             elsif($val !~ /^\d+/){
                 $val = "\"$val\""
-            }
-        
+            }        
             $buffer .= ' 'x$spc. $key .  " = $val\n";     
         }
         $buffer .= ">>\n";

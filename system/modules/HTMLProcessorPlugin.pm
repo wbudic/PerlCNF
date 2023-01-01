@@ -7,7 +7,6 @@ use Exception::Class ('HTMLProcessorPluginException');
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Date::Manip;
-use MIME::Base64;
 
 sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){      
 
@@ -25,25 +24,28 @@ sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){
 # Process config data to contain expected fields and data.
 ###
 sub convert ($self, $parser, $property) {
-    my ($bfHDR,$style,$jscript,$title, $link, $body_attrs)=("","","","","","");
+    my ($bfHDR,$style,$jscript,$title, $link, $body_attrs, $header)=("","","","","","","");
+    $self->{CNFParser} = $parser;
      
     my $tree = $parser->anon($property);
     die "Tree property '$property' is not available!" if(!$tree or ref($tree) ne 'CNFNode');
 
 try{
-    my $header = $parser->{'HTTP_HEADER'};$header = "" if !$header;
-    $title = $tree -> {'Title'};
-    $link  = $tree -> {'HEADER'};
+    $header = $parser-> {'HTTP_HEADER'} if exists $parser->{'HTTP_HEADER'};
+    $title  = $tree  -> {'Title'} if exists $tree->{'Title'};
+    $link   = $tree  -> {'HEADER'};
     $body_attrs .= " ". $tree -> {'Body'} if exists $tree -> {'Body'};
     if($link){
        if(ref($link) eq 'CNFNode'){
             my $arr = $link->find('CSS/@@');
             foreach (@$arr){
-                $bfHDR .= qq(\t<link rel="stylesheet" type="text/css" href="$_" />\n);
+                my $v = $_->val();
+                $bfHDR .= qq(\t<link rel="stylesheet" type="text/css" href="$v" />\n);
             }
             $arr = $link->find('JS/@@');
             foreach (@$arr){
-                $bfHDR .= qq(\t<script src="$_"></script>\n);
+                my $v = $_->val();
+                $bfHDR .= qq(\t<script src="$v"></script>\n);
             } 
             my $ps = $link  -> find('STYLE');
             $style = "\n<style>\n".  $ps -> val()."</style>" if($ps); 
@@ -57,18 +59,17 @@ try{
     my $buffer = qq($header
 <!DOCTYPE html>
 <head>
-<title>$title</title>
-$bfHDR $style $jscript
+<title>$title</title>$bfHDR $style $jscript
 </head>
 );
     
-    $buffer .= qq(<body$body_attrs><div class="main"><div class="divTableBody">);
+    $buffer .= qq(<body$body_attrs>\n<div class="main"><div class="divTableBody">\n);
         foreach 
         my $node($tree->nodes()){  
         my $bf   = build($node);     
         $buffer .= "$bf\n" if $node;
         }
-    $buffer .= "</div></div>\n</body>\n</html>\n";
+    $buffer .= "\n</div></div>\n</body>\n</html>\n";
 
     $parser->data()->{$property} = \$buffer;
 
@@ -86,13 +87,14 @@ $bfHDR $style $jscript
 ###
 sub build {
     my $node = shift;
+    my $tabs = shift; $tabs = 1 if !$tabs;
     my $bf;
-    my $name = lc $node->{'name'};
+    my $name = lc $node->name();
     if(isParagraphName($name)){
-        $bf .= "\t<div".placeAttributes($node).">\n<div>";
+        $bf .= "\t"x$tabs."<div".placeAttributes($node).">\n"."\t"x$tabs."<div>";
             foreach my $n($node->nodes()){
-                if($n->{'name'} ne '#'){
-                    my $b = build($n);     
+                if($n->{'_'} ne '#'){
+                    my $b = build($n, $tabs+1);     
                     $bf .= "$b\n" if $b;
                 }
             }
@@ -101,32 +103,35 @@ sub build {
                 $v =~ s/\n\n+/\<\/br>\n/gs;
                 $bf .= "\t<div>\n\t<p>\n".$v."</p>\n\t</div>\n"; 
             }
-        $bf .= "\t</div>\t</div>"
+        $bf .= "\t</div>\t</div>\n"
     }elsif( $name eq 'row' || $name eq 'cell' ){
-        $bf .= "\t<div class=\"$name\"".placeAttributes($node).">\n";
+        $bf .=  "\t"x$tabs."<div class=\"$name\"".placeAttributes($node).">\n";
             foreach my $n($node->nodes()){
-                if($n->{'name'} ne '#'){
-                    my $b = build($n);     
+                if($n->{'_'} ne '#'){
+                    my $b = build($n,$tabs+1);
                     $bf .= "$b\n" if $b;
                 }
             }
         $bf .= $node->val()."\n" if $node->{'#'};   
-        $bf .= "\t</div>"
+        $bf .= "\t"x$tabs."</div>"
     }elsif( $name eq 'img' ){
         $bf .= "\t\t<img".placeAttributes($node)."/>\n";
     }elsif($name eq 'list_images'){
-        my @ext = split(',',"jpg,jpeg,png,gif");
-        my $exp = " ".$node ->{'path'}."/*.". join (" ".$node ->{'path'}."/*.", @ext);
-        my @images = glob($exp);
-           $bf .= "\t<div class='row'><div class='cell'><b>Directory: ".$node ->{'path'}. "</b></div></div>";
-        foreach my $file(@images){
-            ($file=~/.*\/(.*)$/);
-            my $fn = $1;
-            my $enc = "img@".encode_base64($file);
-            $bf .= qq(\t<div class='row'><div class='cell'>);
-            $bf .= qq(\t<a href="$enc"><img src="$enc" with='120' height='120'><br>$fn</a>\n</div></div>\n);
-        }
-    
+        my $paths = $node->{'@@'};
+        foreach my $ndp (@$paths){            
+            my $path = $ndp -> val();
+            my @ext = split(',',"jpg,jpeg,png,gif");
+            my $exp = " ".$path."/*.". join (" ".$path."/*.", @ext);
+            my @images = glob($exp);
+            $bf .= "\t<div class='row'><div class='cell'><b>Directory: $path</b></div></div>";
+            foreach my $file(@images){
+                ($file=~/.*\/(.*)$/);
+                my $fn = $1;
+                my $enc = "img@".ShortLink::obtain($file);
+                $bf .= qq(\t<div class='row'><div class='cell'>);
+                $bf .= qq(\t<a href="$enc"><img src="$enc" with='120' height='120'><br>$fn</a>\n</div></div>\n);
+            }
+        }    
     }elsif($node->{'*'}){ #Links are already captured, in future this might be needed as a relink from here for dynamic stuff?
             my $lval = $node->{'*'};
             if($name eq 'file_list_html'){ #Special case where html links are provided.                
@@ -139,13 +144,13 @@ sub build {
             }
     }
     else{
-        $bf .= "\t<".$node->{'name'}.placeAttributes($node).">\n";
+        $bf .= "\t"x$tabs."<".$node->name().placeAttributes($node).">";
             foreach my $n($node->nodes()){                 
-                    my $b = build($n);
+                    my $b = build($n,$tabs+1);
                     $bf .= "$b\n" if $b;        
             }
         $bf .= $node->val() if $node->{'#'};
-        $bf .= "</".$node->{'name'}.">\n";
+        $bf .= "</".$node->name().">";
 
     }
     return $bf;
@@ -158,7 +163,7 @@ sub placeAttributes {
     my $ret  = "";
     my @attr = $node -> attributes();
     foreach (@attr){
-        if(@$_[0] ne '#' && @$_[0] ne 'name'){
+        if(@$_[0] ne '#' && @$_[0] ne '_'){
            if(@$_[1]){
               $ret .= " ".@$_[0]."=\"".@$_[1]."\"";
            }else{ 

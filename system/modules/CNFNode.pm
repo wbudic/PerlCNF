@@ -10,10 +10,10 @@ sub new {
 }
 sub name {
     my $self = shift;
-    return $self->{'name'}
+    return $self->{'_'}
 }
 ###
-# Convienience method, returns string scalar value dereferenced (a copy) of the property value.
+# Convenience method, returns string scalar value dereferenced (a copy) of the property value.
 ##
 sub val {
     my $self = shift;
@@ -33,8 +33,8 @@ sub attributes {
     my $self = shift;
     my @nodes;
     foreach(sort keys %$self){
-        my $node = $self->{$_};
-        if($_ ne '@' && $_ ne '@$' && $_ ne '#' && $_ ne '_'){
+        my $node = $self->{$_};        
+        if($_ !~ /@|@\$|#_/){
             $nodes[@nodes] = [$_, $node]
         }
     }
@@ -44,12 +44,12 @@ sub attributes {
 
 ###
 # Search a path for node from a path statement.
-# It will always return an array for even a single suproperty. 
+# It will always return an array for even a single subproperty. 
 # The reason is several subproperties of the same name can be contained by the parent property.
 # It will return an array of list values with (@@).
 # Or will return an array of its shallow list of child nodes with (@$). 
 # Or will return an scalar value of an attribute or an property with (#).
-# NOTICE - 20221222 Future versions might provide also for more complex path statments with regular experssions enabled.
+# NOTICE - 20221222 Future versions might provide also for more complex path statements with regular expressions enabled.
 ###
 sub find {
     my ($self, $path, $ret, $prev, $seekArray)=@_;
@@ -95,7 +95,7 @@ sub find {
                     my $n;
                     foreach (@{$_->{'@$'}}){
                         $n = $_;
-                        if ($n->{'name'} eq $name){
+                        if ($n->{'_'} eq $name){
                             $arr[@arr] = $n;
                         }                        
                     }
@@ -105,7 +105,7 @@ sub find {
                        $ret = $n;
                     }
                     $found++;
-                }elsif (ref($_) eq "CNFNode" and $_->{'name'} eq $name){
+                }elsif (ref($_) eq "CNFNode" and $_->{'_'} eq $name){
                     if($prev){
                        $arr[@arr] = $_;
                        $self = \@arr;
@@ -163,7 +163,7 @@ sub process {
     my @array;
     my ($opening,$closing,$valing)=(0,0,0);
 
-    if($self->{'name'} eq '#'){
+    if(exists $self->{'_'} && $self->{'_'} eq '#'){
        $val = $self->{'#'};
        if($val){
           $val .= "\n$script";
@@ -178,10 +178,10 @@ sub process {
             if(length ($ln)){
                 #print $ln, "\n";
                 if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/ && $1 eq $3){
-                    $sta = $1;
-                    $tag = $2;
-                    $end = $3;
-                    my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
+                   $sta = $1;
+                   $tag = $2;
+                   $end = $3;
+                   my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
                     if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $2;
@@ -200,7 +200,7 @@ sub process {
                                         }else{
                                             @nodes = ();                                   
                                         }
-                                        $nodes[@nodes] = CNFNode->new({name=>"$link", '*'=>$lval,'@' => \$self});
+                                        $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$lval,'@' => \$self});
                                         $self->{'@$'} = \@nodes;
                                     }
                                     else{
@@ -210,7 +210,7 @@ sub process {
                                 }
                                 next
                             }else{ 
-                                if(!$opening){warn "Anon link $link not located with $ln for node ".$self->{'name'}};
+                                if(!$opening){warn "Anon link $link not located with $ln for node ".$self->{'_'}};
                             }
                          }elsif($1 eq '@@'){
                                 if($opening==$closing){
@@ -226,7 +226,7 @@ sub process {
                                 $body .= qq($ln\n)
                         }
                         else{
-                                my $property = CNFNode->new({name=>$1, '#' => $2, '@' => \$self});
+                                my $property = CNFNode->new({'_'=>$1, '#' => $2, '@' => \$self});
                                 my @nodes;
                                 my $prev = $self->{'@$'};
                                 if($prev) {
@@ -249,30 +249,22 @@ sub process {
                     }
 
                     if(!$sub){                
-                        
-                        if($tag =~ /@@/){
-                    
-                            $isArray = $isArray?0:1;
-                            # $body="";
-                            # next
-
-                        }
-                        $sub = $tag;  $body="";
+                        $isArray = $isArray? 0 : 1 if $tag =~ /@@/;
+                        $sub = $tag;  $body = "";
                         next
-
                     }elsif($tag eq $sub && $isClosing){
                         if($opening==$closing){
                             if($tag eq '#'){
                                 $body =~ s/\s$//;#cut only one last nl if any.
                                 if(!$val){                                    
-                                    $val = $body;
+                                    $val  = $body;
                                 }else{ 
                                     $val .= $body
                                 }
                                 $valing = 0;
                             }else{         
                                 my $a = $isArray;
-                                my $property = CNFNode->new({name=>"$sub", '@' => \$self});                                   
+                                my $property = CNFNode->new({'_'=>$sub, '@' => \$self});                                   
                                 $property->process($parser, $body);
                                 $isArray = $a;
                                 if($tag eq '@@'){
@@ -284,9 +276,9 @@ sub process {
                                     my @nodes;
                                     my $prev = $self->{'@$'};
                                     if($prev) {
-                                    @nodes = @$prev;
+                                       @nodes = @$prev;
                                     }else{
-                                    @nodes = ();                                   
+                                       @nodes = ();                                   
                                     }
                                     $nodes[@nodes] = $property;
                                     $self->{'@$'} = \@nodes;
@@ -304,8 +296,7 @@ sub process {
                     $array[@array] = $ln;  
                    # next              
                 }elsif($opening==0 && $ln =~ /^([<\[])(.+)([<\[])(.*)([>\]])(.+)([>\]])$/ && 
-                              $1 eq $3 && $5 eq $7 ){ #<- tagged in line  
-
+                              $1 eq $3 && $5 eq $7 ){ #<- tagged in line
                         if($2 eq '#') {
                             if($val){$val = "$val $4"}
                             else{$val = $4}                           
@@ -323,7 +314,7 @@ sub process {
                                             }else{
                                                @nodes = ();                                   
                                             }
-                                            $nodes[@nodes] = CNFNode->new({name=>"$link", '*'=>$lval, '@' => \$self});
+                                            $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$lval, '@' => \$self});
                                             $self->{'@$'} = \@nodes;
                                         }
                                         else{
@@ -332,12 +323,12 @@ sub process {
                                         }                                 
                                     
                                 }else{ 
-                                    warn "Anon link $link not located with $ln for node ".$self->{'name'} if !$opening;
+                                    warn "Anon link $link not located with $ln for node ".$self->{'_'} if !$opening;
                                 }
                         }elsif($2 eq '@@'){
-                               $array[@array] = CNFNode->new({name=>"$2",'#'=>$4, '@' => \$self});                               
+                               $array[@array] = CNFNode->new({'_'=>$2, '#'=>$4, '@' => \$self});                               
                         }else{
-                                my $property = CNFNode->new({name=>"$2",'#'=>$4,'@' => \$self});                                
+                                my $property  = CNFNode->new({'_'=>$2, '#'=>$4, '@' => \$self});                                
                                 my @nodes;
                                 my $prev = $self->{'@$'};
                                 if($prev) {
