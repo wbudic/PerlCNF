@@ -717,7 +717,8 @@ sub parse {
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){                
+            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){ 
+               $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
                splice @ditms, $idx,1;          
             }
@@ -725,7 +726,8 @@ sub parse {
 
         foreach my $struct(@ditms){
             my $type =  ref($struct); 
-           if($type eq 'CNFNode'){            
+            if($type eq 'CNFNode'){   
+               $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};            
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
             }
         }

@@ -136,7 +136,7 @@ sub node {
         $ret = $self->{'@$'};
         if($ret){
             foreach(@$ret){
-                if ($_->{'name'} eq $name){
+                if ($_->{'_'} eq $name){
                     $ret = $_; last
                 }
             }
@@ -375,6 +375,66 @@ sub process {
     $self->{'@@'} = \@array if @array;
     $self->{'#'} = \$val if $val;
     return $self;
+}
+
+sub validate {
+    my ($self, $script) = @_;
+    my ($tag,$sta,$end,$lnc)=("","","",0); 
+    my (@opening,@closing,@singels);
+    my ($open,$close) = (0,0);
+    my @lines = split(/\n/, $script);
+    foreach my $ln(@lines){
+        $ln =~ s/^\s+|\s+$//g;
+        $lnc++;
+        #print $ln, "<-","\n";            
+        if(length ($ln)){
+            #print $ln, "\n";
+            if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/ && $1 eq $3){
+                $sta = $1;
+                $tag = $2;
+                $end = $3;
+                my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
+                if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){
+
+                }elsif($tag =~ /^(.*)[\[<]\/*(.*)[\]>](.*)$/ && $1 eq $3){
+                    $singels[@singels] = $tag;
+                    next
+                }
+                elsif($isClosing){
+                      push @closing, {T=>$tag, L=>$lnc};
+                      $close++                                             
+                }
+                else{
+                      push @opening, {T=>$tag, L=>$lnc};
+                      $open++
+                 }
+            }
+        }
+    }
+    if(@opening != @closing){ 
+       warn "Opening and clossing tags mismatch!";
+       foreach my $o(@opening){          
+          my $c = pop @closing;
+          if(!$c){
+             warn "Error unclosed tag-> [".$o->{T}.'[ @'.$o->{L}       
+          }
+       }
+       
+    }else{
+       my $errors = 0; my $error_tag;
+       for my $i (0..$#opening){
+          my $o = $opening[$i];
+          my $c = $closing[$#opening-$i];
+          if($o->{T} ne $c->{T}){
+             warn "Opening and clossing tags mismatch for ". $o->{T}.'@'.$o->{L}.' with '.$c->{T}.'@'.$c->{L};
+             warn "Error starts from tag-> [".$o->{T}.'[ @'.$o->{L} if $error_tag && $error_tag->{T} eq $o->{T};
+             $errors++;
+             $error_tag = $c;
+          }
+       }
+       return $errors;
+    }
+    return 0;
 }
 
 1;
