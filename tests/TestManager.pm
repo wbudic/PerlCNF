@@ -87,8 +87,9 @@ sub evaluate {
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
         ++$self->{sub_err};
-        print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. 
-              ": Failed!"." ($self->{sub_err}) ".RESET. RED.".eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;        
+        my ($package, $filename, $line) = caller; $filename =~ s/^(\.\/.*\/)/\@/;
+        print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
+              ": Failed!"." ($self->{sub_err}) ".RESET. YELLOW. "$filename line ".$line. RED.".eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;        
         return 0;
     }
     return 1;    
