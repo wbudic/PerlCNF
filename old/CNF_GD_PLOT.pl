@@ -8,11 +8,11 @@ use DBI;  use GD::Graph::lines;
 
 #DEFAULT SETTINGS HERE!
 #LanguageServer doesn't like -> $ENV{'PWD'} settings.json should not be set for it withn an pwd.
-#use lib "/home/will/dev/PerlCNF/system/modules/";
+#use lib "system/modules/";
 use lib "./system/modules/";
 require CNFParser;
 
-my $cnf = CNFParser->new('/home/will/dev/PerlCNF/databaseBitcoinPlot.cnf', {DO_enabled=>1});
+my $cnf = CNFParser->new('databaseBitcoinPlot.cnf', {DO_enabled=>1});
 my $DSN = CNFParser::anon('DBI_SOURCE');
 my $alin= $cnf->anon('AUTO_LOGIN');
 my ($u,$p) = split '/', $alin;
