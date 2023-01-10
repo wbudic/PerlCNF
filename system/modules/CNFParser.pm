@@ -1,15 +1,18 @@
 # Main Parser for the Configuration Network File Format.
 # This source file is copied and usually placed in a local directory, outside of its project.
 # So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
-# Programed by: Will Budic
+# Programed by  : Will Budic
+# Source Origin : https://github.com/wbudic/PerlCNF.git
 # Open Source License -> https://choosealicense.com/licenses/isc/
 #
 package CNFParser;
 
 use strict;use warnings;#use warnings::unused;
-use Exception::Class ('CNFParserException');
+use Exception::Class ('CNFParserException'); use Carp qw(cluck);
 use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
+use Time::HiRes qw(time);
+use DateTime;
 
 sub import {     
     my $caller = caller;
@@ -47,7 +50,7 @@ our %ANONS  = ();
 ###
 our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1, TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
-                       DO=>1,    PLUGIN=>1, MACRO=>1);
+                       DO=>1,    PLUGIN=>1, MACRO=>1, '%LOG'=>1);
 ###
 
 sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
@@ -55,9 +58,10 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         $self = \%$attrs;        
     }else{
         $self = {   #Case Sensitive don't tell me you set Do_enabled and it ain't working?
-                    DO_enabled=>0,       # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
+                    DO_enabled      =>0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
                     ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
-                    ENABLE_WARNINGS=>1   # Disable this one, and you will stare into the void, on errors or skipped.
+                    ENABLE_WARNINGS =>1, # Disable this one, and you will stare into the void, on errors or operations skipped.
+                    STRICT          =>1  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
         }; 
     }
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
@@ -86,6 +90,10 @@ package InstructedDataItem {
                 val => $val
         }, $class    
     }
+    sub toString {
+        my $self = shift;
+        return "<<".$self->{ele}."<".$self->{ins}.">".$self->{val}.">>"
+    }
 }
 #
 
@@ -98,8 +106,7 @@ package PropertyValueStyle {
         $self = {} if not $self;
         $self->{element}=$element;
         if($script){
-            my ($p,$v);
-            #my @body = ($script=~/\s*(\w*)\s*[:=]\s*(.*)\s*/gm);            
+            my ($p,$v);                     
             foreach my $itm($script=~/\s*(\w*)\s*[:=]\s*(.*)\s*/gm){
                 if($itm){
                     if(!$p){
@@ -720,23 +727,34 @@ sub parse {
             if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){ 
                $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
-               splice @ditms, $idx,1;          
+               splice @ditms, $idx,1;
             }
         }
-
-        foreach my $struct(@ditms){
+        for my $idx(0..$#ditms) {
+            my $struct = $ditms[$idx];
             my $type =  ref($struct); 
             if($type eq 'CNFNode'){   
                $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};            
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
+               splice @ditms, $idx,1;
             }
         }
+        @ditms =  sort {$a->{aid} <=> $b->{aid}} @ditms;
         foreach my $struct(@ditms){
             my $type =  ref($struct); 
             if($type eq 'InstructedDataItem'){
                 my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.             
-                   $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
+                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.
+                   try{             
+                            $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
+                            $self->log("Plugin instructed ->". $struct->{'ele'}) if $self->{ENABLE_WARNINGS};
+                   }catch{ 
+                            if($self->{STRICT}){
+                               CNFParserException->throw(error=>@_,trace=>1);
+                            }else{
+                               $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
+                            }
+                   }
                 }
             }
         }
@@ -791,7 +809,7 @@ sub doPlugin{
         }
     }
     else{
-        warn qq(Invalid plugin encountered '$elem' in "). $self->{'CNF_CONTENT'} .qq(
+        die qq(Invalid plugin encountered '$elem' in "). $self->{'CNF_CONTENT'} .qq(
         Plugin must have attributes -> 'library', 'property' and 'subroutine')
     }
 }
@@ -1017,13 +1035,13 @@ sub writeOut { my ($self, $handle, $property) = @_;
             my $val = $self->{$key};
             next if(ref($val) =~ /ARRAY|HASH/); #we write out only what is scriptable.
             if(!$val){
-                if($key =! /^is|^use|^bln|enabled$/i){
+                if($key =~ /^is|^use|^bln|enabled$/i){
                    $val = 0
                 }else{
                    $val = "\"\""
                 }
             }
-            elsif #Future versions of CNF will account also for multi line values for property attributes.
+            elsif #Future versions of CNF will account also for multiline values for property attributes.
             ($val =~ /\n/){
                 $val = "<#<\n$val>#>"
             }
@@ -1032,7 +1050,7 @@ sub writeOut { my ($self, $handle, $property) = @_;
             }        
             $buffer .= ' 'x$spc. $key .  " = $val\n";     
         }
-        $buffer .= ">>\n";
+        $buffer .= ">>";
         return $buffer if !$handle;
         print $handle $buffer;
         return 1
@@ -1078,7 +1096,56 @@ sub writeOut { my ($self, $handle, $property) = @_;
     }
 }
 
+###
+# The following is a typical example of an log settings property.
+#
+# <<@<%LOG>
+#             file      = web_server.log
+#             # Should it mirror to console too?
+#             console   = 1
+#             # Disable/enable output to file at all?
+#             enabled   = 0
+#             # Tail size cut, set to 0 if no tail cutting is desired.
+#             tail      = 1000
+# >>
+###
+sub log {
+    my $self    = shift;
+	my $message = shift;
+    my $attach  = join @_; $message .= $attach if $attach;
+    my %log = $self -> collection('%LOG');    
+    my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
 
+    print $time . " " . $message ."\n" if %log && $log{console} ;
+    if(%log && $log{enabled} && $message){
+        my $logfile  = $log{file};
+        my $tail_cnt = $log{tail};
+        if($log{tail} && $tail_cnt && int(`tail -n $tail_cnt $logfile | wc -l`)>$tail_cnt-1){
+            use File::ReadBackwards;
+            my $pos = do {
+               my $fh = File::ReadBackwards->new($logfile) or die $!;
+               $fh->readline() for 1..$tail_cnt;
+               $fh->tell()
+            };            
+            truncate($logfile, $pos) or die $!;
+            
+        }
+        open (my $fh, ">>", $logfile) or die ("$!");
+        print $fh $time . " - " . $message ."\n";
+        close $fh;
+    }
+}
+
+sub trace {
+    my $self    = shift;
+	my $message = shift; 
+    my %log = $self -> collection('%LOG');
+    if(%log){
+        $self -> log($message)
+    }else{
+        clack $message
+    }
+}
 
 sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}

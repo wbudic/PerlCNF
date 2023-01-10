@@ -1,3 +1,9 @@
+# 
+# Represents a tree node CNF object having children and a parent node if it is not the root.
+# Programed by  : Will Budic
+# Source Origin : https://github.com/wbudic/PerlCNF.git
+# Open Source License -> https://choosealicense.com/licenses/isc/
+#
 package CNFNode;
 use strict;
 use warnings;
