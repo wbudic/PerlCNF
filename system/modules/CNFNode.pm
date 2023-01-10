@@ -1,7 +1,7 @@
 package CNFNode;
 use strict;
 use warnings;
-
+use Carp qw(cluck);
 
 sub new {
     my ($class,$attrs, $self) = @_;
@@ -401,18 +401,19 @@ sub validate {
                     next
                 }
                 elsif($isClosing){
-                      push @closing, {T=>$tag, L=>$lnc};
-                      $close++                                             
+                      push @closing, {T=>$tag, L=>$lnc, N=>($open-$close)};
+                      $close++;                                            
                 }
                 else{
-                      push @opening, {T=>$tag, L=>$lnc};
-                      $open++
+                      $open++;
+                      push @opening, {T=>$tag, L=>$lnc, N=>($open-$close)};
+                      
                  }
             }
         }
     }
     if(@opening != @closing){ 
-       warn "Opening and clossing tags mismatch!";
+       cluck "Opening and clossing tags mismatch!";
        foreach my $o(@opening){          
           my $c = pop @closing;
           if(!$c){
@@ -421,15 +422,23 @@ sub validate {
        }
        
     }else{
-       my $errors = 0; my $error_tag;
-       for my $i (0..$#opening){
-          my $o = $opening[$i];
-          my $c = $closing[$#opening-$i];
+       my $errors = 0; my $error_tag; my $nesting;
+       my $cnt = $#opening;
+       for my $i (0..$cnt){
+          my $idx = $cnt - $i;
+          my $o = $opening[$i];          
+          my $c = $closing[$idx];
+          if($o->{T} ne $c->{T} && $o->{N} >= $c->{N}){
+                $idx = $i - ($c->{N} - 1);
+                $c = $closing[$idx] if $idx > -1;
+          }elsif($o->{T} ne $c->{T} && $c->{N} > $o->{N}){
+            $idx = $c->{N} - $o->{N} + 1;
+            $c = $closing[$idx];# if $idx < $cnt;
+          }
+
           if($o->{T} ne $c->{T}){
-             warn "Opening and clossing tags mismatch for ". $o->{T}.'@'.$o->{L}.' with '.$c->{T}.'@'.$c->{L};
-             warn "Error starts from tag-> [".$o->{T}.'[ @'.$o->{L} if $error_tag && $error_tag->{T} eq $o->{T};
+             cluck "Error opening and clossing tags mismatch for ". $o->{T}.'@'.$o->{L}.' with '.$c->{T}.'@'.$c->{L};#." expecting:".$p->{T}. " nesting:".$nesting->{T};            
              $errors++;
-             $error_tag = $c;
           }
        }
        return $errors;

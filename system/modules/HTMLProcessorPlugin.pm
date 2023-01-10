@@ -66,7 +66,7 @@ try{
     $buffer .= qq(<body$body_attrs>\n<div class="main"><div class="divTableBody">\n);
         foreach 
         my $node($tree->nodes()){  
-        my $bf   = build($node);     
+        my $bf   = build($parser, $node);     
         $buffer .= "$bf\n" if $node;
         }
     $buffer .= "\n</div></div>\n</body>\n</html>\n";
@@ -86,6 +86,7 @@ try{
 # i.e. HTML doesn't have row and cell tags. Neither has meta links syntax.
 ###
 sub build {
+    my $parser = shift;
     my $node = shift;
     my $tabs = shift; $tabs = 1 if !$tabs;
     my $bf;
@@ -94,7 +95,7 @@ sub build {
         $bf .= "\t"x$tabs."<div".placeAttributes($node).">\n"."\t"x$tabs."<div>";
             foreach my $n($node->nodes()){
                 if($n->{'_'} ne '#'){
-                    my $b = build($n, $tabs+1);     
+                    my $b = build($parser, $n, $tabs+1);     
                     $bf .= "$b\n" if $b;
                 }
             }
@@ -108,7 +109,7 @@ sub build {
         $bf .=  "\t"x$tabs."<div class=\"$name\"".placeAttributes($node).">\n";
             foreach my $n($node->nodes()){
                 if($n->{'_'} ne '#'){
-                    my $b = build($n,$tabs+1);
+                    my $b = build($parser,$n,$tabs+1);
                     $bf .= "$b\n" if $b;
                 }
             }
@@ -140,13 +141,20 @@ sub build {
                 }
                 $bf =~ s/\|$//g;
             }else{ #Generic included link value.
-                $bf .= $lval;
+                #is there property data for it?
+                my $prop = $parser->data()->{$node->name()};        
+                warn "Not found as property link -> ".$node->name() if !$prop;
+                if($prop){
+                    $bf .= $$prop;     
+                }else{
+                    $bf .= $lval;
+                }
             }
     }
     else{
         $bf .= "\t"x$tabs."<".$node->name().placeAttributes($node).">";
             foreach my $n($node->nodes()){                 
-                    my $b = build($n,$tabs+1);
+                    my $b = build($parser, $n,$tabs+1);
                     $bf .= "$b\n" if $b;        
             }
         $bf .= $node->val() if $node->{'#'};
