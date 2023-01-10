@@ -417,9 +417,14 @@ CNF supports basic SQL Database structure statement generation. This is done via
         6. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
             - Attributes must specified on a single line.
             - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
-   2. The TREE instruction will create an CNFNode object assigned to an unique anon.
-        1. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
-            - Each properties start and end tag must stand and be on its own line, withing the body.
+   2. The TREE instruction will create a CNFNode object assigned to an unique anon.
+        1. CNFNode object is the the individual tag with body product of the tree structure.
+            1. Usually used to validate, parse and traverse children nodes or to access the parent node.
+            2. The name of the CNFNode is the tag name of the property.
+            3. Each node has a name which is the [ **_** ] attribute.
+        2. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
+        3. Each properties own start and the end tag must stand and be on its own line within the script.
+           1. Exception to this are value and collection tags, which can be contained on a single line.
    3. Tree can contain links to other various properties, anons, that means also to other trees then the current one.
         1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
         2. It is not recommended to make circular links, or to priorities properties themselves containing links.
