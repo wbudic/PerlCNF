@@ -171,17 +171,15 @@ $cmd = `$cmd`;
 die "Error failed system command!" if !$cmd;
 #print "Listing:\n$exe\n";
 
-
-# We hash to the global here, otherwise need to use in scalar context the variable like: my $anons = $obj->anon().
-my %anons = %{CNFParser::ANONS};
-die "annons not valis!" if not %anons;
+my %anons = %{CNFParser::anon()};
+die "annons not valid!" if not %anons;
 print "\n--LIST OF ALL ANONS ENCOUNTERED---\n";
 foreach my $k (keys %anons){
     print "Key->$k=", $anons{$k},"]\n";
 }
 #eval((keys %anons) == 12) or die "Error annons count mismatch![".scalar(keys %anons)."]";
 
-eval(length($cnf->constant('$HELP'))>0) or die 'Error missing multi-line valued constant property $HELP';
+length($cnf->{'$HELP'})>0 or die 'Error missing multi-line valued constant property $HELP';
 
 my $template = $cnf ->  template( 'MyTemplate', (
                                                 'SALUTATION'=>'Mr',

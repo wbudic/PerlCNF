@@ -8,42 +8,27 @@
 package CNFParser;
 
 use strict;use warnings;#use warnings::unused;
-use Exception::Class ('CNFParserException'); use Carp qw(cluck);
+use Exception::Class ('CNFParserException'); 
 use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
 use Time::HiRes qw(time);
 use DateTime;
 
-sub import {     
-    my $caller = caller;
-    
-    {    no strict 'refs';
-         *{"${caller}::configDumpENV"} = \&dumpENV;
-         *{"${caller}::anon"} = \&anon;
-    }
-    return 1;    
-}
-
-
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
-##no critic qw(Subroutines::RequireFinalReturn)
-
+##no critic qw(Subroutines::RequireFinalReturn,ControlStructures::ProhibitMutatingListFunctions);
 
 use constant VERSION => '2.6';
 
-our %mig    = ();
-our @sql    = ();
-our @files  = ();
-our %tables = ();
-our %views  = ();
+
+our @files;
 our %lists;
 our %properties;
 our $CONSTREQ = 0;
 ###
 # Package fields are always global in perl!
 ###
-our %ANONS  = ();
+our %ANONS;
 ###
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
@@ -51,9 +36,15 @@ our %ANONS  = ();
 our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1, TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
                        DO=>1,    PLUGIN=>1, MACRO=>1, '%LOG'=>1);
+sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 ###
 
-sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
+###
+# Create a new CNFParser instance.
+# $path - Path to some .cnf file, to parse, not compsuluory to add now.
+# $attrs - is reference to hash of constances and settings to dynamically employ.
+# $del_keys -  is a reference to an array of constance attributes to dynamically remove. 
+sub new { my ($class, $path, $attrs, $del_keys, $self) = @_; 
     if ($attrs){
         $self = \%$attrs;        
     }else{
@@ -70,10 +61,27 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
          $self->{'__ANONS__'} = {};
     }
     $self->{'__DATA__'}  = {};
+    if(exists $self->{'%LOG'}){
+        if(ref($self->{'%LOG'}) ne 'HASH'){
+            die '%LOG'. "passed attribute is not an hash reference."
+        }else{
+            $properties{'%LOG'} = $self->{'%LOG'}
+        }
+    }
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
 #
+
+sub import {     
+    my $caller = caller;    
+    {
+         *{"${caller}::configDumpENV"} = \&dumpENV;
+         *{"${caller}::anon"} = \&anon;
+         *{"${caller}::SQL"} = \&SQL;
+    }
+    return 1;    
+}
 
 ###
 # Post parsing instructed special item objects.
@@ -223,19 +231,14 @@ sub anon {  my ($self, $n, $args)=@_;
     return $anechoic;
 }
 
-# Validates and returns the a constant value as part of this configs instance.
-# Returns undef if not.
+# Validates and returns a constant named value as part of this configs instance.
+# Returns false if it doesn't exist.
 sub const { my ($self,$c)=@_; 
     if(exists $self->{$c}){
        return  $self->{$c}
     }
-    return undef;
+    return;
 }
-#@DEPRECATED Attributes are all the constants, also externally are read only from v.2.5+.
-sub constant  {my ($self,$c)=@_; return $self->{$c} unless $CONSTREQ; 
-               my $r=$self->{$c}; return $r if defined($r); return CNFParserException->throw("Required constants variable ' $c ' not defined in config!")}
-#@DEPRECATED 
-sub constants {my $s=shift;return %$s}
 
 ##
 # Collections are global, Reason for this is that any number of subsequent files parsed,
@@ -252,9 +255,9 @@ sub collection { my($self, $name) = @_;
     if(exists($properties{$name})){
        my $ret = $properties{$name};
        if(ref($ret) eq 'ARRAY'){ 
-          return  @{$properties{$name}}
+          return  @{$ret}
        }else{
-          return  %{$properties{$name}}
+          return  %{$ret}
        }
     }
     return %properties{$name}
@@ -282,12 +285,6 @@ sub list  {
         return @{$an} if defined $an; 
         die "Error: List name '$t' not found!"
 }
-
-our %curr_tables  = ();
-our $isPostgreSQL = 0;
-
-sub isPostgreSQL{shift; return $isPostgreSQL}# Enabled here to be called externally.
-sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 
 # Adds a list of environment expected list of variables.
 # This is optional and ideally to be called before parse.
@@ -336,6 +333,7 @@ sub template { my ($self, $property, %macros) = @_;
 }
 #
 
+
 ###
 # Parses a CNF file or a text content if specified, for this configuration object.
 ##
@@ -381,7 +379,7 @@ sub parse {
       if($tag=~m/^<CONST/){#constant multiple properties.
 
             foreach  (split '\n', $tag){
-                my $k;#place holder trick for split.
+                my $k;                
                 my @properties = map {
                     s/^\s+|\s+$//;  # strip unwanted spaces
                     s/^\s*["']|['"]\s*$//g;#strip qoutes
@@ -403,7 +401,7 @@ sub parse {
         }        
         else{
             #vars are e-element,t-token or instruction,v- for value, vv -array of the lot.
-            my ($e,$t,$v,$st,@vv);
+            my ($e,$t,$v,@vv);
             # Before mauling into possible value types, let us go for the full expected tag specs first:
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
@@ -414,7 +412,7 @@ sub parse {
             if(!$RESERVED_WORDS{$t} || @vv!=3){
                 if($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
                     $e =$1; $v=$2; $t = $v;
-                    warn "Encountered a mauled instruction tag: $tag\n" if $self->{ENABLE_WARNINGS};                
+                    $self->warn("Encountered a mauled instruction tag: $tag\n")
                 }else{# Nope!? Let's continue mauling. Life is cruel, that's for sure.
                     @vv = ($tag =~ m/(@|[\$@%\W\w]*)<([.]*\s*)>*|(.*)>+|(.*)/gsm);
                     $e = shift @vv;#$e =~ s/^\s*//g;            
@@ -425,7 +423,7 @@ sub parse {
                         $t = shift @vv;                    
                         if(!$e){
                                 if($self->{ENABLE_WARNINGS}){
-                                    warn "Encountered invalid tag formation -> <<$tag>>"
+                                    $self->warn("Encountered invalid tag formation -> <<$tag>>");
                                 }else{
                                     die  "Encountered invalid tag formation -> <<$tag>>"
                                 }
@@ -477,16 +475,26 @@ sub parse {
                         $_ ? $_ : undef   # return the modified string
                     } @lst;
                 if($isArray){
-                    my @arr=(); 
-                    foreach  (@props){                        
-                        push @arr, $_ if($_ && length($_)>0);
+                    if($self->isReservedWord($t)){
+                        $self->warn("ERROR collection is trying to use a reserved property name -> $t.");
+                        next
+                    }else{
+                            my @arr=(); 
+                            foreach  (@props){                        
+                                push @arr, $_ if($_ && length($_)>0);
+                            }
+                            $properties{$t}=\@arr;
                     }
-                    $properties{$t}=\@arr;
                 }else{
                     my %hsh;                    
-                    my $macro = 0;
+                    my $macro = 0;                    
                     if(exists($properties{$t})){
-                       %hsh =  %{$properties{$t}}
+                        if($self->isReservedWord($t)){
+                            $self->warn("Skipped overwritting reserved property -> $t.");
+                            next
+                        }else{
+                            %hsh =  %{$properties{$t}}
+                        }
                     }else{
                        %hsh =();                      
                     }
@@ -508,7 +516,7 @@ sub parse {
                                     $value =~ s/\Q$find\E/$r/g;                    
                                 }
                             }
-                            $hsh{$name}=$value;  print "macro $t.$name->$value\n" if $self->{DEBUG}
+                            $hsh{$name}=$value;  $self->log("macro $t.$name->$value\n") if $self->{DEBUG}
                         }
                     }
                     $properties{$t}=\%hsh;
@@ -608,7 +616,6 @@ sub parse {
                                     push @a, $v;
                                 }
                                 else{
-                                    
                                     if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
                                         $d = $1;#substr $d, 1;
                                         $d=0 if !$d; #default to 0 if not specified.
@@ -617,8 +624,7 @@ sub parse {
                                     else{
                                     push @a, $d; 
                                     }                                                
-                                }                   
-                                
+                                }                                
                                 my $existing = $self->{'__DATA__'}{$e};
                                 if(defined $existing){
                                         my @rows = @$existing;
@@ -635,42 +641,28 @@ sub parse {
             }elsif($t eq 'TREE'){
                 $instructs{$e} = CNFNode->new({'_'=>$e,script=>$v}); 
 
-            }elsif($t eq 'TABLE'){
-               $st = "CREATE TABLE $e(\n$v);";
-               $tables{$e} = $st;               
-            }
-            elsif($t eq 'INDEX'){
-               $st = "CREATE INDEX $v;";
-               push @sql, $st if $st;#push as application statement.
-            }
-            elsif($t eq 'VIEW'){
-                $st = "CREATE VIEW $e AS $v;";
-                $views{$e} = $st;                
-            }
-            elsif($t eq 'SQL'){
-                $anons->{$e} = $v;
-            }
-            elsif($t eq 'MIGRATE'){
-                my @m = $mig{$e};
-                   @m = () if(!@m);
-                push @m, $v;
-                $mig{$e} = [@m];
+            }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
+               SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
+                elsif($t eq 'INDEX'){ SQL()->createIndex($v)}  
+                   elsif($t eq 'VIEW'){ SQL()->createView($e,$v)}
+                      elsif($t eq 'SQL'){ SQL($e,$v)}
+                         elsif($t eq 'MIGRATE'){SQL()->migrate($e, $v)
             }
             elsif($t eq 'DO'){
                 if($DO_enabled){
                     ## no critic BuiltinFunctions::ProhibitStringyEval
                     $v = eval $v;
                     ## use critic
-                    chomp $v; $anons->{$e} = $_;
-                }elsif($self->{ENABLE_WARNINGS}){
-                    warn "Do_enabled is set to false to process property: $e\n" 
+                    chomp $v; $anons->{$e} = $v;
+                }else{
+                    $self->warn("Do_enabled is set to false to process property: $e\n")
                 }
             }
             elsif($t eq 'PLUGIN'){ 
                 if($DO_enabled){
                     $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
-                }elsif($self->{ENABLE_WARNINGS}){
-                    warn "Do_enabled is set to false to process following plugin: $e\n" 
+                }else{
+                    $self->warn("Do_enabled is set to false to process following plugin: $e\n")
                 }                
             }
             elsif($t eq 'MACRO'){                  
@@ -711,7 +703,7 @@ sub parse {
                         my $r = %$anons{$s};
                         $r = $self->{$s} if !$r;                    
                         if(!$r){
-                            warn "Unable to find property to translate macro expansion: $e -> $find\n" if $self->{ENABLE_WARNINGS}
+                            $self->warn("Unable to find property to translate macro expansion: $e -> $find\n");
                         }else{
                             $v =~ s/\Q$find\E/$r/g;                    
                         }
@@ -747,7 +739,7 @@ sub parse {
                 if($t eq 'PLUGIN'){  #for now we keep the plugin instance.
                    try{             
                             $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
-                            $self->log("Plugin instructed ->". $struct->{'ele'}) if $self->{ENABLE_WARNINGS};
+                            $self->log("Plugin instructed ->". $struct->{'ele'});
                    }catch{ 
                             if($self->{STRICT}){
                                CNFParserException->throw(error=>@_,trace=>1);
@@ -760,7 +752,6 @@ sub parse {
         }
         undef %instructs;        
     }
-
     ###
     # Following is experimental. Not generally required, and it is a bit of an overkill.
     ###
@@ -779,6 +770,15 @@ sub parse {
     lock_hash(%$self);#Make them finally constances.
 }
 #
+
+our $SQL;
+sub  SQL {
+    if(!$SQL){##It is late compiled on demand.
+        require CNFSQL; $SQL  = CNFSQL->new();
+    }
+    $SQL->addStatement(@_) if @_;
+    return $SQL;
+}
 
 ###
 # Setup and pass to pluging CNF functionality.
@@ -812,210 +812,6 @@ sub doPlugin{
         die qq(Invalid plugin encountered '$elem' in "). $self->{'CNF_CONTENT'} .qq(
         Plugin must have attributes -> 'library', 'property' and 'subroutine')
     }
-}
-##
-# Required to be called when using CNF with an database based storage.
-# This subrotine is also a good example why using generic driver is not recomended. 
-# Various SQL db server flavours meta info is def. handled differently and not updated in them.
-#
-sub initiDatabase { my($self, $db, $do_not_auto_synch, $st) = @_;
-#Check and set CNF_CONFIG
-try{    
-    $isPostgreSQL = $db-> get_info( 17) eq 'PostgreSQL';
-    if($isPostgreSQL){
-        my @tbls = $db->tables(undef, 'public'); #<- This is the proper way, via driver, doesn't work on sqlite.
-        foreach (@tbls){
-            my $t = uc substr($_,7); $t =~ s/^["']|['"]$//g;
-            $curr_tables{$t} = 1;
-        }
-    }
-    else{        
-        my $pst = selectRecords($self, $db, "SELECT name FROM sqlite_master WHERE type='table' or type='view';");        
-        while(my @r = $pst->fetchrow_array()){
-            $curr_tables{$r[0]} = 1;
-        }
-    }
-
-    if(!$curr_tables{CNF_CONFIG}){        
-        my $stmt;
-        if($isPostgreSQL){
-            $stmt = qq|
-                    CREATE TABLE CNF_CONFIG
-                    (
-                        NAME character varying(16)  NOT NULL,
-                        VALUE character varying(128) NOT NULL,
-                        DESCRIPTION character varying(256),
-                        CONSTRAINT CNF_CONFIG_pkey PRIMARY KEY (NAME)
-                    )|;
-        }else{
-            $stmt = qq|
-                CREATE TABLE CNF_CONFIG (
-                    NAME VCHAR(16) NOT NULL,
-                    VALUE VCHAR(128) NOT NULL,
-                    DESCRIPTION VCHAR(256)
-                )|;
-        }
-        $db->do($stmt);        
-        print "CNFParser-> Created CNF_CONFIG table.";
-        $st = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
-        $db->begin_work();
-        foreach my $key($self->constants()){
-            my ($dsc,$val);
-            $val = $self->constant($key);
-            my @sp = split '`', $val;
-            if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
-            $st->execute($key,$val,$dsc);
-        }
-        $db->commit();
-    }else{
-        my $sel = $db->prepare('SELECT VALUE FROM CNF_CONFIG WHERE NAME LIKE ?;');
-        my $ins = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
-        foreach my $key(sort keys %{$self->constants()}){
-                my ($dsc,$val);
-                $val = $self->constant($key);
-                my @sp = split '`', $val;
-                if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
-                $sel->execute($key);
-                if(!$sel->fetchrow_array()){
-                    $ins->execute($key,$val,$dsc);   
-                }                      
-        }
-    }
-    # By default we automatically data insert synchronize script with database state on every init. 
-    # If set $do_not_auto_synch = 1 we skip that if table is present, empty or not, 
-    # and if has been updated dynamically that is good, what we want. It is of external config. implementation choice.
-    foreach my $tbl(keys %tables){
-        if(!$curr_tables{$tbl}){
-            $st = $tables{$tbl};
-            print "CNFParser-> SQL: $st\n";
-            $db->do($st);
-            print "CNFParser-> Created table: $tbl\n";
-        }
-        else{
-            next if $do_not_auto_synch;
-        }
-        if(isPostgreSQL()){
-            $st = lc $tbl; #we lc, silly psql is lower casing meta and case sensitive for internal purposes.
-            $st="select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";            
-            print "CNFParser-> $st", "\n";
-           $st = $db->prepare($st);          
-        }else{
-           $st = $db->prepare("pragma table_info($tbl)");
-        }
-        $st->execute();  
-        my $q =""; my @r;
-        while(@r=$st->fetchrow_array()){ $q.="?,"; } $q =~ s/,$//;
-        my $ins = $db->prepare("INSERT INTO $tbl VALUES($q);");        
-        $st="SELECT * FROM $tbl where ".getPrimaryKeyColumnNameWherePart($db, $tbl); 
-        print  "CNFParser-> $st\n";
-        my $sel = $db->prepare($st);
-        @r = @{$self->{'__DATA__'}{$tbl}};
-        $db->begin_work();
-          foreach my $rs(@r){
-            my @cols=split(',',$rs);
-            # If data entry already exists in database, we skip and don't force or implement an update, 
-            # as potentially such we would be overwritting possibly changed values, and inserting same pk's is not allowed as they are unique.
-            next if hasEntry($sel, $cols[0]);
-            print "CNFParser-> Inserting into $tbl -> @cols\n";
-            $ins->execute(@cols);
-        }
-        $db->commit();
-    }
-    foreach my $view(keys %views){
-        if(!$curr_tables{$view}){
-            $st = $views{$view};
-            print "CNFParser-> SQL: $st\n";
-            $db->do($st);
-            print "CNFParser-> Created view: $view\n";
-        }
-    }
-    # Following is not been kept no more for external use.
-    undef %tables;
-    undef %views;
-    undef %mig;    
-}
-catch{
-  CNFParserException->throw(error=>$@, show_trace=>1);   
-}
-return $self -> constant('$RELEASE_VER');
-}
-
-sub hasEntry{  my ($sel, $uid) = @_; 
-    $uid=~s/^["']|['"]$//g;
-    $sel->execute($uid);
-    my @r=$sel->fetchrow_array();
-    return scalar(@r);
-}
-
-sub getPrimaryKeyColumnNameWherePart { my ($db,$tbl) = @_; $tbl = lc $tbl;
-    my $sql = $isPostgreSQL ? qq(SELECT c.column_name, c.data_type
-FROM information_schema.table_constraints tc 
-JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
-JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema
-  AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
-WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = '$tbl') : 
-qq(PRAGMA table_info($tbl););
-my $st = $db->prepare($sql); $st->execute();
-my @r  = $st->fetchrow_array();
-if(!@r){
-    CNFParserException->throw(error=> "Table missing or has no Primary Key -> $tbl", show_trace=>1);
-}
-    if($isPostgreSQL){
-        return $r[0]."=?";
-    }else{
-        # sqlite
-        # cid[0]|name|type|notnull|dflt_value|pk<--[5]
-        while(!$r[5]){
-            @r  = $st->fetchrow_array();
-            if(!@r){
-            CNFParserException->throw(error=> "Table  has no Primary Key -> $tbl", show_trace=>1);
-            }
-        }
-        return $r[1]."=?";
-    }
-}
-
-sub selectRecords {
-    my ($self, $db, $sql) = @_;
-    if(scalar(@_) < 2){
-         die  "Wrong number of arguments, expecting CNFParser::selectRecords(\$db, \$sql) got Settings::selectRecords('@_').\n";
-    }
-    try{
-        my $pst	= $db->prepare($sql);                
-        return 0 if(!$pst);
-        $pst->execute();
-        return $pst;
-    }catch{
-                CNFParserException->throw(error=>"Database error encountered!\n ERROR->$@\n SQL-> $sql DSN:".$db, show_trace=>1);
-    }
-}
-#@deprecated
-sub tableExists { my ($self, $db, $tbl) = @_;
-    try{
-        $db->do("select count(*) from $tbl;");
-        return 1;
-     }catch{}
-     return 0;
-}
-###
-# Buffer loads initiated a file for sql data instructions.
-# TODO 2020-02-13 Under development.
-#
-sub initLoadDataFile {# my($self, $path) = @_;
-return 0;
-}
-###
-# Reads next collection of records into buffer.
-# returns 2 if reset with new load.
-# returns 1 if done reading data tag value, last block.
-# returns 0 if done reading file, same as last block.
-# readNext is accessed in while loop,
-# filling in a block of the value for a given CNF tag value.
-# Calling readNext, will clear the previous block of data.
-# TODO 2020-02-13 Under development.
-#
-sub readNext(){
-return 0;
 }
 
 # Writes out to a handle an CNF property or this parsers constance's as default property.
@@ -1135,7 +931,17 @@ sub log {
         close $fh;
     }
 }
-
+use Carp qw(cluck); #what the? I know...
+sub warn {
+    my $self    = shift;
+	my $message = shift; 
+    $message = "WARN $message\t".$self->{CNF_CONTENT};
+    if($self->{ENABLE_WARNINGS}){
+        $self -> log($message)
+    }else{
+        cluck $message
+    }
+}
 sub trace {
     my $self    = shift;
 	my $message = shift; 
@@ -1143,7 +949,7 @@ sub trace {
     if(%log){
         $self -> log($message)
     }else{
-        clack $message
+        cluck $message
     }
 }
 
@@ -1151,19 +957,10 @@ sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
 }
 
-###
-# Closes any buffered files and clears all data for the parser.
-# TODO 2020-02-13 Under development.
-#
+
 sub END {
-
 undef %ANONS;
-undef %mig;
-undef @sql;
 undef @files;
-undef %tables;
-
 }
 
-### CGI END
 1;
