@@ -8,10 +8,8 @@ $RELEASE_VER = 1.0`Current CNF version under test.
 
 <<DBI_SOURCE<DBI:Pg:host=localhost;dbname=lifelog>>>
 <<AUTO_LOGIN<lifelog/lifelog>>>
-<<CNF_PROCESSING_DATE<DO
-my $date = `date +%c`;
->>>
-<<@<@DIM_SET_BITCOIN<1200,480>>>
+<<CNF_PROCESSING_DATE<DO>my $date = `date +%c`;>>
+<<@<@DIM_SET_BITCOIN>1200,480>>
 <<@<%HSH_SET_BITCOIN_LINE_PLOT_RANGE<MACRO
 
 title             = 'Current Bitcoin Price State $$$CNF_PROCESSING_DATE$$$'
@@ -52,7 +50,7 @@ FROM public."DAILY_AVG_BITCOIN"
 ORDER BY dt;
 >>
 
-<<BITCOIN<SQL<
+<<BITCOIN<SQL>
 
 CREATE TABLE IF NOT EXISTS public.bitcoin
 (
@@ -65,16 +63,16 @@ TABLESPACE pg_default;
 
 ALTER TABLE public.bitcoin
     OWNER to lifelog;
->
+>>
 
-<<DAILY_AVG_BITCOIN<VIEW<
+<<DAILY_AVG_BITCOIN<VIEW>
  SELECT date(t.date) AS dt,
     max(t.value) AS max,
     min(t.value) AS min,
     avg(t.value) AS avg
    FROM bitcoin t
   GROUP BY (date(t.date));
->>>
+>>
 
 <<CRON_BITCOIN_SERVICE<SCRIPT<
 
