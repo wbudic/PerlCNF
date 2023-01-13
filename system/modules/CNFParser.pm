@@ -18,12 +18,13 @@ use DateTime;
 # We can use perls default behaviour on return.
 ##no critic qw(Subroutines::RequireFinalReturn,ControlStructures::ProhibitMutatingListFunctions);
 
-use constant VERSION => '2.6';
+use constant VERSION => '2.7';
 
 
 our @files;
 our %lists;
 our %properties;
+our %instructors;
 our $CONSTREQ = 0;
 ###
 # Package fields are always global in perl!
@@ -33,9 +34,9 @@ our %ANONS;
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
 ###
-our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1, TREE=>1,
+our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1,  TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
-                       DO=>1,    PLUGIN=>1, MACRO=>1, '%LOG'=>1);
+                       DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INSTRUCTOR=>1);
 sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 ###
 
@@ -574,7 +575,6 @@ sub parse {
                }           
                 
             }elsif($t eq 'FILE'){
-
                 my ($i,$path) = $cnf;
                 $v=~s/\s+//g;
                 $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
@@ -664,6 +664,16 @@ sub parse {
                 }else{
                     $self->warn("Do_enabled is set to false to process following plugin: $e\n")
                 }                
+            }
+            elsif($t eq 'INSTRUCTOR'){ 
+                if(not $self->registerInstructor($e, $v) && $self->{STRICT}){
+                   CNFParserException->throw("Instruction Registration Failed for '<<$e<$t>$v>>'!\t");
+                }
+            }
+            elsif(exists $instructors{$t}){
+                if(not $instructors{$t}->instruct($e, $v) && $self->{STRICT}){
+                   CNFParserException->throw("Instruction processing failed for '<<$e<$t>>'!\t");
+                }
             }
             elsif($t eq 'MACRO'){                  
                   $instructs{$e}=$v;                  
@@ -778,6 +788,59 @@ sub  SQL {
     }
     $SQL->addStatement(@_) if @_;
     return $SQL;
+}
+
+
+###
+# Register Instructor on tag and value to externally process.
+# $package  - Is the package name.
+# $body     - Contains attribute(s) linking to method(s) to be registered.
+# @TODO Current Under development.
+###
+sub registerInstructor { 
+     my ($self, $package, $body) = @_;
+     $body =~ s/^\s*|\s*$//g;
+     my ($obj, %args, $ins);
+     foreach my $ln(split(/\n/,$body)){
+             my @pair = $ln =~ /\s*(\w+)[:=](.*)\s*/;
+             my $ins  = $1; $ins = $ln if !$ins;
+             my $mth  = $2;
+             if($ins =~ /[a-z]/){
+                $args{$ins} = $mth;
+                next
+             }             
+             if(exists $instructors{$ins}){
+                $self -> log("ERR $package<$ins> <- Instruction has already been registered by: ".$instructors{$ins});
+                return;
+             }else{
+                foreach(values %instructors){
+                    if(ref($$_) eq $package){
+                       $obj = $_; last
+                    }
+                }
+                if(!$obj){
+                    ## no critic (RequireBarewordIncludes)
+                    require $package.'.pm';
+                    my $methods =   Class::Inspector->methods($package, 'full', 'public');
+                    my ($has_new,$has_instruct);
+                    foreach(@$methods){
+                        $has_new      = 1 if $_ eq "$package\::new";
+                        $has_instruct = 1 if $_ eq "$package\::instruct";
+                    }
+                    if(!$has_new){
+                        $self -> log("ERR $package<$ins> -> new() method not found for package.");
+                        return;
+                    }
+                    if(!$has_instruct){
+                        $self -> log("ERR $package<$ins> -> instruct() required method not found for package.");
+                        return;
+                    }                
+                    $obj = $package -> new(\%args);
+                }
+                $instructors{$ins} = \$obj;
+             }
+     }
+     return \$obj;
 }
 
 ###
