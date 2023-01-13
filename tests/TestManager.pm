@@ -6,7 +6,6 @@
 package TestManager;
 use warnings; use strict;
 use Term::ANSIColor qw(:constants);
-
 use Timer::Simple;
 
 my $timer = Timer::Simple->new(start => 0, string => 'human');
@@ -27,6 +26,7 @@ sub new {
 sub failed {
     my ($self, $err) = @_; 
     $err="" if !$err;
+    ++$self->{sub_err};
     return BLINK. BRIGHT_RED. " on test: ".$self->{test_cnt}." -> $err". RESET
 }
 
@@ -184,12 +184,12 @@ sub dumpTermination {
         }
     }else{
      ($trace,$file,$lnErr) = ($comment =~ m/(.*)\sat\s*(.*)\sline\s(\d*)\.$/); 
-    }    
-    
+    }
+    print BOLD BRIGHT_RED "Test file failed -> $comment";
+    if($file){
     open (my $flh, '<:perlio', $file) or die("Error $! opening file: '$file'\n$comment");
           my @slurp = <$flh>;
     close $flh;
-    print BOLD BRIGHT_RED "Test file failed -> $comment";
     our $DEC = "%0".(length($slurp[-1]) + 1)."d   ";
     my $clnt=int(0);
     for(my $i=0; $i<@slurp;$i++)  { 
@@ -232,6 +232,7 @@ sub dumpTermination {
              $clnt = $past = $cterminated = 0;
              $comment ="" # trim excessive pre line collecting.
         }
+    }
     }
     exit;
 }
