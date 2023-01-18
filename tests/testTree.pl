@@ -16,7 +16,7 @@ my $cnf;my $err;
 try{
 
    $test->case("Test nested multiline value.");
-   my $property = CNFNode->new({name=>'TEST'})->process(CNFParser->new(), qq(           
+   my $property = ${CNFNode->new({name=>'TEST'})->process(CNFParser->new(), qq(           
          [a[
            [b[
                       [#[
@@ -33,7 +33,7 @@ try{
                 <a name="top"></a><a href="#bottom">To Bottom</a>
             ]#]            
          ]cell]      
-   ));
+   ))};
    
    my $prp = $property->find('cell');
    $test ->isDefined('cell', $prp);
@@ -68,7 +68,7 @@ my $for_html = q(
    [test[me too]test]
 );
 
-$prp = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$for_html);
+$prp = ${CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$for_html)};
 my $nested = $prp->find('div/div/div/[0]/#');
 $test->evaluate("div/div/div/{0}/#",$nested,"This sample is more HTML look alike type of scheme.");
 
@@ -115,7 +115,7 @@ $test->evaluate("\$TEST/test",$nada,'me too');
          ]2]
       ]node]   
    };
-   $property = CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$tree);
+   $property = ${CNFNode->new({name=>'TEST'})->process(CNFParser->new(),$tree)};
    # my %node = %${node($node, 'node/1/2/3')};
    # print "[[".$node{'#'}."]]\n";
    
@@ -215,7 +215,7 @@ $test->evaluate("\$TEST/test",$nada,'me too');
    #    >node>
    # };
    
-   $property = CNFNode->new({name=>'TEST ARRAY'})->process($cnf,$tree);
+   $property = ${CNFNode->new({name=>'TEST ARRAY'})->process($cnf,$tree)};
 
    my $node  = $property->find('node/@@');
    $test->isDefined('node/@@', $node);

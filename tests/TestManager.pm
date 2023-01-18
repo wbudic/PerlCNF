@@ -112,6 +112,18 @@ sub isDefined{
     return 1;
 }
 
+sub isZeroOrEqual{
+    my ($self, $var, $aa, $bb)=@_;     
+    if ($aa == 0 or $aa==$bb){
+        print GREEN."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is ZeroOrEqual.\n"
+    }else{        
+        ++$self->{sub_err};
+        print BLINK. BRIGHT_RED."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
+        return 0;
+    }
+    return 1;
+}
+
 ###
 # Performs non critical evaluation if an scalar is undefined. 
 # Atributes are $var for variable name and, $val the actual variable.
