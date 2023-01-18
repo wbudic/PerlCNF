@@ -380,15 +380,15 @@ sub process {
 
     $self->{'@@'} = \@array if @array;
     $self->{'#'} = \$val if $val;
-    return $self;
+    return \$self;
 }
 
 sub validate {
     my ($self, $script) = @_;
-    my ($tag,$sta,$end,$lnc)=("","","",0); 
+    my ($tag,$sta,$end,$lnc,$errors)=("","","",0,0); 
     my (@opening,@closing,@singels);
     my ($open,$close) = (0,0);
-    my @lines = split(/\n/, $script);
+    my @lines = split(/\n/, $script);    
     foreach my $ln(@lines){
         $ln =~ s/^\s+|\s+$//g;
         $lnc++;
@@ -407,13 +407,12 @@ sub validate {
                     next
                 }
                 elsif($isClosing){
-                      push @closing, {T=>$tag, L=>$lnc, N=>($open-$close)};
-                      $close++;                                            
+                      $close++;
+                      push @closing, {T=>$tag, idx=>$close, L=>$lnc, N=>($open-$close+1),S=>$sta};
                 }
-                else{
+                else{                      
+                      push @opening, {T=>$tag, idx=>$open, L=>$lnc, N=>($open-$close),S=>$sta};
                       $open++;
-                      push @opening, {T=>$tag, L=>$lnc, N=>($open-$close)};
-                      
                  }
             }
         }
@@ -423,6 +422,7 @@ sub validate {
        foreach my $o(@opening){          
           my $c = pop @closing;
           if(!$c){
+            $errors++;
              warn "Error unclosed tag-> [".$o->{T}.'[ @'.$o->{L}       
           }
        }
@@ -431,25 +431,40 @@ sub validate {
        my $errors = 0; my $error_tag; my $nesting;
        my $cnt = $#opening;
        for my $i (0..$cnt){
-          my $idx = $cnt - $i;
+          
           my $o = $opening[$i];          
-          my $c = $closing[$idx];
-          if($o->{T} ne $c->{T} && $o->{N} >= $c->{N}){
-                $idx = $i - ($c->{N} - 1);
-                $c = $closing[$idx] if $idx > -1;
-          }elsif($o->{T} ne $c->{T} && $c->{N} > $o->{N}){
-            $idx = $c->{N} - $o->{N} + 1;
-            $c = $closing[$idx];# if $idx < $cnt;
-          }
+          my $c = $closing[$cnt - $i];
+          if($o->{T} ne $c->{T}){
+            print '['.$o->{T}."[ idx ".$o->{idx}." line ".$o->{L}.
+                  ' but picked for closing: ]'.$c->{T}.'] idx '.$o->{idx}.' line '.$c->{L}."\n" if $self->{DEBUG};
+            # Let's try same index from the clossing array.
+            $c = $closing[$i];
+          }else{next}
 
           if($o->{T} ne $c->{T}){
-             cluck "Error opening and clossing tags mismatch for ". $o->{T}.'@'.$o->{L}.' with '.$c->{T}.'@'.$c->{L};#." expecting:".$p->{T}. " nesting:".$nesting->{T};            
+                my $j = $cnt;
+                for ($j = $cnt; $j>-1; $j--){  # TODO 2023-0117 - For now matching by tag name, 
+                     $c = $closing[$j];# can't be bothered, to check if this will always be appropriate.
+                    last if $c -> {T} eq $o->{T}
+                }
+                print "\t search [".$o->{T}.'[ idx '.$o->{idx} .' line '.$o->{L}. 
+                      ' top found: ]'.$c->{T}."] idx ".$c->{idx}." line ".$c->{N}." loops: $j \n" if $self->{DEBUG};
+          }else{next}
+
+          if($o->{T} ne $c->{T} && $o->{N} ne $c->{N}){
+             cluck "Error opening and clossing tags mismatch for ". 
+                    brk($o).' ln: '.$o->{L}.' idx: '.$o->{idx}.
+                    ' wrongly matched with '.brk($c).' ln: '.$c->{L}.' idx: '.$c->{idx}."\n";
              $errors++;
           }
-       }
-       return $errors;
+       }       
     }
-    return 0;
+    return  $errors;
+}
+
+sub brk{
+    my $t = shift;
+    return 'tag: \''.$t->{S}.$t->{T}.$t->{S}.'\''
 }
 
 1;

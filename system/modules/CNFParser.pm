@@ -53,7 +53,8 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
                     DO_enabled      =>0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
                     ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
                     ENABLE_WARNINGS =>1, # Disable this one, and you will stare into the void, on errors or operations skipped.
-                    STRICT          =>1  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                    STRICT          =>1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                    DEBUG           =>0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
         }; 
     }
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
@@ -183,7 +184,7 @@ sub anon {  my ($self, $n, $args)=@_;
     if(ref($self) ne 'CNFParser'){
         $n = $self;
     }elsif (not $self->{'ANONS_ARE_PUBLIC'}){            
-            $anechoic = $self->{'__ANONS__'};        
+        $anechoic = $self->{'__ANONS__'};        
     }
     if($n){
         my $ret = %$anechoic{$n};
@@ -226,7 +227,8 @@ sub anon {  my ($self, $n, $args)=@_;
                 warn "Scalar argument passed $args, did you mean array to pass? For property $n=$ret\n" 
                                  unless $self and not $self->{ENABLE_WARNINGS}                
             }
-        }
+        }        
+        return $$ret if ref($ret) eq "REF";
         return $ret;
     }
     return $anechoic;
@@ -639,7 +641,9 @@ sub parse {
                     }       
                 }              
             }elsif($t eq 'TREE'){
-                $instructs{$e} = CNFNode->new({'_'=>$e,script=>$v}); 
+                my $tree = CNFNode->new({'_'=>$e,script=>$v}); 
+                   $tree->{DEBUG} = $self->{DEBUG};
+                $instructs{$e} = $tree; 
 
             }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
                SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
