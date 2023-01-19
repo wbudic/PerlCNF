@@ -19,7 +19,7 @@
 				{
 					"match": "^\\s*([\\w_-]+)\\s*([:=])\\s*(([\\\"'a-zA-Z_-]+\\b.*)|([\\d.]+))\\\"*\\'*|([\\{\\}])|((\\[#\\[)|(\\]#\\]))",
 					"captures": {
-						"1":{"name": "keyword.control.cnf"},
+						"1":{"name": "keyword"},
 						"2":{"name": "keyword.operator"},
 						"3":{"name": "constant.numeric"},
 						"4":{"name": "string"},
@@ -86,25 +86,24 @@
 					}
 					
 				},				
-				{
-					"name":"keyword.control.cnf",							
-					"match": "([@%]*[a-zA-Z_-]*?)([<>])([@%]*[A-Z_-]*?)(>*)|(CONST|DATA|FILE|TABLE=>1|TREE|INDEX|VIEW|SQL|MIGRATE|DO|PLUGIN|MACRO|INSTRUCTOR)",
+				{					
+					"match": "([@%]*[a-zA-Z_-]*)([<>])([@%]*[A-Z_-]*)(>*)|(CONST|DATA|FILE|TABLE=>1|TREE|INDEX|VIEW|SQL|MIGRATE|DO|PLUGIN|MACRO|INSTRUCTOR)",
 					"captures": {						
 						"1":{
-							"name": "variable"
+							"name": "keyword"
 						},
 						"2":{
 							"name":"support.type"					
 						},
 						"3":{
-							"name":"keyword.other"					
+							"name":"variable.parameter"					
 						},
 						"4":{
 							"name":"support.type"					
 						}
 						,
 						"5":{
-							"name":"keyword"
+							"name":"variable"
 						}	
 					}							
 				}				
