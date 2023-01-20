@@ -30,8 +30,6 @@ try{
        $test->isDefined('$FRENCH_PARAGRAPH',$samp);
        $samp = $cnf->const('$CLINGTON_PARAGRAPH');
        $test->isNotDefined('$NONE_EXISTANT',$samp);
-
-
     #
     $test->nextCase();  
     #
@@ -53,9 +51,7 @@ try{
        $test->subcase('Passed dynamic added constance not possible.');
     }
 
-    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf',{
-                                                        '$DYNAMIC_IMMUTABLE'=>'app assigned constant value'
-                                                    });
+    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf',{'$DYNAMIC_IMMUTABLE'=>'app assigned constant value'});
     $test->evaluate('$DYNAMIC_IMMUTABLE == "app assigned constant value"',$cnf->{'$DYNAMIC_IMMUTABLE'},
                         'app assigned constant value');
     #

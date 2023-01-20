@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
-use lib "/home/will/dev/PerlCNF/tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+
+use lib "tests";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;

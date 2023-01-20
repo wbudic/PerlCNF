@@ -13,7 +13,7 @@ use DateTime::Duration;
 
 
 #DEFAULT SETTINGS HERE!
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 require CNFParser;
 
 # my $random_iter1 = my_srand (100);
