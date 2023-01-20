@@ -1,0 +1,8 @@
+#!CNF2.7
+<<tests/example.cnf<INCLUDE>>
+<<tests/none_file.cnf<INCLUDE>>
+// This is the real level, include should not change.
+<<$DEBUG_LEVEL<CONST>1>>
+// Anon will be overwritten by the include to 1024.
+<<ME_TOO<1000>>
+    

@@ -3,6 +3,7 @@
 # So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
 # Programed by  : Will Budic
 # Source Origin : https://github.com/wbudic/PerlCNF.git
+# Documentation : Specifications_For_CNF_ReadMe.md
 # Open Source License -> https://choosealicense.com/licenses/isc/
 #
 package CNFParser;
@@ -36,7 +37,7 @@ our %ANONS;
 ###
 our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1,  TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
-                       DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INSTRUCTOR=>1);
+                       DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INCLUDE=>1, INSTRUCTOR=>1);
 sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
 ###
 
@@ -70,6 +71,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
             $properties{'%LOG'} = $self->{'%LOG'}
         }
     }
+    $self->{'STRICT'} = 1  if not exists $self->{'STRICT'}; #make strict by default if missing.    
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
@@ -340,20 +342,17 @@ sub template { my ($self, $property, %macros) = @_;
 ###
 # Parses a CNF file or a text content if specified, for this configuration object.
 ##
-sub parse { 
-
-    my ($self, $cnf, $content, $del_keys) = @_;
-
+sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
     my @tags;
     my $DO_enabled = $self->{'DO_enabled'};
-    my %instructs; 
-    my $anons;    
+    my %instructs;
+    our%includes;
+    my $anons;
     if($self->{'ANONS_ARE_PUBLIC'}){  
        $anons = \%ANONS;
     }else{          
        $anons = $self->{'__ANONS__'};
-    }
-    
+    }    
     if(not $content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";        
         read $fh, $content, -s $fh;        
@@ -381,7 +380,7 @@ sub parse {
       next if $tag =~ m/^(>+)|^(<<)/;
       if($tag=~m/^<CONST/){#constant multiple properties.
 
-            foreach  (split '\n', $tag){
+            foreach  (split '\n', $tag) {
                 my $k;                
                 my @properties = map {
                     s/^\s+|\s+$//;  # strip unwanted spaces
@@ -390,7 +389,7 @@ sub parse {
                     s/\s*>$//;
                     $_          # return the modified string
                 }   split /\s*=\s*/, $_;                
-                foreach (@properties){
+                foreach (@properties) {
                       if ($k){
                             $self->{$k} = $_ if not $self->{$k};
                             undef $k;
@@ -410,7 +409,7 @@ sub parse {
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
             #@vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
             #@vv = ($tag =~ m/([@%\w\$]*|\w*?)[<>]([@%\w\s\W]*)>*(.*)/gms);
-            @vv = ($tag =~ m/([@%\w\$]*|\w*?)[<>]([@%\w]*)>*(.*)/gms);
+            @vv = ($tag =~ m/([@%\w\$\.\/]*|\w*?)[<>]([@%\w]*)>*(.*)/gms);
             $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
             if(!$RESERVED_WORDS{$t} || @vv!=3){
                 if($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
@@ -581,10 +580,10 @@ sub parse {
                 $v=~s/\s+//g;
                 $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
                 push @files, $path;
-                next if(!$self->{'$AUTOLOAD_DATA_FILES'});
+                next if !$self->{'$AUTOLOAD_DATA_FILES'};
                 open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
-                read $fh, $content, -s $fh;
-                close $fh;
+                   read $fh, $content, -s $fh;
+                close   $fh;
                 my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
                 foreach my $tag (@tags){
                     next if not $tag;
@@ -640,10 +639,12 @@ sub parse {
                         }
                     }       
                 }              
+            }elsif($t eq 'INCLUDE'){
+                   $includes{$e} = {loaded=>0,path=>$e,v=>$v};
             }elsif($t eq 'TREE'){
-                my $tree = CNFNode->new({'_'=>$e,script=>$v}); 
+               my  $tree = CNFNode->new({'_'=>$e,script=>$v}); 
                    $tree->{DEBUG} = $self->{DEBUG};
-                $instructs{$e} = $tree; 
+                   $instructs{$e} = $tree; 
 
             }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
                SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
@@ -766,22 +767,31 @@ sub parse {
         }
         undef %instructs;        
     }
-    ###
-    # Following is experimental. Not generally required, and it is a bit of an overkill.
-    ###
-    if(not $self->{'ANONS_ARE_PUBLIC'}){
-        # We clone of references of global ones which are public, for availability.
-        foreach(keys %ANONS){
-             next if $anons->{$_};
-             $anons->{$_}=\$ANONS{$_} #<- Interesting to see what happens when the global entry is changed later,
-                                    #   By another loaded repository, after this one. Having different values.
+    #Do scripted includes.
+    my @inc = sort values %includes;    
+    $includes{$0} = {loaded=>1,path=>$self->{CNF_CONTENT}}; #<- to prevent circular includes.
+    foreach my $file(@inc){
+        if(!$file->{loaded} && $file->{path} ne $self->{CNF_CONTENT}){
+           if(open(my $fh, "<:perlio", $file->{path} )){
+                read $fh, $content, -s $fh;
+              close   $fh;              
+              if($content){
+                 $file->{loaded} = 1;
+                 $self->parse(undef, $content)
+              }else{
+                 $self->error("Include content is blank for -> ".$file->{path})
+              }              
+            }else{
+                 CNFParserException->throw("Can't open ".$file->{path}." -> $!") if $self->{STRICT};
+                 $file->{loaded} = 1;
+                 $self->error("Include not available -> ".$file->{path})
+            }
         }
-    }
-    foreach (@$del_keys){
-        my $k=$_;
+    }    
+    foreach my $k(@$del_keys){        
         delete $self->{$k} if exists $self->{$k}
     }
-    lock_hash(%$self);#Make them finally constances.
+    lock_hash(%$self);#Make repository finally immutable.
 }
 #
 
@@ -796,8 +806,8 @@ sub  SQL {
 
 
 ###
-# Register Instructor on tag and value to externally process.
-# $package  - Is the package name.
+# Register Instructor on tag and value for to be externally processed.
+# $package  - Is the anonymouse package name.
 # $body     - Contains attribute(s) linking to method(s) to be registered.
 # @TODO Current Under development.
 ###
@@ -814,7 +824,7 @@ sub registerInstructor {
                 next
              }             
              if(exists $instructors{$ins}){
-                $self -> log("ERR $package<$ins> <- Instruction has already been registered by: ".$instructors{$ins});
+                $self -> error("$package<$ins> <- Instruction has been previously registered by: ".ref(${$instructors{$ins}}));
                 return;
              }else{
                 foreach(values %instructors){
@@ -978,8 +988,12 @@ sub log {
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');    
     my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
-
-    print $time . " " . $message ."\n" if %log && $log{console} ;
+    if($message =~ /^ERROR/){
+        warn  $time . " " . $message;
+    }
+    elsif(%log && $log{console}){
+        print $time . " " . $message ."\n"
+    }
     if(%log && $log{enabled} && $message){
         my $logfile  = $log{file};
         my $tail_cnt = $log{tail};
@@ -998,11 +1012,17 @@ sub log {
         close $fh;
     }
 }
+sub error {
+    my $self    = shift;
+	my $message = shift;    
+    $self->log("ERROR $message");
+}
 use Carp qw(cluck); #what the? I know...
 sub warn {
     my $self    = shift;
 	my $message = shift; 
-    $message = "WARN $message\t".$self->{CNF_CONTENT};
+    my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
+    $message = "$time WARNG $message\t".$self->{CNF_CONTENT};
     if($self->{ENABLE_WARNINGS}){
         $self -> log($message)
     }else{
@@ -1029,5 +1049,28 @@ sub END {
 undef %ANONS;
 undef @files;
 }
-
 1;
+
+__END__
+## Instructions & Reserved words
+
+   1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
+   2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
+   3. Current Reserved words list is.
+       - CONST    - Concentrated list of constances, or individaly tagged name and its value.
+       - DATA     - CNF scripted delimited data property, having uniform table data rows.       
+       - FILE     - CNF scripted delimited data property is in a separate file.
+       - %LOG     - Log settings property, i.e. enabled=1, console=1.
+       - TABLE    - SQL related.
+       - TREE     - Property is a CNFNode tree containing multiple debth nested children nodes.
+       - INCLUDE  - Include properties from another file to this repository.
+       - INDEX    - SQL related.
+       - INSTRUCT - Provides custom new anonymous instruction.
+       - VIEW     - SQL related.
+       - PLUGIN   - Provides property type extension for the PerlCNF repository.
+       - SQL      - SQL related.
+       - MIGRATE  - SQL related.
+       - MACRO
+          1. Value is searched and replaced by a property value, outside the property scripted.
+          2. Parsing abruptly stops if this abstract property specified is not found.
+          3. Macro format specifications, have been aforementioned in this document. However make sure that your macro an constant also including the *$* signifier if desired.
