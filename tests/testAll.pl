@@ -19,6 +19,7 @@ try{
 
 my $TEST_LOCAL_DIR = './tests';
 my @failed;
+my $SUPRESS_ISSUES = ($ARGV[-1] eq "--display_issues")?0:1;
 
 ###
 #  Notice - All test are to be run from the project directory.
@@ -50,10 +51,10 @@ try{
         $output=~s/\d*\|.*\|$file\s$//g;
         push @OUT, $output;
             if ($warnings){
-            for(split "\n", $warnings){
-                $WARN{$_} = $file;
+                for(split "\n", $warnings){
+                    $WARN{$file} = $warnings;
+                }
             }
-        }
         if(@test_ret && $test_ret[1] eq 'SUCCESS'){
             $test_pass++;
             #This is actually global test cases pass before sequently hitting an fail.
@@ -90,12 +91,17 @@ try{
         print BOLD BRIGHT_RED, "No tests have been run or found!", RESET WHITE, " $0\n", RESET;
     }
 
-    if(%WARN){
+    if(not $SUPRESS_ISSUES && %WARN){
         print BOLD YELLOW, "Buddy, sorry to tell you. But you got the following Perl Issues:\n",BLUE;
-        foreach(keys %WARN){        
-            print "In file:  $WARN{$_}".MAGENTA."\n",$_."\n", BLUE;        
+        foreach(keys %WARN){ 
+            my $w = $WARN{$_};
+            $w=~ s/\s+eval\s\{...\}.*$//gs;
+            $w=~ s/\scalled\sat/\ncalled at/s;
+            print "In file:  $_".MAGENTA."\n",$w."\n", BLUE;
         }
-        print RESET;
+        print RESET;        
+    }else{
+        print "To display all encountered issues or warnings, on next run try:\n\tperl tests/testAll.pl --display_issues\n"
     }
     print '-'x100, "\n";
 }

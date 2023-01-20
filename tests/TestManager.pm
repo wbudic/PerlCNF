@@ -201,9 +201,9 @@ sub dumpTermination {
     if($file){
     open (my $flh, '<:perlio', $file) or die("Error $! opening file: '$file'\n$comment");
           my @slurp = <$flh>;
-    close $flh;
-    our $DEC = "%0".(length($slurp[-1]) + 1)."d   ";
-    my $clnt=int(0);
+    close $flh;    
+    our $DEC = "%0".(length(scalar(@slurp)))."d   ";
+    my  $clnt=int(0);
     for(my $i=0; $i<@slurp;$i++)  { 
         local $. = $i + 1;
         my $line = $slurp[$i]; 
