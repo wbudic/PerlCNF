@@ -1,6 +1,5 @@
 # Configuration Network File Format Specifications
 
-
 ## Introduction
 
 This is a simple and fast file format. That allows setting up of network and database applications with initial configuration values.
@@ -253,22 +252,29 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 
 ## Instructions & Reserved words
 
-   1. Reserved words relate to instructions, that are specially treated, and interpreted by the parse to perform extra or specifically processing on the current value.
-   2. Current Reserved words list is.
-       - CONST
-       - DATA
-       - FILE
-       - TABLE
-       - TREE
-       - INDEX
-       - VIEW
-       - PLUGIN
-       - SQL
-       - MIGRATE
+   1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
+   2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
+   3. Current Reserved words list is.
+       - CONST    - Concentrated list of constances, or individaly tagged name and its value.
+       - DATA     - CNF scripted delimited data property, having uniform table data rows.       
+       - FILE     - CNF scripted delimited data property is in a separate file.
+       - %LOG     - Log settings property, i.e. enabled=1, console=1.
+       - TABLE    - SQL related.
+       - TREE     - Property is a CNFNode tree containing multiple debth nested children nodes.
+       - INCLUDE  - Include properties from another file to this repository.
+                    - Included files constances are ignored if are in parent file assigned.
+                    - Includes are processed last and not on the spot, so their anons encountered take over presedence.
+                    - Include instruction use is not recomended and is as same to as calling the parse method of the parser.
+       - INDEX    - SQL related.
+       - INSTRUCT - Provides custom new anonymous instruction.
+       - VIEW     - SQL related.
+       - PLUGIN   - Provides property type extension for the PerlCNF repository.
+       - SQL      - SQL related.
+       - MIGRATE  - SQL related.
        - MACRO
-          1. Value is searched and replaced by an property value, outside the property scripted.
+          1. Value is searched and replaced by a property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
-          3. Macro format specifications, have been aforementioned in this document. However make sure that you macro an constant also including the *$* signifier if desired.
+          3. Macro format specifications, have been aforementioned in this document. However make sure that your macro an constant also including the *$* signifier if desired.
 
 ## Database and SQL Instruction Formatting
 
@@ -405,7 +411,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
                     So deeply nesting an large property body is not recommended and also not suitable for encapsulating there data.
                 3. An opening tag is opened being surround with the same signifier into the direction of the property body.
                 4. The closing tag is in the opposite direction same signifiers.
-                    * **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
+                   * **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
         3. The node characteristic is that each sub property is linked to its parent property
            1. This is contained in the ' **@** ' attribute.
            2. Node characteristic is also the tree can be searched via path.
@@ -417,14 +423,9 @@ CNF supports basic SQL Database structure statement generation. This is done via
         6. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
             - Attributes must specified on a single line.
             - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
-   2. The TREE instruction will create a CNFNode object assigned to an unique anon.
-        1. CNFNode object is the the individual tag with body product of the tree structure.
-            1. Usually used to validate, parse and traverse children nodes or to access the parent node.
-            2. The name of the CNFNode is the tag name of the property.
-            3. Each node has a name which is the [ **_** ] attribute.
-        2. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
-        3. Each properties own start and the end tag must stand and be on its own line within the script.
-           1. Exception to this are value and collection tags, which can be contained on a single line.
+   2. The TREE instruction will create an CNFNode object assigned to an unique anon.
+        1. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
+            - Each properties start and end tag must stand and be on its own line, withing the body.
    3. Tree can contain links to other various properties, anons, that means also to other trees then the current one.
         1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
         2. It is not recommended to make circular links, or to priorities properties themselves containing links.
@@ -521,4 +522,5 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.4 2022</center>
+<center>Sun Stage - v.2.5 2023</center>
+
