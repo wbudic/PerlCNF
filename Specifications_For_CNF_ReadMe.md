@@ -17,6 +17,8 @@ Which is pretty much welcomed and encouraged. As the number of them can be quite
 
 CNF type tags are script based, parsed tags of text, everything else is ignored. DOM based parsed tags, require definitions and are hierarchy specific, path based. Even comments, have specified format. A complete different thing. However, in a CNF file you, can nest and tag, DOM based scripts. But not the other way. DOM based scripts are like HTML, XML. They might scream errors if you place in them CNF stuff.
 
+Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
+
 ## General CNF Formatting Rules
 
 1. Text that isn't CNF tagged is ignored in the file and can be used as comments.
@@ -125,8 +127,10 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
                 <<META><DATA>^INIT=1`^RUN=1`^STAGES_EXPECTED=5>> } <-- End 
     ```
 
+
 ## CNF Tag Formats
 
+Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
 ### Property Value Tag
 
    ```HTML
@@ -215,6 +219,7 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
 
 
 ## CNF Collections Formatting
+Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)  | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
 
 1. CNF collections are named two list types.
    1. Arrays
@@ -250,7 +255,9 @@ CNF type tags are script based, parsed tags of text, everything else is ignored.
     >>
    ```
 
-## Instructions & Reserved words
+## Instructions And Reserved Words
+
+Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)  | [CNF Collections Formatting](#cnf-collections-formatting) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
 
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
    2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
@@ -454,7 +461,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
         ```
 
 ## Sample Perl Language Usage
-
+Quick Jump: [Introduction](#introduction) | [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions) | [CNF Tag Formats](#cnf-tag-formats) 
 1. *DO*
    1. CNF DO instruction is *experimental*, purely perl programming language related.
    2. It provides perl code evaluation during parsing giving also access to parser and its variables as do's there sequentially appear.
