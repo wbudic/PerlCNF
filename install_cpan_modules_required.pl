@@ -13,10 +13,21 @@ use constant PERL_FILES_GLOB => "*.pl *.pm local/*.pl local/*.pm tests/*.pm syst
 
 my $project = `pwd`."/".$0; $project =~ s/\/.*.pl$//g;  $project =~ s/\s$//g;
 my @user_glob;
+our $PERL_VERSION = $^V->{'original'}; my $ERR = 0;
 
-
+print "\n*** Project Perl Module Intaller ***\n\nYou have Perl on $^O [$^X] version: $PERL_VERSION\n";
+print "<<@<\@INC<\n# Your default module package paths:\n"; 
+local $. = 0; foreach(@INC){  
+  print $.++.".: $_\n"; 
+}
+print ">>\n";
+if($> > 0){
+  print "You are NOT installing system wide, this is ok and recommended.\n"
+}else{
+  print "You are not INSTALLING modules SYSTEM WIDE, are you sure about this?\n"
+}
 if(@ARGV==0){
-  print qq(This program will try to figure out all the modules 
+  print qq(\nThis program will try to figure out all the modules 
   required for this project, and install them if missing.\nThis can take some time.\nDo you want to procede (press either the 'Y'es or 'N'o key)?);
 
   my $key; do{
@@ -55,6 +66,24 @@ foreach my $file(@perl_files){
    my $res  =  `perl -ne '/\\s*(use\\s(.*))/ and print "\$2;"' $file`;
    my @list = split(/;+/,$res);
    foreach(@list){
+     if($_=~ /^\w\d\.\d+.*/){
+      print "\tA specified 'use $_' found in ->$file";
+      if($PERL_VERSION ne $_){         
+         $_ =~s/^v//g;
+         my @fv = split(/\./, $_);
+         $PERL_VERSION =~s/^v//g;
+         my @pv = split(/\./, $PERL_VERSION);
+         push @fv, 0 if @fv < 3;
+         for my$i(0..3){
+           if( $pv[$i] < $fv[$i] ){
+              $ERR++; print "\n\tERROR -> Perl required version has been found not matching.\n";
+              last
+           }
+         }
+      }
+     }
+   }
+   foreach(@list){    
     $_ =~ s/^\s*|\s*use\s*//g;
     $_ =~ s/[\'\"].*[\'\"]$//g;
     next if !$_ or $_ =~ /^[a-z]|\d*\.\d*$|^\W/;
@@ -87,3 +116,4 @@ foreach my $mod (sort keys %modules){
   }
 }
 print "\nProject $project\nRequires $mcnt modules.\nInstalled New: $mins\n";
+print "WARNING! - This project requires in ($ERR) parts code that might not be compatible yet with your installed/running version of perl (v$PERL_VERSION).\n" if $ERR;
