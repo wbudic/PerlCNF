@@ -76,7 +76,7 @@ foreach my $file(@perl_files){
          push @fv, 0 if @fv < 3;
          for my$i(0..3){
            if( $pv[$i] < $fv[$i] ){
-              $ERR++; print "\n\tERROR -> Perl required version has been found not matching.\n";
+              $ERR++; print "\n\t\033[31mERROR -> Perl required version has been found not matching.\033[0m\n";
               last
            }
          }
