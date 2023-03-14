@@ -3,7 +3,7 @@
 
 Hello, you are looking at an Perl configuration network file sample.
 Let's create a CNF single specified constant: <<$IMMUTABLE<CONST> Hello World! >>
-That is right, any text with this file is of co concern to the parser, so CNF doesn't need commenting.
+That is right, any text with this file is of no concern to the parser, so CNF doesn't need commenting.
 But if you want to no one is stopping you. Like:
 
 /**

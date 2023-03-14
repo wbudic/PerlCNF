@@ -18,6 +18,23 @@ This is all available in the ./test directory and is not a Perl module.
 
 ---
 
+## Installation Of This Perl GitHub Project
+
+* Installation is standard.
+
+```sh
+    mkdir ~/dev; cd ~/dev
+    git clone https://github.com/wbudic/PerlCNF.git
+    cd PerlCNF
+```
+
+* To install required modules locally to home, do not run following with sudo in front.
+    * cd ~/dev/PerlCNF; #Perl tests and project directory is required to be the starting location.
+```sh
+    ./install_cpan_modules_required.pl    
+```
+
+
 ## Usage
 
 * Copy the system/modules/CNFParser.pm module into your project.
