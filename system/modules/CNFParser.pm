@@ -404,6 +404,15 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
         else{
             #vars are e-element,t-token or instruction,v- for value, vv -array of the lot.
             my ($e,$t,$v,@vv);
+            # Check if very old format and don't parse the data for old code compatibility to (still) do it.
+            # This is interesting, as a newer format file is expected to use the DATA instruction and final data specified script rules.
+            if($CNF_VER eq 'CNF2.2' && $tag =~ m/(\w+)\s*(<\d+>\s)\s*(.*\n)/mg){#It is old DATA format annon
+                  $e = $1;
+                  $t = $2;
+                  $v = substr($tag,length($e)+length($t));
+                  $anons->{$e} = $v;
+                  next;
+            }
             # Before mauling into possible value types, let us go for the full expected tag specs first:
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
