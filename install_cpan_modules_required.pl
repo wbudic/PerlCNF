@@ -10,9 +10,20 @@
 #
 use warnings; 
 use strict;
-use Term::ReadKey;
-use Term::ANSIColor qw(:constants);
-use constant PERL_FILES_GLOB => "*.pl *.pm local/*.pl local/*.pm tests/*.pm system/modules/*.pm";
+###
+# Prerequisites for this script. 
+## no critic (ProhibitStringyEval)  
+eval "use Term::ReadKey";
+eval "use Term::ANSIColor qw(:constants)";
+if($@){
+ system(qq(perl -MCPAN -e 'install Term::ReadKey'));
+ system(qq(perl -MCPAN -e 'install Term::ANSIColor'));
+}else{
+  use Term::ReadKey;
+  use Term::ANSIColor qw(:constants);
+}
+
+use constant PERL_FILES_GLOB => "*.pl *.pm *.cgi local/*.pl local/*.pm tests/*.pm system/modules/*.pm";
 
 my $project = `pwd`."/".$0; $project =~ s/\/.*.pl$//g;  $project =~ s/\s$//g;
 my @user_glob;
