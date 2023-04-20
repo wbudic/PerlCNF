@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 # Module installer for projects.
+# Run this script from any Project directory containing perl modules or scripts.
+#
 # This source file is copied and usually placed in a local directory, outside of its project.
 # So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
 # Programed by  : Will Budic
@@ -9,26 +11,33 @@
 use warnings; 
 use strict;
 use Term::ReadKey;
+use Term::ANSIColor qw(:constants);
 use constant PERL_FILES_GLOB => "*.pl *.pm local/*.pl local/*.pm tests/*.pm system/modules/*.pm";
 
 my $project = `pwd`."/".$0; $project =~ s/\/.*.pl$//g;  $project =~ s/\s$//g;
 my @user_glob;
 our $PERL_VERSION = $^V->{'original'}; my $ERR = 0;
 
-print "\n*** Project Perl Module Intaller ***\n\nYou have Perl on $^O [$^X] version: $PERL_VERSION\n";
-print "<<@<\@INC<\n# Your default module package paths:\n"; 
+print WHITE "\n *** Project Perl Module Installer coded by ",BRIGHT_RED, "https://github.com/wbudic", WHITE,"***", qq(
+         \nRunning scan on project path:$project 
+         \nYou have Perl on $^O [$^X] version: $PERL_VERSION\n
+);
+print BLUE "<<@<\@INC<\n# Your default module package paths:\n", YELLOW; 
 local $. = 0; foreach(@INC){  
   print $.++.".: $_\n"; 
 }
-print ">>\n";
+print BLUE ">>\n", RESET;
 if($> > 0){
   print "You are NOT installing system wide, this is ok and recommended.\n"
 }else{
   print "You are not INSTALLING modules SYSTEM WIDE, are you sure about this?\n"
 }
 if(@ARGV==0){
-  print qq(\nThis program will try to figure out all the modules 
-  required for this project, and install them if missing.\nThis can take some time.\nDo you want to procede (press either the 'Y'es or 'N'o key)?);
+  print qq(\nThis program will try to figure out now all the modules 
+  required for this project, and install them if missing.
+  This can take some time.
+  ); 
+  print RED "Do you want to proceed (press either the 'Y'es or 'N'o key)?", RESET;
 
   my $key; do{
   ReadMode('cbreak');  
