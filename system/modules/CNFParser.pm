@@ -512,7 +512,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                     foreach  my $p(@props){ 
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){                            
-                            my @pair = ($p=~/\s*(\w*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
+                            my @pair = ($p=~/\s*([-+_\w]*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
                             next if (@pair != 2 || $pair[0] =~ m/^[#\\\/]+/m);#skip, it is a comment or not '=' delimited line.                            
                             my $name  = $pair[0]; 
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip quotes
@@ -755,7 +755,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                splice @ditms, $idx,1;
             }
         }
-        @ditms =  sort {$a->{aid} <=> $b->{aid}} @ditms;
+        @ditms =  sort {$a->{aid} <=> $b->{aid}} @ditms if $#ditms > 1;
         foreach my $struct(@ditms){
             my $type =  ref($struct); 
             if($type eq 'InstructedDataItem'){
@@ -764,9 +764,9 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                    try{             
                             $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
                             $self->log("Plugin instructed ->". $struct->{'ele'});
-                   }catch{ 
+                   }catch($e){ 
                             if($self->{STRICT}){
-                               CNFParserException->throw(error=>@_,trace=>1);
+                               CNFParserException->throw(error=>$e, show_trace=>1);
                             }else{
                                $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
                             }
