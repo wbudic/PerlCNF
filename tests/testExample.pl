@@ -22,7 +22,8 @@ try{
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);   
        $test->subcase('$cnf->{\'$IMMUTABLE\'} is '.$cnf->{'$IMMUTABLE'});   
        $test->evaluate('$IMMUTABLE == "Hello World! "',$cnf->{'$IMMUTABLE'},'Hello World! ');
-
+   #
+   ###
        $test->subcase("Test constance's instructed block.");   
        my $samp = $cnf->{'$TITLE_HEADING'};
        $test->evaluate('$TITLE_HEADING', $samp, 'Example Application');

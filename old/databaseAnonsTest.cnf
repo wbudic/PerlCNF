@@ -3,7 +3,7 @@
 Multiple lines
 in this text.
 >>>
-<<list_cmd<>ls -lh $$$1$$$|sort>>
+<<list_cmd<ls -lh $$$1$$$|sort>>>
 <<LS<
 ls -l
 >>>

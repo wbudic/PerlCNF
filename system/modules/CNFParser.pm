@@ -19,27 +19,34 @@ use DateTime;
 # We can use perls default behaviour on return.
 ##no critic qw(Subroutines::RequireFinalReturn,ControlStructures::ProhibitMutatingListFunctions);
 
-use constant VERSION => '2.7';
-
-
+use constant VERSION => '2.8';
 our @files;
 our %lists;
 our %properties;
 our %instructors;
-our $CONSTREQ = 0;
+
 ###
 # Package fields are always global in perl!
 ###
 our %ANONS;
+#private -> Instance fields:
+                my  $anons;
+                my %includes;
+                my %instructs;    
 ###
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
 ###
-our %RESERVED_WORDS = (CONST=>1, DATA=>1,   FILE=>1, TABLE=>1,  TREE=>1,
+our %RESERVED_WORDS = (CONST=>1, VARIABLE=>1,   FILE=>1, TABLE=>1,  TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
                        DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INCLUDE=>1, INSTRUCTOR=>1);
-sub isReservedWord {my ($self, $word)=@_; return $RESERVED_WORDS{$word}}
+sub isReservedWord {my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef}
 ###
+
+###
+# Constance required setting, if set to 1, const method when called will rise exception rather then return undef.
+###
+our $CONSTREQ = 0;
 
 ###
 # Create a new CNFParser instance.
@@ -51,13 +58,13 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         $self = \%$attrs;        
     }else{
         $self = {   #Case Sensitive don't tell me you set Do_enabled and it ain't working?
-                    DO_enabled      =>0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
-                    ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
-                    ENABLE_WARNINGS =>1, # Disable this one, and you will stare into the void, on errors or operations skipped.
-                    STRICT          =>1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
-                    DEBUG           =>0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
+                    DO_enabled      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
+                    ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
+                    ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
+                    STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                    DEBUG           => 0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
         }; 
-    }
+    }    
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
     if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is, anons are not static.
          $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Caveat of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
@@ -81,8 +88,8 @@ sub import {
     my $caller = caller;    
     {
          *{"${caller}::configDumpENV"} = \&dumpENV;
-         *{"${caller}::anon"} = \&anon;
-         *{"${caller}::SQL"} = \&SQL;
+         *{"${caller}::anon"}          = \&anon;
+         *{"${caller}::SQL"}           = \&SQL;
     }
     return 1;    
 }
@@ -95,11 +102,13 @@ package InstructedDataItem {
     our $dataItemCounter = int(0);
 
     sub new { my ($class, $ele, $ins, $val) = @_;
+        my $priority = ($val =~ s/_HAS_PROCESSING_PRIORITY_//si)?1:0;
         bless {
                 ele => $ele,
                 aid => $dataItemCounter++,
                 ins => $ins,
-                val => $val
+                val => $val,
+                priority => $priority
         }, $class    
     }
     sub toString {
@@ -134,6 +143,11 @@ package PropertyValueStyle {
         }
         bless $self, $class
     }
+    sub setPlugin{
+        my ($self, $obj) =  @_;
+        $self->{plugin} = $obj;
+    }
+    
     sub result {
         my ($self, $value) =  @_;
         $self->{value} = $value;
@@ -236,16 +250,18 @@ sub anon {  my ($self, $n, $args)=@_;
     return $anechoic;
 }
 
+###
 # Validates and returns a constant named value as part of this configs instance.
-# Returns false if it doesn't exist.
+# Returns undef if it doesn't exist, and exception if constance required is set;
 sub const { my ($self,$c)=@_; 
     if(exists $self->{$c}){
        return  $self->{$c}
     }
+    CNFParserException->throw("Required constants variable ' $c ' not defined in config!") if $CONSTREQ;
     return;
 }
 
-##
+###
 # Collections are global, Reason for this is that any number of subsequent files parsed,
 # might contain properties that overwrite previous existing ones. 
 # Or require ones that don't includes, expecting thm to be there.
@@ -338,21 +354,203 @@ sub template { my ($self, $property, %macros) = @_;
 }
 #
 
+#private to parser sub.
+sub doInstruction { my ($self,$e,$t,$v) = @_;
+
+    my $DO_enabled = $self->{'DO_enabled'};
+
+    if(defined $t && $t eq 'CONST' ){#Single constant with mulit-line value;
+
+        $v =~ s/^\s//;
+        #print "[[$t]]=>{$v}\n";
+        $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
+        
+    }elsif($t eq 'DATA'){
+        $v=~ s/^\n//; 
+        foreach(split /~\n/,$v){
+            my @a;
+            $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
+            foreach my $d (split /`/, $_){
+                $d =~ s/\\f/`/g; #escape back form feed to backtick.
+                $d =~ s/~$//; #strip dangling ~ if there was no \n
+                $t = substr $d, 0, 1;
+                if($t eq '$'){
+                    $v =  $d;            #capture specked value.
+                    $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
+                    if($v=~m/\$$/){
+                        $v = $self->{$d}; $v="" if not $v;
+                    }
+                    else{
+                        $v = $d;
+                    }
+                    push @a, $v;
+                }
+                else{                            
+                    if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
+                        $d = $1;#substr $d, 1;
+                        $d=0 if !$d; #default to 0 if not specified.
+                        push @a, $d
+                    }
+                    else{
+                        push @a, $d;
+                    }
+                }
+            }                   
+
+            my $existing = $self->{'__DATA__'}{$e};
+            if(defined $existing){
+                my @rows = @$existing;
+                push @rows, [@a] if scalar @a >0; 
+                $self->{'__DATA__'}{$e} = \@rows
+            }else{
+                my @rows; push @rows, [@a];            
+                $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
+            }
+        }           
+        
+    }elsif($t eq 'FILE'){#@TODO Test case this
+        my ($i,$path,$cnf) = (0,"",$self->{CNF_CONTENT});
+        $v=~s/\s+//g;
+        $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
+        push @files, $path;
+        next if !$self->{'$AUTOLOAD_DATA_FILES'};
+        open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
+            read $fh, my $content, -s $fh;
+        close   $fh;
+        my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
+        foreach my $tag (@tags){
+            next if not $tag;
+            my @kv = split /</,$tag;
+            $e = $kv[0];
+            $t = $kv[1];
+            $i = index $t, "\n";
+            if($i==-1){
+                $t = $v = substr $t, 0, (rindex $t, ">>");
+            }
+            else{
+                $v = substr $t, $i+1, (rindex $t, ">>")-($i+1);
+                $t = substr $t, 0, $i;
+            }
+            if($t eq 'DATA'){
+                foreach(split /~\n/,$v){
+                    my @a;
+                    $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
+                    foreach my $d (split(/`/, $_)){
+                        $d =~ s/\\f/`/g; #escape back form feed to backtick.
+                        $t = substr $d, 0, 1;
+                        if($t eq '$'){
+                            $v =  $d;            #capture spected value.
+                            $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
+                            if($v=~m/\$$/){
+                               $v = $self->{$d}; $v="" if not $v;
+                            }
+                            else{
+                                $v = $d;
+                            }
+                            push @a, $v;
+                        }
+                        else{
+                            if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
+                                $d = $1;#substr $d, 1;
+                                $d=0 if !$d; #default to 0 if not specified.
+                                push @a, $d
+                            }
+                            else{
+                            push @a, $d; 
+                            }                                                
+                        }                                
+                        my $existing = $self->{'__DATA__'}{$e};
+                        if(defined $existing){
+                                my @rows = @$existing;
+                                push @rows, [@a] if scalar @a >0; 
+                                $self->{'__DATA__'}{$e} = \@rows
+                        }else{
+                                my @rows; push @rows, [@a];   
+                                $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
+                        }
+                    }   
+                }
+            }       
+        }              
+    }elsif($t eq 'INCLUDE'){
+            $includes{$e} = {loaded=>0,path=>$e,v=>$v};
+    }elsif($t eq 'TREE'){
+        my  $tree = CNFNode->new({'_'=>$e,script=>$v}); 
+            $tree->{DEBUG} = $self->{DEBUG};
+            $instructs{$e} = $tree; 
+    }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
+        SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
+        elsif($t eq 'INDEX'){ SQL()->createIndex($v)}  
+            elsif($t eq 'VIEW'){ SQL()->createView($e,$v)}
+                elsif($t eq 'SQL'){ SQL($e,$v)}
+                    elsif($t eq 'MIGRATE'){SQL()->migrate($e, $v)
+    }
+    elsif($t eq 'DO'){
+        if($DO_enabled){
+            ## no critic BuiltinFunctions::ProhibitStringyEval
+            $v = eval $v;
+            ## use critic
+            chomp $v; $anons->{$e} = $v;
+        }else{
+            $self->warn("Do_enabled is set to false to process property: $e\n")
+        }
+    }
+    elsif($t eq 'PLUGIN'){ 
+        if($DO_enabled){
+            $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
+        }else{
+            $self->warn("Do_enabled is set to false to process following plugin: $e\n")
+        }                
+    }
+    elsif($t eq 'INSTRUCTOR'){ 
+        if(not $self->registerInstructor($e, $v) && $self->{STRICT}){
+            CNFParserException->throw("Instruction Registration Failed for '<<$e<$t>$v>>'!\t");
+        }
+    }
+    elsif(exists $instructors{$t}){
+        if(not $instructors{$t}->instruct($e, $v) && $self->{STRICT}){
+            CNFParserException->throw("Instruction processing failed for '<<$e<$t>>'!\t");
+        }
+    }
+    elsif($t eq 'MACRO'){                  
+            $instructs{$e}=$v;                  
+    }
+    else{
+        #Register application statement as either an anonymous one. Or since v.1.2 a listing type tag.                 
+        if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
+            $v = $t if not $v; 
+            if($e=~/^\$/){
+                $self->{$e}  = $v if !$self->{$e}; # Not allowed to overwrite constant.
+            }else{                        
+                $anons->{$e} = $v
+            }
+        }
+        else{
+            $e = substr $e, 0, (rindex $e, '$$');
+            # Following is confusing as hell. We look to store in the hash an array reference.
+            # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
+            my $array = $lists{$e};
+            if(!$array){$array=();$lists{$e} = \@{$array};}
+            push @{$array}, $v;
+        }            
+    }            
+}
 
 ###
 # Parses a CNF file or a text content if specified, for this configuration object.
 ##
 sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
+
     my @tags;
-    my $DO_enabled = $self->{'DO_enabled'};
-    my %instructs;
-    our%includes;
-    my $anons;
     if($self->{'ANONS_ARE_PUBLIC'}){  
        $anons = \%ANONS;
     }else{          
        $anons = $self->{'__ANONS__'};
-    }    
+    } 
+    #private %includes; for now we keep on possible multiple calls to parse.
+    #private instructs on this parse call.
+    %instructs = ();
+
     if(not $content){
         open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";        
         read $fh, $content, -s $fh;        
@@ -371,39 +569,54 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
     my $CNF_VER = $1; $CNF_VER="Undefined!" if not $CNF_VER;
     $self->{CNF_VERSION} = $CNF_VER if not defined $self->{CNF_VERSION};
 
-    unlock_hash(%$self);# We control from here the constances, need to unlock them if previous parse was run.
+    # We control from here the constances, need to unlock them if previous parse was run.
+    unlock_hash(%$self);
 
-    @tags =  ($content =~ m/(<<)(<*.*?>*)(>>)/gms);
-    
+    my $spc =   $content =~ /\n/ ? '(<{2,3}?)(<*.*?>*)(>{2,3})' : '(<{2,3}?)(<*.*?>*?)(>{2,3})$';
+    @tags   =  ($content =~ m/$spc/gms);    
+
     foreach my $tag (@tags){             
 	  next if not $tag;
       next if $tag =~ m/^(>+)|^(<<)/;
-      if($tag=~m/^<CONST/){#constant multiple properties.
+      if($tag =~ m/^<(\w*)\s+(.*)>?$/gs){ # Original fastest and early format: <<<anon value>>>
+           my $p = $1;
+           my $v = $2;
+           if(isReservedWord($self,$p)){
+              my $isVar = $p eq 'VARIABLE';
+              if($p eq 'CONST' or $isVar){ #constant multiple properties.                 
+                    foreach  my $line(split '\n', $v) { 
+                            $line =~ s/^\s+|\s+$//;  # strip unwanted spaces                            
+                            $line =~ s/\s*>$//;
+                            $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;
+                            my $name = $1;
+                               $line = $3;
+                            if($isVar){
+                                $anons ->{$name} = $line if $line
+                            }else{
+                                if($line and not $self->{$name}){# Not allowed to overwrite constant.
+                                $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
+                                $self->{$name} = $line; 
+                                }else{
+                                    warn "Skipping and keeping previously set constance -> [$name] the new value ".
+                                    ($line eq $self->{$name})?"matches it":"dosean't match -> $line."
+                                }
+                            }
+                    }
+              }else{
+                my $t = $p; (m/(\w+)(.*)/s);
+                my $e = $1;
+                $v    = $2;
+                doInstruction($self,$e,$t,$v);
+              }
+           }else{
+              $v =~ s/\s*>$//;
+              $anons->{$p} = $v;
+           }
 
-            foreach  (split '\n', $tag) {
-                my $k;                
-                my @properties = map {
-                    s/^\s+|\s+$//;  # strip unwanted spaces
-                    s/^\s*["']|['"]\s*$//g;#strip qoutes
-                    s/<CONST\s//; # strip  identifier
-                    s/\s*>$//;
-                    $_          # return the modified string
-                }   split /\s*=\s*/, $_;                
-                foreach (@properties) {
-                      if ($k){
-                            $self->{$k} = $_ if not $self->{$k};
-                            undef $k;
-                      }
-                      else{
-                            $k = $_;
-                      }
-                }
-            }
-
-        }        
-        else{
+        }else{
             #vars are e-element,t-token or instruction,v- for value, vv -array of the lot.
             my ($e,$t,$v,@vv);
+            
             # Check if very old format and don't parse the data for old code compatibility to (still) do it.
             # This is interesting, as a newer format file is expected to use the DATA instruction and final data specified script rules.
             if($CNF_VER eq 'CNF2.2' && $tag =~ m/(\w+)\s*(<\d+>\s)\s*(.*\n)/mg){#It is old DATA format annon
@@ -415,58 +628,50 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
             }
             # Before mauling into possible value types, let us go for the full expected tag specs first:
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
-            # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>
-            #@vv = ($tag =~ m/(@|[\$@%\W\w]*?)<(\w*)>(.*)/gsm);
-            #@vv = ($tag =~ m/([@%\w\$]*|\w*?)[<>]([@%\w\s\W]*)>*(.*)/gms);
-            @vv = ($tag =~ m/([@%\w\$\.\/]*|\w*?)[<>]([@%\w]*)>*(.*)/gms);
-            $e =$vv[0]; $t=$vv[1]; $v=$vv[2];
-            if(!$RESERVED_WORDS{$t} || @vv!=3){
-                if($tag =~ m/(@|[\$@%\W\w]*)<>(.*)/g){
-                    $e =$1; $v=$2; $t = $v;
-                    $self->warn("Encountered a mauled instruction tag: $tag\n")
-                }else{# Nope!? Let's continue mauling. Life is cruel, that's for sure.
-                    @vv = ($tag =~ m/(@|[\$@%\W\w]*)<([.]*\s*)>*|(.*)>+|(.*)/gsm);
-                    $e = shift @vv;#$e =~ s/^\s*//g;            
-                    if(!$e){
-                        # From now on, parser mauls the tag before making out the value.
-                        @vv = ($tag =~ m/(@|[\$@%]*\w*)(<|>)/g);
-                        $e = shift @vv; 
-                        $t = shift @vv;                    
-                        if(!$e){
-                                if($self->{ENABLE_WARNINGS}){
-                                    $self->warn("Encountered invalid tag formation -> <<$tag>>");
-                                }else{
-                                    die  "Encountered invalid tag formation -> <<$tag>>"
-                                }
-                        }
-                        $v = shift @vv; 
-                    }else{
-                        if($e=~/[@%]/){
-                            $v =~ /^<(.*)>$/gms;    
-                            $v = $1 if $1;                        
-                        }else{
-                            do{ $t = shift @vv; } while( !$t && @vv>0 ); $t =~ s/\s$//;
-                                $v = shift @vv;                                           
-                                if(!$v){
-                                    if(@vv==0 && !$RESERVED_WORDS{$t}){#<- The instruction is assumed to hold the value if it isn't an reserved word.
-                                        $v = $t
-                                    }
-                                    foreach(@vv){#<- Attach any valid fallback from complex rexp.
-                                        $v .= $_ if $_;
-                                    }
-                                }
-                            }                   
-                    }
+            # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>  
+               if($tag !~ /\n/ && $tag =~ /^([@%\$\.\/\w]+)([ <>]+)(\w*>)(.*)/) {
+                $e = $1;
+                $t = $2;
+                if($t =~ /^<\s*</){
+                   $v = substr $tag, length($e)+1;
+                   $v =~ s/>$// if $t ne '<<' && $tag =~ />$/
+                }else{
+                    $tag =~ m/([@%\$\.\/\w]+) ([ <>\n|^\\]{1})+ ([^<^>^^\n]+) ([<>]?) (.*)/gmxs;
+                         $t = $3;
+                         $v = $5;
                 }
-            }else{ 
-                $v =~ s/\s>$// ; #Strip if old format of instruction. Pre v.2.5.
+            }else{            
+                                                #############################################################################
+                $tag =~ m/([@%\$\.\/\w]+)       # The name.
+                                ([ <>\n])       # begin or close of instruction, where '\n' mark in script as instruction less.
+                                ([^<^>^^\n]+)   # instruction or value of anything
+                                    ([<>\n]?)   # close mark for instuction or is less if \n encountered before.
+                                    (.*)        # actual value is the rest.
+                                       (>$)*    # capture above value up to here from buffer, i.e. if comming from a >>> tag.
+                         /gmxs;                 ###############################################################################
+
+                $e =$1; 
+                if($e eq '@' or $2 eq '<' or ($2 eq '>' and !$4)){
+                $t = $3; 
+                }else{
+                $t = $1;
+                $e = $3 
+                }
+                $v= $5;
+                $v =~ s/>$//m if $4 eq '<' or $6; #value has been crammed into an instruction?
+            
             }
+            if(!$v && !$RESERVED_WORDS{$t}){
+                $v= $t; 
+            }            
+            $v =~ s/\\</</g; $v =~ s/\\>/>/g;# escaped brackets from v.2.8.
+           
             #Do we have an autonumbered instructed list?   
             #DATA best instructions are exempted and differently handled by existing to only one uniquely named property.
             #So its name can't be autonumbered.
             if ($e =~ /(.*?)\$\$$/){    
                 $e = $1;
-                if($t ne 'DATA'){
+                if($t && $t ne 'DATA'){
                    my $array = $lists{$e};
                    if(!$array){$array=();$lists{$e} = \@{$array};}               
                    push @{$array}, InstructedDataItem -> new($e, $t, $v);
@@ -474,10 +679,10 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                 }   
             }elsif ($e eq '@'){#collection processing.
                 my $isArray = $t=~ m/^@/;
-                if(!$v && $t =~ m/(.*)>(\s*.*\s*)/gms){
-                    $t = $1;
-                    $v = $2;
-                }               
+                # if(!$v && $t =~ m/(.*)>(\s*.*\s*)/gms){
+                #     $t = $1;
+                #     $v = $2;
+                # }               
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
@@ -533,184 +738,8 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                     $properties{$t}=\%hsh;
                 }
                 next;
-            }              
-
-            if($t eq 'CONST'){#Single constant with mulit-line value;
-
-               $v =~ s/^\s//;
-               #print "[[$t]]=>{$v}\n";
-               $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
-               
-            }elsif($t eq 'DATA'){
-               $v=~ s/^\n//; 
-               foreach(split /~\n/,$v){
-                   my @a;
-                   $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
-                   foreach my $d (split /`/, $_){
-                        $d =~ s/\\f/`/g; #escape back form feed to backtick.
-                        $d =~ s/~$//; #strip dangling ~ if there was no \n
-                        $t = substr $d, 0, 1;
-                        if($t eq '$'){
-                            $v =  $d;            #capture specked value.
-                            $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
-                            if($v=~m/\$$/){
-                                $v = $self->{$d}; $v="" if not $v;
-                            }
-                            else{
-                                $v = $d;
-                            }
-                            push @a, $v;
-                        }
-                        else{                            
-                            if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
-                                $d = $1;#substr $d, 1;
-                                $d=0 if !$d; #default to 0 if not specified.
-                                push @a, $d
-                            }
-                            else{
-                              push @a, $d;
-                            }
-                        }
-                   }                   
-                   
-                   my $existing = $self->{'__DATA__'}{$e};
-                   if(defined $existing){
-                        my @rows = @$existing;
-                        push @rows, [@a] if scalar @a >0; 
-                        $self->{'__DATA__'}{$e} = \@rows
-                   }else{
-                        my @rows; push @rows, [@a];   
-                       $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
-                   }
-               }           
-                
-            }elsif($t eq 'FILE'){
-                my ($i,$path) = $cnf;
-                $v=~s/\s+//g;
-                $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
-                push @files, $path;
-                next if !$self->{'$AUTOLOAD_DATA_FILES'};
-                open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
-                   read $fh, $content, -s $fh;
-                close   $fh;
-                my @tags = ($content =~ m/<<(\w*<(.*?).*?>>)/gs);
-                foreach my $tag (@tags){
-                    next if not $tag;
-                    my @kv = split /</,$tag;
-                    $e = $kv[0];
-                    $t = $kv[1];
-                    $i = index $t, "\n";
-                    if($i==-1){
-                        $t = $v = substr $t, 0, (rindex $t, ">>");
-                    }
-                    else{
-                        $v = substr $t, $i+1, (rindex $t, ">>")-($i+1);
-                        $t = substr $t, 0, $i;
-                    }
-                    if($t eq 'DATA'){
-                        foreach(split /~\n/,$v){
-                            my @a;
-                            $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
-                            foreach my $d (split(/`/, $_)){
-                                $d =~ s/\\f/`/g; #escape back form feed to backtick.
-                                $t = substr $d, 0, 1;
-                                if($t eq '$'){
-                                    $v =  $d;            #capture spected value.
-                                    $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
-                                    if($v=~m/\$$/){
-                                        $v = $self->{$d}; $v="" if not $v;
-                                    }
-                                    else{
-                                        $v = $d;
-                                    }
-                                    push @a, $v;
-                                }
-                                else{
-                                    if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
-                                        $d = $1;#substr $d, 1;
-                                        $d=0 if !$d; #default to 0 if not specified.
-                                        push @a, $d
-                                    }
-                                    else{
-                                    push @a, $d; 
-                                    }                                                
-                                }                                
-                                my $existing = $self->{'__DATA__'}{$e};
-                                if(defined $existing){
-                                        my @rows = @$existing;
-                                        push @rows, [@a] if scalar @a >0; 
-                                        $self->{'__DATA__'}{$e} = \@rows
-                                }else{
-                                        my @rows; push @rows, [@a];   
-                                        $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
-                                }
-                            }   
-                        }
-                    }       
-                }              
-            }elsif($t eq 'INCLUDE'){
-                   $includes{$e} = {loaded=>0,path=>$e,v=>$v};
-            }elsif($t eq 'TREE'){
-               my  $tree = CNFNode->new({'_'=>$e,script=>$v}); 
-                   $tree->{DEBUG} = $self->{DEBUG};
-                   $instructs{$e} = $tree; 
-
-            }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
-               SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
-                elsif($t eq 'INDEX'){ SQL()->createIndex($v)}  
-                   elsif($t eq 'VIEW'){ SQL()->createView($e,$v)}
-                      elsif($t eq 'SQL'){ SQL($e,$v)}
-                         elsif($t eq 'MIGRATE'){SQL()->migrate($e, $v)
             }
-            elsif($t eq 'DO'){
-                if($DO_enabled){
-                    ## no critic BuiltinFunctions::ProhibitStringyEval
-                    $v = eval $v;
-                    ## use critic
-                    chomp $v; $anons->{$e} = $v;
-                }else{
-                    $self->warn("Do_enabled is set to false to process property: $e\n")
-                }
-            }
-            elsif($t eq 'PLUGIN'){ 
-                if($DO_enabled){
-                    $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
-                }else{
-                    $self->warn("Do_enabled is set to false to process following plugin: $e\n")
-                }                
-            }
-            elsif($t eq 'INSTRUCTOR'){ 
-                if(not $self->registerInstructor($e, $v) && $self->{STRICT}){
-                   CNFParserException->throw("Instruction Registration Failed for '<<$e<$t>$v>>'!\t");
-                }
-            }
-            elsif(exists $instructors{$t}){
-                if(not $instructors{$t}->instruct($e, $v) && $self->{STRICT}){
-                   CNFParserException->throw("Instruction processing failed for '<<$e<$t>>'!\t");
-                }
-            }
-            elsif($t eq 'MACRO'){                  
-                  $instructs{$e}=$v;                  
-            }
-            else{
-                #Register application statement as either an anonymous one. Or since v.1.2 an listing type tag.                 
-                if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
-                   $v = $t if not $v; 
-                    if($e=~/^\$/){
-                        $self->{$e} = $v if !$self->{$e}; # Not allowed to overwrite constant.
-                    }else{                        
-                        $anons->{$e} = $v
-                    }
-                }
-                else{
-                    $e = substr $e, 0, (rindex $e, '$$');
-                    # Following is confusing as hell. We look to store in the hash an array reference.
-                    # But must convert back and fort via an scalar, since actual arrays returned from an hash are references in perl.
-                    my $array = $lists{$e};
-                    if(!$array){$array=();$lists{$e} = \@{$array};}
-                    push @{$array}, $v;
-                }            
-            }            
+            doInstruction($self,$e,$t,$v)
         }
 	}
     #Do smart instructions and property linking.
@@ -737,40 +766,47 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                 $ditms[@ditms] = $struct;
             }
         }
+        my @del;
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && $struct->{'script'}=~/_HAS_PROCESSING_PRIORITY_/si){ 
+            if($type eq 'CNFNode' && ($struct->{'script'} =~ s/_HAS_PROCESSING_PRIORITY_//si)){ # This will within trim out the flag if found.
                $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
-               splice @ditms, $idx,1;
+               #splice @ditms, $idx,1; <- causing havoc when key order is scrambled. Weirdest thing in perl!
+               push @del, $idx; 
             }
         }
+        while(@del){
+            splice @ditms,pop @del, 1
+        }
+
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
             if($type eq 'CNFNode'){   
                $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};            
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
-               splice @ditms, $idx,1;
+               push @del, $idx; 
+            }elsif($type eq 'InstructedDataItem' && $struct->{'priority'}){ 
+                my $t = $struct->{ins};
+                if($t eq 'PLUGIN'){ 
+                   instructPlugin($self,$struct,$anons);
             }
+                push @del, $idx; 
         }
+        }
+        while(@del){
+            splice @ditms,pop @del, 1
+        }
+
         @ditms =  sort {$a->{aid} <=> $b->{aid}} @ditms if $#ditms > 1;
         foreach my $struct(@ditms){
             my $type =  ref($struct); 
             if($type eq 'InstructedDataItem'){
                 my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){  #for now we keep the plugin instance.
-                   try{             
-                            $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
-                            $self->log("Plugin instructed ->". $struct->{'ele'});
-                   }catch($e){ 
-                            if($self->{STRICT}){
-                               CNFParserException->throw(error=>$e, show_trace=>1);
-                            }else{
-                               $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
-                            }
-                   }
+                if($t eq 'PLUGIN'){  
+                   instructPlugin($self,$struct,$anons);
                 }
             }
         }
@@ -792,8 +828,8 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
               }              
             }else{
                  CNFParserException->throw("Can't open ".$file->{path}." -> $!") if $self->{STRICT};
-                 $file->{loaded} = 1;
-                 $self->error("Include not available -> ".$file->{path})
+                 $file->{loaded} = 0;
+                 $self->error("Script include not available -> ".$file->{path})
             }
         }
     }    
@@ -803,6 +839,20 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
     lock_hash(%$self);#Make repository finally immutable.
 }
 #
+
+sub instructPlugin {
+     my ($self, $struct, $anons) = @_;
+    try{             
+        $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
+        $self->log("Plugin instructed ->". $struct->{'ele'});
+    }catch($e){ 
+            if($self->{STRICT}){
+                CNFParserException->throw(error=>$e, show_trace=>1);
+            }else{
+                $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
+            }
+    }
+}
 
 our $SQL;
 sub  SQL {
@@ -870,7 +920,7 @@ sub registerInstructor {
 # Setup and pass to pluging CNF functionality.
 # @TODO Current Under development.
 ###
-sub doPlugin{
+sub doPlugin {
     my ($self, $struct, $anons) = @_;
     my ($elem, $script) = ($struct->{'ele'}, $struct->{'val'});
     my $plugin = PropertyValueStyle->new($elem, $script);
@@ -887,8 +937,9 @@ sub doPlugin{
         }else{
            $obj = $pck->new();
         }        
-        my $res = $obj->$sub($self,$prp);
+        my $res = $obj-> $sub($self, $prp);
         if($res){            
+            $plugin->setPlugin($obj);
             return $plugin;
         }else{
             die "Sorry, the PLUGIN feature has not been Implemented Yet!"
@@ -896,7 +947,7 @@ sub doPlugin{
     }
     else{
         die qq(Invalid plugin encountered '$elem' in "). $self->{'CNF_CONTENT'} .qq(
-        Plugin must have attributes -> 'library', 'property' and 'subroutine')
+        Plugin must have attributes -> 'package', 'property' and 'subroutine')
     }
 }
 
@@ -1067,6 +1118,7 @@ __END__
    2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
    3. Current Reserved words list is.
        - CONST    - Concentrated list of constances, or individaly tagged name and its value.
+       - VARIABLE - Concentrated list of anons, or individaly tagged name and its value.
        - DATA     - CNF scripted delimited data property, having uniform table data rows.       
        - FILE     - CNF scripted delimited data property is in a separate file.
        - %LOG     - Log settings property, i.e. enabled=1, console=1.

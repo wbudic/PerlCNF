@@ -24,8 +24,8 @@ use Syntax::Keyword::Try; try {
     ###
     # Test parsing HTML tags in value.
     ###
-    $cnf->parse(undef,"<<tag1<CONST><HTML></HTML>>>");
-    die $test->failed()  if not $cnf->{tag1}  eq '<HTML></HTML>';
+    $cnf->parse(undef,"<<tag1<CONST> <HTML></HTML> >>");
+    die $test->failed()  if not $cnf->{tag1}  eq '<HTML></HTML> ';
     $test->case($cnf->{tag1});
     #
 

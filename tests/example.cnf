@@ -69,7 +69,7 @@ Bonjour, merci d'avoir visité
 
 Anon's are normal default scripted Perl CNF property value pairs.
 
-<<I am an Anon<some value>>
+<<I_am_an_Anon<some value>>
 <<ME_TOO<1024>>
 <<MULTI_LINED<
 1

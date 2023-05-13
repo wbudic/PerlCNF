@@ -131,6 +131,7 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
 ## CNF Tag Formats
 
 Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
+
 ### Property Value Tag
 
    ```HTML
@@ -175,15 +176,16 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
 
 ## Mauling Explained
 
-1. Mauling refers to allowing for/or encountering inadequate script format of an CNF property.
+1. Mauling refers to allowing for/or encountering inadequate possible script format of an CNF property.
     1. These still should pass the parsers scrutiny and are not in most cases errors.
-    2. There are in general three part expected to an CNF property.
+    2. There are in general three parts expected for an CNF property.
         1. Tag name.
         2. Instruction.
         3. Value
     3. CNF property value tag turns the instruction the value, if the value is not separated from it.
     4. CNF only instructed, will try to parse the whole value to make multiple property value pairs.
         1. The newline is the separator for each on created.
+    5. Ver. 2.8 of PerlCNF is the third third rewrite to boom and make this algorithm efficient.
 2. Example. Instruction is mauling value:
 
     ```perl
@@ -262,16 +264,17 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
    2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
    3. Current Reserved words list is.
-       - CONST    - Concentrated list of constances, or individaly tagged name and its value.
-       - DATA     - CNF scripted delimited data property, having uniform table data rows.       
+       - CONST    - Concentrated list of constances, or individually tagged name and its value.
+       - VARIABLE - Concentrated list of anons, or individually tagged name and its value.
+       - DATA     - CNF scripted delimited data property, having uniform table data rows.
        - FILE     - CNF scripted delimited data property is in a separate file.
        - %LOG     - Log settings property, i.e. enabled=1, console=1.
        - TABLE    - SQL related.
-       - TREE     - Property is a CNFNode tree containing multiple debth nested children nodes.
+       - TREE     - Property is a CNFNode tree containing multiple depth nested children nodes.
        - INCLUDE  - Include properties from another file to this repository.
                     - Included files constances are ignored if are in parent file assigned.
-                    - Includes are processed last and not on the spot, so their anons encountered take over presedence.
-                    - Include instruction use is not recomended and is as same to as calling the parse method of the parser.
+                    - Includes are processed last and not on the spot, so their anons encountered take over precedence.
+                    - Include instruction use is not recommended and is as same to as calling the parse method of the parser.
        - INDEX    - SQL related.
        - INSTRUCT - Provides custom new anonymous instruction.
        - VIEW     - SQL related.
@@ -418,7 +421,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
                     So deeply nesting an large property body is not recommended and also not suitable for encapsulating there data.
                 3. An opening tag is opened being surround with the same signifier into the direction of the property body.
                 4. The closing tag is in the opposite direction same signifiers.
-                   * **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
+                    - **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
         3. The node characteristic is that each sub property is linked to its parent property
            1. This is contained in the ' **@** ' attribute.
            2. Node characteristic is also the tree can be searched via path.
@@ -461,7 +464,9 @@ CNF supports basic SQL Database structure statement generation. This is done via
         ```
 
 ## Sample Perl Language Usage
-Quick Jump: [Introduction](#introduction) | [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions) | [CNF Tag Formats](#cnf-tag-formats) 
+
+Quick Jump: [Introduction](#introduction) | [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions) | [CNF Tag Formats](#cnf-tag-formats)
+
 1. *DO*
    1. CNF DO instruction is *experimental*, purely perl programming language related.
    2. It provides perl code evaluation during parsing giving also access to parser and its variables as do's there sequentially appear.
@@ -529,5 +534,5 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.5 2023</center>
+<center>Sun Stage - v.2.8 2024</center>
 

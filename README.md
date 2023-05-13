@@ -2,17 +2,23 @@
 
 Perl based Configuration Network File Format Parser and Specifications.
 CNF file format supports used format extraction from any text file.
-Useful for templates and providing initial properties and values for an application settings.
-Has own textual data format. Therefore can also be useful for database data batch processing.
+Useful for templates and providing initial properties and values for various application settings.
+Has own textual data tag format. Therefore can also be useful for database data batch processing.
 
-This version doesn't parse the actual __DATA__ section of an perl file yet. Contact me if this is needed, and for any other possible, useful requests.
-It is at current v.2.6, and specification implemented.
+This project also contains custom build TestManager module for general and all test driven development.
+
+It is at current v.2.8, and specification implemented.
 
 ### [You can find the specification here](./Specifications_For_CNF_ReadMe.md).
 
 ---
 
-NEWS (2022-11-18) - PerlCNF now provides custom test manager and test cases. 
+## Status
+
+(2024-5-13) - v.2.8, has new instructions VARIABLE, to stream line under one tag like CONST, but for anons.
+Has better tag mauling algorithm. PLUGIN code has been improved, particularly the synchronizing and the linking of properties.
+
+(2022-11-18) - PerlCNF now provides custom test manager and test cases. 
 That will in future be used for all projects as an copy from this project.
 This is all available in the ./test directory and is not a Perl module.
 
@@ -88,8 +94,8 @@ print "App Name: ".$cnf->constant('$APP_NAME')."]";
 
 ## Run Test Cases
 
-* Tests are located in the projects **./test directory.
-* Example how to run them:
+* Tests are located in the projects **./tests** directory.
+* Run individually or all at once with, (the __testAll.pl__ script will automatically select the test files and run them for you):
 
     ```sh
         perl ./tests/testAll.pl

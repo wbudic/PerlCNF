@@ -34,26 +34,27 @@ sub process ($self, $parser, $property) {
         my @entry = @{$data[$did]};
         my $ID_Spec_Size = 0;
         my @SPEC;
-        my $mod = 0;
-        # Cleanup header label row for the columns, if present.
+        my $mod = 0;        
         foreach (@entry){
-            my @row = @$_;
-            $ID_Spec_Size = scalar @row;
-            for my $i (0..$ID_Spec_Size-1){                
-                if($row[$i] =~ /^#/){
-                    $SPEC[$i] = 1;
-                }
-                elsif($row[$i] =~ /^@/){
-                    $SPEC[$i] = 2;
-                }
-                else{
-                    $SPEC[$i] = 3;
-                }
-            }
-            if($row[0]){
-                shift @entry; 
-                last
-            }            
+                my @row = @$_;
+                $ID_Spec_Size = scalar @row;
+                for my $i (0..$ID_Spec_Size-1){                
+                    if($row[$i] =~ /^#/){
+                        $SPEC[$i] = 1;
+                    }
+                    elsif($row[$i] =~ /^@/){
+                        $SPEC[$i] = 2;
+                    }
+                    else{
+                        $SPEC[$i] = 3;
+                    }
+                }#rof
+                if($row[0]){
+                    # Cleanup header label row for the columns, if present.
+                    shift @entry; 
+                    #we are done spec obtained from header just before.
+                    last
+                }            
         }
         my $size = $#entry;
         my $padding = length($size);

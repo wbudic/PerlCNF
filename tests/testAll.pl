@@ -73,9 +73,9 @@ try{
     print '-'x100, "\n";
     if($test_fail){
         print BOLD BRIGHT_RED, "HALT! Not all test have passed!\n",BLUE,
-        "\tFailed test file count: ", BOLD RED,"$test_fail\n",BLUE,
-        "\tPassed test count: $test_pass\n",
-        "\tNumber of test cases run: $test_cases\n",
+        "\tNumber of test cases run: $test_cases\n",        
+        "\tPassed test count: ", BRIGHT_GREEN, "$test_pass\n", BLUE
+        "\tFailed test file count: ", BOLD RED,"$test_fail\n",BLUE,        
         join  "",@failed,
         BOLD WHITE, "Finished with test Suit ->$0\n", RESET;
 

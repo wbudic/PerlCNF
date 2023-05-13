@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 
 
 
@@ -22,10 +22,12 @@ try{
        $test->case("Passed new instance CNFParser.");
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);   
 
+    
+
    #
    my $LifeLogConfigAnon = q(!CNF2.2
    <<CONFIG<4>
-00|$RELEASE_VER = 2.4`LifeLog Application Version.~
+00|$RELEASE_VER = 2.4`LifeLog Application Version.
 01|$REC_LIMIT   = 25`Records shown per page.
 03|$TIME_ZONE   = Australia/Sydney`Time zone of your country and city.
 05|$PRC_WIDTH   = 80`Default presentation width for pages.
@@ -60,7 +62,11 @@ try{
 
     my $CONFIG =  $cnf->anon("CONFIG") ;    
     $test->isDefined('$CONFIG',$cnf);
-   
+
+    #
+    $test->subcase("Check old parsing of value algorith.");   
+
+    testOldDataSciptFormat($cnf);
 
     #
     #   
@@ -72,6 +78,64 @@ catch{
    $test -> doneFailed();
 }
 
-#
-#  TESTING THE FOLLOWING IS FROM HERE  #
-#
+
+sub testOldDataSciptFormat {
+    my $cnf = shift;
+    
+    my $data;    
+    my $err;
+    my %vars;
+    my @lines  = split('\n', $cnf->anon('CONFIG'));
+         
+    foreach my $line ( @lines ) {
+        my @tick = split( "`", $line );
+        if ( scalar(@tick) == 2 ) {
+
+       #Specification Format is: ^{id}|{property}={value}`{description}\n
+       #There is no quoting necessary unless capturing spaces or tabs for value!
+                my %hsh = $tick[0] =~ m[(\S+)\s*=\s*(\S+)]g;
+                if ( scalar(%hsh) == 1 ) {
+                    for my $key ( keys %hsh ) {
+                        my %nash = $key =~ m[(\d+)\s*\|\$\s*(\S+)]g
+                          ;    # {id}|{property} <- is the key.
+                        if ( scalar(%nash) == 1 ) {
+                            for my $id ( keys %nash ) {
+                                my $name  = $nash{$id};
+                                my $value = $hsh{$key};    # <- {value}.
+                                if ( $vars{$id} ) {
+                                    $err .=
+                                      "UID{$id} taken by $vars{$id}-> $line\n";
+                                }
+                                else {
+                                    
+                                }
+                            }
+                        }
+                        else {
+                            $err .=
+"Invalid, spected {uid}|{setting}`{description}-> $line\nlines:\n@lines";
+                        }
+
+                    }    #rof
+                }
+                else {
+                    $err .= "Invalid, spected entry -> $line\n";
+                }
+
+            }
+            elsif ( length($line) > 0 ) {
+                if ( scalar(@tick) == 1 ) {
+                    $err .= "Corrupt entry, no description supplied -> $line\n &lt&ltCONFIG&lt;\n".$cnf->anon('CONFIG')."\n&gt&gt;&gt;;\n";
+                }
+                else {
+                    $err .= "Corrupt Entry -> $line\n";
+                }
+            }
+        }
+        die $err  if $err;
+
+     
+}
+
+
+
