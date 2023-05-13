@@ -591,6 +591,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                             my $name = $1;
                                $line = $3;
                             if($isVar){
+                                $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
                                 $anons ->{$name} = $line if $line
                             }else{
                                 if($line and not $self->{$name}){# Not allowed to overwrite constant.

@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;
@@ -34,7 +34,7 @@ try{
                 <<TestInstructor<INSTRUCTOR>TEST>>
                 
             ));            
-            $test->failed("Test failed! Trying to overwrite existing instruction, which are global.");
+            print $test->failed("Test failed! Trying to overwrite existing instruction, which are global.");
         }catch{
             $test->case("Passed fail on trying to overwrite existing instruction, which are global.");            
         }

@@ -40,7 +40,7 @@ sub case {
 sub subcase {
     my ($self, $out) =@_;
     my $sub_cnt = ++$self->{sub_cnt};
-    print GREEN."\t   Case ".$self->{test_cnt}.".$sub_cnt: $out\n".RESET;
+    print GREEN,"\t   Case ".$self->{test_cnt}.".$sub_cnt: $out\n", RESET;
     return $self;
 }
 
@@ -80,7 +80,7 @@ sub stop {
 ###
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
-    if ($cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""};
+    if ($cc&&$bb&&$aa) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""}
     if (not defined $bb){
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] is not defined!\n"
     }elsif($aa eq $bb){        
@@ -89,7 +89,8 @@ sub evaluate {
         ++$self->{sub_err};
         my ($package, $filename, $line) = caller; $filename =~ s/^(\.\/.*\/)/\@/;
         print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
-              ": Failed!"." ($self->{sub_err}) ".RESET. YELLOW. "$filename line ".$line. RED.".eval(\n\$a->$aa\n\$b->$bb\n)\n" unless $aa eq $bb;        
+              ": Failed! (". $self->{sub_err} .")",RESET, YELLOW, " $filename line $line\n",
+               BRIGHT_RED,"[$aa].eval(\$a->$bb, \$b->$cc)\n",RESET;        
         return 0;
     }
     return 1;    
