@@ -62,6 +62,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
                     ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
                     ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
                     STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                    HAS_EXTENSIONS  => 0, # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
                     DEBUG           => 0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
         }; 
     }    
@@ -69,7 +70,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is, anons are not static.
          $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Caveat of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
          $self->{'__ANONS__'} = {};
-    }
+    }    
     $self->{'__DATA__'}  = {};
     if(exists $self->{'%LOG'}){
         if(ref($self->{'%LOG'}) ne 'HASH'){
@@ -78,7 +79,8 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
             $properties{'%LOG'} = $self->{'%LOG'}
         }
     }
-    $self->{'STRICT'} = 1  if not exists $self->{'STRICT'}; #make strict by default if missing.    
+    $self->{'STRICT'} = 1  if not exists $self->{'STRICT'}; #make strict by default if missing. 
+    $self->{'HAS_EXTENSIONS'} = 0 if not exists $self->{'HAS_EXTENSIONS'};
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
@@ -117,6 +119,8 @@ package InstructedDataItem {
     }
 }
 #
+
+
 
 ###
 # PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
@@ -518,11 +522,15 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     else{
         #Register application statement as either an anonymous one. Or since v.1.2 a listing type tag.                 
         if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
-            $v = $t if not $v; 
-            if($e=~/^\$/){
-                $self->{$e}  = $v if !$self->{$e}; # Not allowed to overwrite constant.
-            }else{                        
-                $anons->{$e} = $v
+            if($self->{'HAS_EXTENSIONS'}){
+                $anons->{$e} = InstructedDataItem->new($e,$t,$v)
+            }else{
+                $v = $t if not $v; 
+                if($e=~/^\$/){
+                    $self->{$e}  = $v if !$self->{$e}; # Not allowed to overwrite constant.
+                }else{                        
+                    $anons->{$e} = $v
+                }
             }
         }
         else{
