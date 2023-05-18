@@ -1,0 +1,12 @@
+!CNF2.8
+
+<<table$$<RANGE>1..28:n*2>>
+<<table$$<RANGE>1..28:n*2+1*n>>
+
+
+<<processor<PLUGIN>
+    package     : ExtensionSamplePlugin
+    subroutine  : process
+    property    : table
+>>
+
