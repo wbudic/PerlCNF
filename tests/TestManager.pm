@@ -90,7 +90,7 @@ sub evaluate {
         my ($package, $filename, $line) = caller; $filename =~ s/^(\.\/.*\/)/\@/;
         print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
               ": Failed! (". $self->{sub_err} .")",RESET, YELLOW, " $filename line $line\n",
-               BRIGHT_RED,"[$aa].eval(\$a->$bb, \$b->$cc)\n",RESET;        
+               BRIGHT_RED,"[$cc].eval(\$a->$aa, \$b->$bb)\n",RESET;        
         return 0;
     }
     return 1;    
