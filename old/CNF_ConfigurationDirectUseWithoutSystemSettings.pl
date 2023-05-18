@@ -10,7 +10,7 @@ use Try::Tiny;
 
 use lib "system/modules/";
 require system::modules::CNFParser;
-my $cnf = CNFParser->new(undef, {DO_enabled=>1,CONSTANT_REQUIRED=>1});
+my $cnf = CNFParser->new(undef, {DO_ENABLED=>1,CONSTANT_REQUIRED=>1});
 $cnf->parse(undef,
 q{
 /*

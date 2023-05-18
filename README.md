@@ -54,7 +54,7 @@ require CNFParser;
 
  my $cnf1 = new CNFParser('sample.cnf');
  #Load config with enabled evaluation on the fly, of perl code embedded in config file.
- my $cnf2 = new CNFParser('sample.cnf',{DO_enabled=>1, duplicates_overwrite=0});
+ my $cnf2 = new CNFParser('sample.cnf',{DO_ENABLED=>1, duplicates_overwrite=0});
 
  ```
 ## Sample CNF File

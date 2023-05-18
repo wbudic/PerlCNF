@@ -395,7 +395,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
             1. package : Path or package name of plugin.
             2. subroutine: Subroutine name to use to pass the parser, after plugin initialization.
             3. property : property to be passed directly, if required, like with data processing.
-    3. Requirements is for plugins to work to have the DO_enabled=>1 config attribute set.
+    3. Requirements is for plugins to work to have the DO_ENABLED=>1 config attribute set.
         1. Plugins currently also will require be last specified in the file, to have access to previous anons that are instructed.
 
     ```HTML

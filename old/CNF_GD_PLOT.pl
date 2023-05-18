@@ -13,7 +13,7 @@ use GD::Graph::lines;
 use lib "system/modules";
 require CNFParser;
 
-my $cnf = CNFParser->new('old/databaseBitcoinPlot.cnf', {DO_enabled=>1,ANONS_ARE_PUBLIC=>1}); #Since v.2.6 ANONS_ARE_PUBLIC=>0 is assumed if not specified.
+my $cnf = CNFParser->new('old/databaseBitcoinPlot.cnf', {DO_ENABLED=>1,ANONS_ARE_PUBLIC=>1}); #Since v.2.6 ANONS_ARE_PUBLIC=>0 is assumed if not specified.
 my $DSN = CNFParser::anon('DBI_SOURCE'); #<- Global static access we use, as it is available, it is same as: $cnf->anon('DBI_SOURCE');
 my $alin= $cnf->anon('AUTO_LOGIN');
 my ($u,$p) = split '/', $alin;

@@ -24,7 +24,7 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
 ),
-   DO_enabled=>1,ANONS_ARE_PUBLIC=>1
+   DO_ENABLED=>1,ANONS_ARE_PUBLIC=>1
 }
    ) -> parse    (undef,
   qq(

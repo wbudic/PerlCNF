@@ -39,7 +39,7 @@ $exp = q|<<data$$<a=2`text='we like this?'>
 _some_value_2
 >>|;
     $cnf->parse(undef,$exp);
-    $cnf->{'DO_enabled'}=1;
+    $cnf->{'DO_ENABLED'}=1;
     @arr = $cnf->list('data');
     %item = %{pop @arr};
 
@@ -59,7 +59,7 @@ _some_value_3
     @arr = $cnf->list('data');
     %item = %{pop @arr};
     $test->info(q!Test 3:: cnf -> list('data')->id:!.$item{'aid'}.'<'.$item{'ins'}.'><'.$item{'val'}.'>', "\n");
-    $test->eval("CNF{DO_enabled}", $cnf->{'DO_enabled'}, 1);
+    $test->eval("CNF{DO_ENABLED}", $cnf->{'DO_ENABLED'}, 1);
     $test->eval("a=3\nb=4\nc=5",$item{'ins'});
     $test->eval("\n".'_some_value_3'."\n", $item{'val'});
 $test->endCase();

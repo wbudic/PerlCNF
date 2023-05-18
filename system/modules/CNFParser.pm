@@ -40,7 +40,7 @@ our %ANONS;
 our %RESERVED_WORDS = (CONST=>1, VARIABLE=>1,   FILE=>1, TABLE=>1,  TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
                        DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INCLUDE=>1, INSTRUCTOR=>1);
-sub isReservedWord {my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef}
+sub isReservedWord    { my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef }
 ###
 
 ###
@@ -58,7 +58,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         $self = \%$attrs;        
     }else{
         $self = {   #Case Sensitive don't tell me you set Do_enabled and it ain't working?
-                    DO_enabled      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
+                    DO_ENABLED      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
                     ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
                     ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
                     STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
@@ -361,7 +361,7 @@ sub template { my ($self, $property, %macros) = @_;
 #private to parser sub.
 sub doInstruction { my ($self,$e,$t,$v) = @_;
 
-    my $DO_enabled = $self->{'DO_enabled'};
+    my $DO_ENABLED = $self->{'DO_ENABLED'};
 
     if(defined $t && $t eq 'CONST' ){#Single constant with mulit-line value;
 
@@ -490,7 +490,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                     elsif($t eq 'MIGRATE'){SQL()->migrate($e, $v)
     }
     elsif($t eq 'DO'){
-        if($DO_enabled){
+        if($DO_ENABLED){
             ## no critic BuiltinFunctions::ProhibitStringyEval
             $v = eval $v;
             ## use critic
@@ -500,7 +500,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         }
     }
     elsif($t eq 'PLUGIN'){ 
-        if($DO_enabled){
+        if($DO_ENABLED){
             $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
         }else{
             $self->warn("Do_enabled is set to false to process following plugin: $e\n")
@@ -855,11 +855,11 @@ sub instructPlugin {
         $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
         $self->log("Plugin instructed ->". $struct->{'ele'});
     }catch($e){ 
-            if($self->{STRICT}){
-                CNFParserException->throw(error=>$e, show_trace=>1);
-            }else{
-                $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
-            }
+        if($self->{STRICT}){
+            CNFParserException->throw(error=>$e, show_trace=>1);
+        }else{
+            $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")                                 
+        }
     }
 }
 

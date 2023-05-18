@@ -17,7 +17,7 @@ try{
    # Test instance cnf file loading time.
    ###
    $test->case("Loading ./tests/world_cities.cnf.")->start();
-   die $test->failed() if not $cnf = CNFParser->new('./tests/world_cities_tmp.cnf',{DO_enabled=>1,ENABLE_WARNINGS=>1});
+   die $test->failed() if not $cnf = CNFParser->new('./tests/world_cities_tmp.cnf',{DO_ENABLED=>1,ENABLE_WARNINGS=>1});
    $test->stop();
        
 

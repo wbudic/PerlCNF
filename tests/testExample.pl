@@ -81,7 +81,7 @@ try{
     # Test DATA instuctions and Plugin powers of PCNF.
     ###
    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf', {
-            DO_enabled=>1,       # Disabled by default. Here we enable as we are using an plugin.
+            DO_ENABLED=>1,       # Disabled by default. Here we enable as we are using an plugin.
             ANONS_ARE_PUBLIC=>1, # Anon's are shared and global for all of instances of this object, by default.
             ENABLE_WARNINGS=>1   # 
         });
