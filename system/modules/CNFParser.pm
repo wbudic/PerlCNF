@@ -57,13 +57,13 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     if ($attrs){
         $self = \%$attrs;        
     }else{
-        $self = {   #Case Sensitive don't tell me you set Do_enabled and it ain't working?
-                    DO_ENABLED      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
-                    ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
-                    ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
-                    STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
-                    HAS_EXTENSIONS  => 0, # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
-                    DEBUG           => 0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
+        $self = {
+                  DO_ENABLED      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
+                  ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
+                  ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
+                  STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                  HAS_EXTENSIONS  => 0, # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
+                  DEBUG           => 0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
         }; 
     }    
     $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
@@ -496,14 +496,14 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             ## use critic
             chomp $v; $anons->{$e} = $v;
         }else{
-            $self->warn("Do_enabled is set to false to process property: $e\n")
+            $self->warn("DO_ENABLED is set to false to process property: $e\n")
         }
     }
     elsif($t eq 'PLUGIN'){ 
         if($DO_ENABLED){
             $instructs{$e} = InstructedDataItem -> new($e, 'PLUGIN', $v);                    
         }else{
-            $self->warn("Do_enabled is set to false to process following plugin: $e\n")
+            $self->warn("DO_ENABLED is set to false to process following plugin: $e\n")
         }                
     }
     elsif($t eq 'INSTRUCTOR'){ 
@@ -638,7 +638,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
             # Before mauling into possible value types, let us go for the full expected tag specs first:
             # <<{$sig}{name}<{INSTRUCTION}>{value\n...value\n}>>
             # Found in -> <https://github.com/wbudic/PerlCNF//CNF_Specs.md>  
-               if($tag !~ /\n/ && $tag =~ /^([@%\$\.\/\w]+)([ <>]+)(\w*>)(.*)/) {
+            if($tag !~ /\n/ && $tag =~ /^([@%\$\.\/\w]+)\s*([ <>]+)(\w*>)(.*)/) {
                 $e = $1;
                 $t = $2;
                 if($t =~ /^<\s*</){
@@ -651,7 +651,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                 }
             }else{            
                                                 #############################################################################
-                $tag =~ m/([@%\$\.\/\w]+)       # The name.
+                $tag =~ m/\s*([@%\$\.\/\w]+)\s*       # The name.
                                 ([ <>\n])       # begin or close of instruction, where '\n' mark in script as instruction less.
                                 ([^<^>^^\n]+)   # instruction or value of anything
                                     ([<>\n]?)   # close mark for instuction or is less if \n encountered before.

@@ -14,7 +14,7 @@ use lib "./system/modules";
 require CNFParser;
 ## Obtain parser instance
 my $cnf = CNFParser->new('./tests/example.cnf');            
-    say 'Constance $IMMUTABLE value is ', $cnf->{'$IMMUTABLE'});
+    say 'Constance $IMMUTABLE value is ', $cnf->{'$IMMUTABLE'};
 
 
 ## Following will throw a fail -> Modification of a read-only value attempted ...
