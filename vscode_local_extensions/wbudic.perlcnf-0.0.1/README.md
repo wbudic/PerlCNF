@@ -22,6 +22,31 @@ Then type **PerlCNF**, if it doesn't appear, it means something went wrong start
   
 ---
 
+## Manually Installing For VSCODE Default Workspace
+
+It is not recommended to install it there (~/.vscode/extension).
+You will need to copy this directory wbudic.perlcnf there and possibly modify ~/.vscode/extensions/extensions.json file.
+To include it as an entry, i.e.:
+
+```JSON
+
+   {
+        "identifier": {
+            "id": "wbudic.perlcnf"
+        },
+        "version": "0.0.1",
+        "location": {
+            "$mid": 1,
+            "path": "~/.vscode/extensions/wbudic.perlcnf-0.0.1",
+            "scheme": "file"
+        },
+        "relativeLocation": "wbudic.perlcnf-0.0.1"
+    },
+
+
+```
+
+
 ## Working with Markdown
 
 You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:

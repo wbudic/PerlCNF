@@ -2,8 +2,8 @@
 use warnings; use strict; 
 use Syntax::Keyword::Try;
 
-use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/tests";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;

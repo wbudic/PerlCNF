@@ -1,13 +1,13 @@
 {
   "name": "perlcnf",
-  "displayName": "PerlCNF",
+  "displayName": "PerlCNF",  
   "description": "",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.74.0"
   },
   "author": {"name": "Will Budic"},
-  "publisher": "Will Budic",
+  "publisher": "wbudic",
   "categories": [
     "Programming Languages"
   ],

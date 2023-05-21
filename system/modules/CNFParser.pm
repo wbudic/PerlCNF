@@ -651,7 +651,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                 }
             }else{            
                                                 #############################################################################
-                $tag =~ m/\s*([@%\$\.\/\w]+)\s*       # The name.
+                $tag =~ m/\s*([@%\$\.\/\w]+)\s* # The name.
                                 ([ <>\n])       # begin or close of instruction, where '\n' mark in script as instruction less.
                                 ([^<^>^^\n]+)   # instruction or value of anything
                                     ([<>\n]?)   # close mark for instuction or is less if \n encountered before.
