@@ -37,7 +37,7 @@ our %ANONS;
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
 ###
-our %RESERVED_WORDS = (CONST=>1, VARIABLE=>1,   FILE=>1, TABLE=>1,  TREE=>1,
+our %RESERVED_WORDS = (CONST=>1, CONSTANT=>1, VARIABLE=>1, VAR=>1,  FILE=>1, TABLE=>1,  TREE=>1,
                        INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
                        DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INCLUDE=>1, INSTRUCTOR=>1);
 sub isReservedWord    { my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef }
@@ -362,14 +362,21 @@ sub template { my ($self, $property, %macros) = @_;
 sub doInstruction { my ($self,$e,$t,$v) = @_;
 
     my $DO_ENABLED = $self->{'DO_ENABLED'};
+    $t = "" if not defined $t;
 
-    if(defined $t && $t eq 'CONST' ){#Single constant with mulit-line value;
+    if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
 
-        $v =~ s/^\s//;
-        #print "[[$t]]=>{$v}\n";
+        $v =~ s/^\s//;        
         $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
         
-    }elsif($t eq 'DATA'){
+    }
+    elsif($t eq 'VAR' or $t eq 'VARIABLE'){
+
+        $v =~ s/^\s//;        
+        $anons->{$e} = $v;
+        
+    }
+    elsif($t eq 'DATA'){
         $v=~ s/^\n//; 
         foreach(split /~\n/,$v){
             my @a;
@@ -517,9 +524,9 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         }
     }
     elsif($t eq 'MACRO'){                  
-            $instructs{$e}=$v;                  
-    }
-    else{
+          $instructs{$e}=$v;                  
+    
+    }else{
         #Register application statement as either an anonymous one. Or since v.1.2 a listing type tag.                 
         if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
             if($self->{'HAS_EXTENSIONS'}){
@@ -586,28 +593,30 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
     foreach my $tag (@tags){             
 	  next if not $tag;
       next if $tag =~ m/^(>+)|^(<<)/;
-      if($tag =~ m/^<(\w*)\s+(.*)>?$/gs){ # Original fastest and early format: <<<anon value>>>
+      if($tag =~ m/^<(\w*)\s+(.*?)>*$/gs){ # Original fastest and early format: <<<anon value>>>
            my $p = $1;
            my $v = $2;
            if(isReservedWord($self,$p)){
-              my $isVar = $p eq 'VARIABLE';
+              my $isVar = ($p eq 'VARIABLE' || $p eq 'VAR');
               if($p eq 'CONST' or $isVar){ #constant multiple properties.                 
                     foreach  my $line(split '\n', $v) { 
                             $line =~ s/^\s+|\s+$//;  # strip unwanted spaces                            
                             $line =~ s/\s*>$//;
-                            $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;
+                            $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;                            
                             my $name = $1;
                                $line = $3;
-                            if($isVar){
-                                $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
-                                $anons ->{$name} = $line if $line
-                            }else{
-                                if($line and not $self->{$name}){# Not allowed to overwrite constant.
-                                $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
-                                $self->{$name} = $line; 
+                            if(defined $name){
+                                if($isVar){
+                                    $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
+                                    $anons ->{$name} = $line if $line
                                 }else{
-                                    warn "Skipping and keeping previously set constance -> [$name] the new value ".
-                                    ($line eq $self->{$name})?"matches it":"dosean't match -> $line."
+                                    if($line and not $self->{$name}){# Not allowed to overwrite constant.
+                                    $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
+                                    $self->{$name} = $line; 
+                                    }else{
+                                        warn "Skipping and keeping previously set constance -> [$name] the new value ".
+                                        ($line eq $self->{$name})?"matches it":"dosean't match -> $line."
+                                    }
                                 }
                             }
                     }

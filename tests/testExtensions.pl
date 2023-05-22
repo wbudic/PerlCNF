@@ -2,14 +2,12 @@
 use warnings; use strict; 
 use Syntax::Keyword::Try;
 
-use lib "/home/will/dev/PerlCNF/tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "tests";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;
 require ExtensionSamplePlugin;
-
-
 
 my $test = TestManager -> new($0);
 my $cnf;
@@ -33,6 +31,7 @@ try{
     $test->evaluate("First table has 28 entries?", scalar(@{$table[0]}), 28);
     $test->evaluate("Second table has 28 entries?", scalar(@{$table[1]}), 28);
     $test->evaluate("Second table has 9 as first value?", @{$table[2]}[0], 9);
+    $test ->isDefined("\$SOME_CONSTANCE",$cnf->{'$SOME_CONSTANCE'});
 
 
     #   

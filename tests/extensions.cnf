@@ -10,3 +10,12 @@
     property    : table
 >>
 
+<<@<@anon<CONST>
+
+ some value here
+ >>>
+
+ <<@<@Array<1,2,3,4,5>>>
+
+ <<<CONST
+$SOME_CONSTANCE='is set!'>>>
