@@ -1,0 +1,27 @@
+{
+  "name": "perlcnf",
+  "displayName": "PerlCNF",  
+  "description": "",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "author": {"name": "Will Budic"},
+  "publisher": "wbudic",
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "perlcnf",
+      "aliases": ["PerlCNF", "cnf","perlcnf"],
+      "extensions": [".cnf"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "perlcnf",
+      "scopeName": "source.cnf",
+      "path": "./syntaxes/cnf.tmLanguage.json"
+    }]
+  }
+}
