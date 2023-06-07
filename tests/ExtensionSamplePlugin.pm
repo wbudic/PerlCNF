@@ -11,15 +11,12 @@ use feature qw(signatures);
     }
 
 sub process ($self, $parser, $property) {
-
     my @list = $parser->list($property);
-
-
     for my $id (0 .. $#list){ 
         my $entry = $list[$id];
         my $type  = ref($entry);
         if($type eq 'InstructedDataItem'){
-           $parser->data()->{$entry->{ele}.'.'.$entry->{aid}} = doInstruction($parser,$entry)
+           $parser->data()->{$entry->{ele}.'.'.$entry->{aid}} = doInstruction($parser, $entry)
         }
     }
     return $property;

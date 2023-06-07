@@ -17,7 +17,8 @@ use DateTime;
 
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
-##no critic qw(Subroutines::RequireFinalReturn,ControlStructures::ProhibitMutatingListFunctions);
+##no critic qw(Subroutines::RequireFinalReturn)
+##no critic Perl::Critic::Policy::ControlStructures::ProhibitMutatingListFunctions
 
 use constant VERSION => '2.8';
 our @files;
@@ -89,9 +90,9 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
 sub import {     
     my $caller = caller;    
     {
-         *{"${caller}::configDumpENV"} = \&dumpENV;
-         *{"${caller}::anon"}          = \&anon;
-         *{"${caller}::SQL"}           = \&SQL;
+         *{"${caller}::configDumpENV"}  = \&dumpENV;
+         *{"${caller}::anon"}           = \&anon;
+         *{"${caller}::SQL"}            = \&SQL;         
     }
     return 1;    
 }
@@ -676,7 +677,7 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                 $e = $3 
                 }
                 $v= $5;
-                $v =~ s/>$//m if $4 eq '<' or $6; #value has been crammed into an instruction?
+                $v =~ s/>$//m if defined($4) && $4 eq '<' or $6; #value has been crammed into an instruction?
             
             }
             if(!$v && !$RESERVED_WORDS{$t}){
