@@ -19,11 +19,12 @@ try{
     $test->case("Passed new instance CNFParser for:".$cnf->{CNF_CONTENT});
     #  
     $test-> nextCase();
-    #   
+    #
+    ###
+    $test->case('Evaluate debug level set.');
     my $dbg_level = $cnf->{'$DEBUG_LEVEL'};
     $test->evaluate("Is \$DEBUG_LEVEL still 1, as set in script and a constance?",$dbg_level,1);
     $test->evaluate("Is anon ME_TOO is overwritten by example.cnf to [1024]?",$cnf->anon('ME_TOO'),1024);
-
     #   
     $test->done();    
     #

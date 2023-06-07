@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
 
-use lib "./tests";
-use lib "./system/modules";
+use lib "tests";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;

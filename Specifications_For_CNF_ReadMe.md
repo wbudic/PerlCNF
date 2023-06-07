@@ -232,7 +232,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
    3. DATA is delimited list of items.
       1. For hashes named as property value pairs and assigned with '=', for value.
          1. Hash entries are delimited by a new line.
-      2. For arrays, values are delimited by new line or an comma.
+      2. For arrays, values are delimited by new line or a comma.
       3. White space is preserved if values are quoted, otherwise are trimmed.
 
    ```TEXT
@@ -284,7 +284,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
        - MACRO
           1. Value is searched and replaced by a property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
-          3. Macro format specifications, have been aforementioned in this document. However make sure that your macro an constant also including the *$* signifier if desired.
+          3. Macro format specifications, have been aforementioned in this document. However, make sure that your macro an constant also including the *$* signifier if desired.
 
 ## Database and SQL Instruction Formatting
 
@@ -359,11 +359,11 @@ CNF supports basic SQL Database structure statement generation. This is done via
     2. Data rows are ended with the **"~"** delimiter. In the tag body.
     3. Data columns are delimited with the invert quote **"`"** (back tick) making the row.
     4. First column can be taken as the unique and record identity column (UID).
-        1. If no UID is set, or specified with # or, 0, ID is considered to be auto-numbered based on data position plus 1, so not to have zero id's.
+        1. If no UID is set, or specified with # or, 0, ID is considered to be auto-numbered based on data position plus 1, so not to have zero IDs.
         2. When UID is specified, an existing previous assigned UID cannot be overridden, therefore can cause duplicates.
         3. Data processing plugins can be installed to cater and change behavior on this whole concept.
     5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
-       1. This behavior can be controlled by disabling something like  an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
+       1. This behavior can be controlled by disabling something like an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
        2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
 
     ```HTML
@@ -387,15 +387,15 @@ CNF supports basic SQL Database structure statement generation. This is done via
 3. PLUGIN
     1. Plugin instruction is specific outside program that can be run for various configuration task, on post loading of all properties.
         This can be special further.
-        1. Further processing of data, collections.
+        1. Further, processing of data collections.
         2. Issuing actions, revalues.
-        3. Checking structures , properties and values that are out of scope of the parser.
+        3. Checking structures, properties and values that are out of scope of the parser.
     2. To a plugin parser itself will be passed to access.
         1. Required attributes are:
             1. package : Path or package name of plugin.
             2. subroutine: Subroutine name to use to pass the parser, after plugin initialization.
             3. property : property to be passed directly, if required, like with data processing.
-    3. Requirements is for plugins to work to have the DO_ENABLED=>1 config attribute set.
+    3. Requirements are for plugins to work to have the DO_ENABLED=>1 config attribute set.
         1. Plugins currently also will require be last specified in the file, to have access to previous anons that are instructed.
 
     ```HTML
@@ -440,7 +440,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
         1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
         2. It is not recommended to make circular links, or to priorities properties themselves containing links.
         3. To aid parsing priority a parse special instruction can be used if for example linking trees.
-            1. Specified best just after the tree instruction as -> ```<<...<TREE> _HAS_PROCESSING_PRIORITY_```.
+            1. Specified the best just after the tree instruction as -> ```<<...<TREE> _HAS_PROCESSING_PRIORITY_```.
             2. This is currently a TREE instruction only inbuilt option in PerlCNF, for the CNFNodes individuals scripts order of processing.
    4. Tree Format Example:
 
@@ -469,9 +469,9 @@ Quick Jump: [Introduction](#introduction) | [CNF Collections Formatting](#cnf-co
 
 1. *DO*
    1. CNF DO instruction is *experimental*, purely perl programming language related.
-   2. It provides perl code evaluation during parsing giving also access to parser and its variables as do's there sequentially appear.
+   2. It provides perl code evaluation during parsing giving also access to parser and its variables as DO's there sequentially appear.
    3. It is recommended to comment out this feature, if never is to be used or found not safe to have such thing enabled.
-   4. These if named are assigned as anons, with the last processed value as the return. Making them evaluated and processed ever only once.
+   4. This if named are assigned as anons, with the last processed value as the return. Making them evaluated and processed ever only once.
 
 ```perl
 <<<DO
