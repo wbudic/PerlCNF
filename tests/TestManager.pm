@@ -26,8 +26,9 @@ sub new {
 sub failed {
     my ($self, $err) = @_; 
     $err="" if !$err;
+    my $sub_cnt = $self->{sub_cnt};
     ++$self->{sub_err};
-    return BLINK. BRIGHT_RED. " on test: ".$self->{test_cnt}." -> $err". RESET
+    return BLINK. BRIGHT_RED. "\tFailed Case: ".$self->{test_cnt}.".".$sub_cnt." -> $err". RESET
 }
 
 sub case { 
@@ -80,9 +81,9 @@ sub stop {
 ###
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
-    if ($cc&&$bb&&$aa) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc=""}
-    if (not defined $bb){
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] is not defined!\n"
+    if ($aa&&$bb&&$cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc="test-is-undef"}
+    if (@_== 2 && $aa || $cc eq 'test-is-undef'){
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] object is defined!\n"
     }elsif($aa eq $bb){        
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
