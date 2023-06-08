@@ -28,16 +28,31 @@ sub failed {
     $err="" if !$err;
     my $sub_cnt = $self->{sub_cnt};
     ++$self->{sub_err};
-    return BLINK. BRIGHT_RED. "\tFailed Case: ".$self->{test_cnt}.".".$sub_cnt." -> $err". RESET
+    my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
+    return BLINK. BRIGHT_RED. "\tFailed Case: ".$self->{test_cnt}.".".$sub_cnt." -> $err",
+                         BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET
+}
+
+sub passed {
+    my ($self, $msg) = @_; 
+    $msg ="" if !$msg;
+    my $sub_cnt = ++$self->{sub_cnt};
+    my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
+    print BRIGHT_GREEN, "\t   Pass: ".$self->{test_cnt}.".".$sub_cnt." -> $msg", 
+                  BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET
+    return $self
 }
 
 sub case { 
     my ($self, $out) =@_;
+    my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
     nextCase($self) if $self->{open};
-    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n".RESET;
+    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n",
+          BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET;    
     $self->{open}=1;
-    return $self;
+    return $self
 }
+
 sub subcase {
     my ($self, $out) =@_;
     my $sub_cnt = ++$self->{sub_cnt};
@@ -46,8 +61,7 @@ sub subcase {
 }
 
 sub nextCase {
-    my ($self) =@_;
-    
+    my ($self) =@_;    
     if($self->{sub_err} > 0){
         my $errors = "errors";  $errors = "error" if $self->{sub_err} == 1;
         print "\tCase ".$self->{test_cnt}.BRIGHT_RED." failed with ".$self->{sub_err} ." $errors!\n".RESET;
@@ -82,9 +96,9 @@ sub stop {
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
     if ($aa&&$bb&&$cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc="test-is-undef"}
-    if (@_== 2 && $aa || $cc eq 'test-is-undef'){
+    if (@_== 2 && $aa || $aa && !$bb && $cc eq 'test-is-undef'){
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] object is defined!\n"
-    }elsif($aa eq $bb){        
+    }elsif(defined $aa && $aa eq $bb){        
         print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
     }else{    
         ++$self->{sub_err};
@@ -144,13 +158,11 @@ sub isNotDefined{
 }
 
 sub done {
-    my ($self) =@_; 
-
+    my ($self) =@_;
     my $result =  BOLD."Test cases ($self->{test_cnt}) have ";
     if(defined($self->{sub_err}) && $self->{sub_err} > 0){
         $self->{case_err} += $self->{sub_err};
-    }      
-        
+    }        
     if(defined($self->{case_err}) && $self->{case_err} > 0){
       my $errors = "errors";  $errors = "error" if $self->{case_err} == 1;
       $result .= $self->{case_err} . BRIGHT_RED . " evaluation $errors.".RESET.BOLD." Status is ";
