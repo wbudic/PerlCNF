@@ -38,9 +38,12 @@ our %ANONS;
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
 ###
-our %RESERVED_WORDS = (CONST=>1, CONSTANT=>1, VARIABLE=>1, VAR=>1,  FILE=>1, TABLE=>1,  TREE=>1,
-                       INDEX=>1, VIEW=>1,   SQL=>1,  MIGRATE=>1, 
-                       DO=>1,    PLUGIN=>1, MACRO=>1,'%LOG'=>1, INCLUDE=>1, INSTRUCTOR=>1);
+
+our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT VARIABLE VAR 
+                                        FILE TABLE TREE INDEX 
+                                        VIEW SQL MIGRATE DO 
+                                        PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
+
 sub isReservedWord    { my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef }
 ###
 
@@ -366,16 +369,12 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     $t = "" if not defined $t;
 
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
-
         $v =~ s/^\s//;        
         $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
-        
     }
     elsif($t eq 'VAR' or $t eq 'VARIABLE'){
-
         $v =~ s/^\s//;        
-        $anons->{$e} = $v;
-        
+        $anons->{$e} = $v;        
     }
     elsif($t eq 'DATA'){
         $v=~ s/^\n//; 
@@ -873,16 +872,6 @@ sub instructPlugin {
     }
 }
 
-our $SQL;
-sub  SQL {
-    if(!$SQL){##It is late compiled on demand.
-        require CNFSQL; $SQL  = CNFSQL->new();
-    }
-    $SQL->addStatement(@_) if @_;
-    return $SQL;
-}
-
-
 ###
 # Register Instructor on tag and value for to be externally processed.
 # $package  - Is the anonymouse package name.
@@ -970,6 +959,7 @@ sub doPlugin {
     }
 }
 
+###
 # Writes out to a handle an CNF property or this parsers constance's as default property.
 # i.e. new CNFParser()->writeOut(*STDOUT);
 sub writeOut { my ($self, $handle, $property) = @_;      
@@ -1123,6 +1113,14 @@ sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
 }
 
+our $SQL;
+sub  SQL {
+    if(!$SQL){##It is late compiled on demand.
+        require CNFSQL; $SQL  = CNFSQL->new();
+    }
+    $SQL->addStatement(@_) if @_;
+    return $SQL;
+}
 
 sub END {
 undef %ANONS;

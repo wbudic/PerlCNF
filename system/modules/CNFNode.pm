@@ -24,6 +24,7 @@ sub name {
 sub val {
     my $self = shift;
     my $ret = $self->{'#'};
+    $ret = $self->{'*'} if !$ret;
     if(ref($ret) eq 'SCALAR'){
            $ret = $$ret;
      }
@@ -34,14 +35,13 @@ sub parent {
     return $self->{'@'}
 }
 
-
 sub attributes {
     my $self = shift;
     my @nodes;
     foreach(sort keys %$self){
         my $node = $self->{$_};        
         if($_ !~ /@|@\$|#_/){
-            $nodes[@nodes] = [$_, $node]
+           $nodes[@nodes] = [$_, $node]
         }
     }
     return @nodes;
@@ -49,7 +49,7 @@ sub attributes {
 #
 
 ###
-# Search a path for node from a path statement.
+# Search select nodes based on from a path statement.
 # It will always return an array for even a single subproperty. 
 # The reason is several subproperties of the same name can be contained by the parent property.
 # It will return an array of list values with (@@).
@@ -135,7 +135,10 @@ sub find {
     }
     return $ret;
 }
-#
+###
+# Similar to find, put simpler node by path routine.
+# Returns first node found based on path..
+###
 sub node {
     my ($self, $path, $ret)=@_;
     foreach my $name(split(/\//, $path)){        
@@ -150,6 +153,7 @@ sub node {
     }
     return $ret;    
 }
+
 sub nodes {
     my $self = shift;
     my $ret = $self->{'@$'};
@@ -158,6 +162,11 @@ sub nodes {
     }
     return ();
 }
+
+###
+# Outreached subs list of collected node links found in a property.
+my  @linked_subs;
+
 ###
 # The parsing guts of the CNFNode, that from raw script, recursively creates and tree of nodes from it.
 ###
@@ -179,8 +188,7 @@ sub process {
     }else{
         my @lines = split(/\n/, $script);
         foreach my $ln(@lines){
-            $ln =~ s/^\s+|\s+$//g;
-            #print $ln, "<-","\n";            
+            $ln =~ s/^\s+|\s+$//g;          
             if(length ($ln)){
                 #print $ln, "\n";
                 if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/ && $1 eq $3){
@@ -191,9 +199,9 @@ sub process {
                     if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $2;
-                            my $lval = $parser->anon($2);
-                            $lval    = $parser->{$2} if !$lval; #Anon is passed as an unknown constance (immutable).
-                            if($lval){                                
+                            my $rval = $self -> obtainLink($parser, $link);                                                             
+                               $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
+                            if($rval){                 
                                 if($opening){
                                    $body .= qq($ln\n);                                   
                                 }else{
@@ -206,12 +214,12 @@ sub process {
                                         }else{
                                             @nodes = ();                                   
                                         }
-                                        $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$lval,'@' => \$self});
+                                        $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$rval,'@' => \$self});
                                         $self->{'@$'} = \@nodes;
                                     }
                                     else{
                                         #Links scripted in main tree parent are copied main tree attributes.
-                                        $self->{$link} = $lval
+                                        $self->{$link} = $rval
                                     }                                 
                                 }
                                 next
@@ -268,6 +276,7 @@ sub process {
                                     $val .= $body
                                 }
                                 $valing = 0;
+                                $tag ="" if $isClosing
                             }else{         
                                 my $a = $isArray;
                                 my $property = CNFNode->new({'_'=>$sub, '@' => \$self});                                   
@@ -308,9 +317,9 @@ sub process {
                             else{$val = $4}                           
                         }elsif($2 eq '*'){
                                 my $link = $4;
-                                my $lval = $parser->anon($4);
-                                $lval    = $parser->{$4} if !$lval; #Anon is passed as an unknown constance (immutable).
-                                if($lval){
+                                my $rval = $self->obtainLink($parser, $link);                                                             
+                                   $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
+                                if($rval){
                                         #Is this a child node?
                                         if(exists $self->{'@'}){
                                             my @nodes;
@@ -320,16 +329,16 @@ sub process {
                                             }else{
                                                @nodes = ();                                   
                                             }
-                                            $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$lval, '@' => \$self});
+                                            $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$rval, '@' => \$self});
                                             $self->{'@$'} = \@nodes;
                                         }
                                         else{
                                             #Links scripted in main tree parent are copied main tree attributes.
-                                            $self->{$link} = $lval
+                                            $self->{$link} = $rval
                                         }                                 
                                     
                                 }else{ 
-                                    warn "Anon link $link not located with $ln for node ".$self->{'_'} if !$opening;
+                                    warn "Anon link $link not located with '$ln' for node ".$self->{'_'} if !$opening;
                                 }
                         }elsif($2 eq '@@'){
                                $array[@array] = CNFNode->new({'_'=>$2, '#'=>$4, '@' => \$self});                               
@@ -370,7 +379,7 @@ sub process {
                        $val = $ln if $val;
                     }                   
                 }
-                 $body .= qq($ln\n)
+                 $body .= qq($ln\n) if $ln!~/^\#/
             }
             elsif($tag eq '#'){
                  $body .= qq(\n)
@@ -380,9 +389,40 @@ sub process {
 
     $self->{'@@'} = \@array if @array;
     $self->{'#'} = \$val if $val;
+    ## no critic BuiltinFunctions::ProhibitStringyEval
+    no strict 'refs';       
+    while(@linked_subs){
+       my $entry = pop (@linked_subs);  
+       my $node  = $entry->{node};
+       my $res   = &{+$entry->{sub}}($node);
+       $entry->{node}->{'*'} = \$res;
+    }
     return \$self;
 }
 
+sub obtainLink {
+    my ($self,$parser,$link, $ret) = @_;
+    ## no critic BuiltinFunctions::ProhibitStringyEval
+    no strict 'refs';
+    if($link =~/(.*)(\(\.\))$/){       
+       push @linked_subs, {node=>$self,link=>$link,sub=>$1};
+       return 1;
+    }elsif($link =~/(\w*)::\w+$/){
+        use Module::Loaded qw(is_loaded);
+        if(is_loaded($1)){
+           $ret = \&{+$link}($self);                                        
+        }else{
+            cluck qq(Package  constance link -> $link is not available (try to place in main:: package with -> 'use $1;')")
+        }
+    }else{
+        $ret = $parser->anon($link);
+    }    
+    return $ret;
+}
+
+###
+# Validates a script if it has correctly structured nodes.
+#
 sub validate {
     my ($self, $script) = @_;
     my ($tag,$sta,$end,$lnc,$errors)=("","","",0,0); 
