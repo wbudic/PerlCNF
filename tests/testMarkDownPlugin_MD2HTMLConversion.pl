@@ -5,20 +5,42 @@ use lib "system/modules";
 
 require TestManager;
 require CNFParser;
+require CNFNode;
 require MarkdownPlugin;
 
 my $test = TestManager -> new($0);
 
 use Syntax::Keyword::Try; try {   
-
-  
-
     ###
     $test->case("Test instances of parser and MarkDownPlugin.");
     my $parser = CNFParser -> new();
-    $parser->parse(undef,qq(
-        <<test<#Hello World!>>>
-    ));
+       $parser->parse(undef,qq(
+            <<test<#Hello World!>>>
+            <<HTML_STYLE<TREE>
+                #The root of the tree is the configuration hub, containing properties and any number of content or pages.
+                #Links become attributes and copies in it.
+                [Content[
+                    # This no more is the root from here.
+                    # Following will link to a reference of a perl constant:
+                    <*<MarkdownPlugin::CSS>*>
+                    [#[
+                        Hello World
+                    ]#]
+                    # Following will pass this [Content] Node  to this tests &static_test_sub.
+                    <*<main::static_test_sub(.)>*>
+                ]Content]
+            >>>
+        ));
+
+    sub static_test_sub {
+        my $node = shift;
+        if($node){
+           $test->passed(qq(Call to static_test_sub(.)-> Node [$node->name()] = $node->val())) 
+        }else{
+            print $test->faled (qq(Call to static_test_sub(.)-> called withouth passing a node))
+        }
+    }
+    
     my $plugin = MarkdownPlugin -> new();
        $plugin->convert($parser,'test');
 
@@ -26,7 +48,18 @@ use Syntax::Keyword::Try; try {
     $test->isDefined('$html',$html);
     #dereference and trim
     $html=$$html;$html=~s/\n$//g;
-    $test->evaluate('test property is valid html?',"<h1>Hello World!</h1><a name=\"1\"></a>",$html);
+    $test->evaluate('test property is valid html?',$html,q(<h1>Hello World!</h1><a name="1"></a>));
+    #
+    $test->subcase("Check embeded link to a perl constance <*<MarkdownPlugin::CSS>*>");
+    my $style = $parser->anon('HTML_STYLE');
+    $test->isDefined('$style',$style);
+    my @ret = $style->find('Content/MarkdownPlugin::CSS');
+    my $script = $ret[0];
+    if($test->isDefined('$script',$script)){
+        if ($script->val() !~ m/\.B\s\{/gm){
+            $test->failed("Script value doesn't contain expexted text.")
+        }
+    }
     #
     $test->nextCase();  
     #
