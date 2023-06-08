@@ -12,7 +12,7 @@ In general are recognized as constants, anons, collections or lists, that are ei
 Operating system environmental settings or variables are considered only as the last resort to provide for a property value.
 As these can hide and hold the unexpected value for a setting.
 
-With the CNF type of an application configuration system. Global settings can also be individual scripted with an meaningful description.
+With the CNF type of application configuration system. Global settings can also be individual scripted with a meaningful description.
 Which is pretty much welcomed and encouraged. As the number of them can be quite large, and meanings and requirements, scattered around code comments or various documentation. Why not keep this information next to; where you also can set it.
 
 CNF type tags are script based, parsed tags of text, everything else is ignored. DOM based parsed tags, require definitions and are hierarchy specific, path based. Even comments, have specified format. A complete different thing. However, in a CNF file you, can nest and tag, DOM based scripts. But not the other way. DOM based scripts are like HTML, XML. They might scream errors if you place in them CNF stuff.
@@ -41,7 +41,7 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
 11. Constants are usually scripted at the beginning of the file, or parsed first in a separate file.
 12. The instruction processor can use them if signifier $ surrounds the constant name. Therefore, replacing it with the constants value if further found in the file.
 
-    ```HTML
+    ```CNF
      <<<CONST $APP_PATH=~/MyApplication>>>
      <<app_path<$APP_PATH$/module/main>>>
     ```
@@ -64,20 +64,20 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
     3. Rule of thumb is that Constants are synchronized with an applications release version.
     4. Static constants, are script or code only assigned values.
     5. CNF Anons can override in contrast previously assigned value.
-23. A CNF Anon is similar to constants but a more simpler property and value only pair.
+23. A CNF Anon is similar to constants but a simpler property and value only pair.
     1. Anons are so called because they are unknown or unexpected by the configuration framework, store to object intermediate.
     2. Constants that turn up in the anon list, are a good indicator that they are not handled from script. Forgotten become anons.
     3. Anons similar to constants, once in the database, overtake the scripted or application default settings value.
     4. Static anons, are those that are set in the database, and/or are not merged with application defaults.
     5. Anons hashed are programmatically accessed separately to constants.
-       1. It is fine to have several different applications, to share same storage, even if they have different implementation.
+       1. It is fine to have several applications, to share same storage, even if they have different implementation.
        2. Constants will be specific to application, while anons can change in different purpose script files.
-24. *Anon* is not instruction processed. Hence anonymous in nature for its value. Applications using this CNF system usually process and handles this type of entries.
+24. *Anon* is not instruction processed. Hence, anonymous in nature for its value. Applications using this CNF system usually process and handles this type of entries.
 25. Anon has no signifier, and doesn't need to have an application default.
 26. Anon value is in best practice and in general synchronized, from script to a database configuration store. It is up to the implementation.
 27. Anon value is global to the application and its value can be modified.
 
-    ```HTML
+    ```CNF
             <<USE_SWITCH<true>>>
             <<DIALOG_TITLE_EN<MyApplication Title>>>
     ```
@@ -86,7 +86,7 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
     2. When querying for an anon value, replacement parameter array can be passed.
     3. Numbering is from **\$\$\$1\$\$\$**..**$$$(n...)\$\$\$** to be part of its value. Strategically placed.
 
-    ```HTML
+    ```CNF
         <<GET_SUB_URL<https://www.$$$1$$$.acme.com/$$$2$$$>>>
     ```
 
@@ -98,16 +98,16 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
              or warn "Failed to obtain expected URL when querying anon -> GET_SUB_URL"
     ```
 
-28. Listing is an reappearing same name tag postfixed with an **\$\$**.
+28. Listing is a reappearing same name tag postfixed with an **\$\$**.
 
-    ```HTML Example 1:
+    ```CNF Example 1:
                 <<INS$$>ls -la>
                 <<INS$$>uname -a>
     ```
 
 29. Listing is usually a named list of instructions, items grouped and available as individual entries of the listing value.
 
-    ```HTML Example 2:
+    ```CNF Example 2:
                 <<Animals$$>Cat>
                 <<Animals$$>Dog>
                 <<Animals$$>Eagle>
@@ -119,7 +119,7 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
     3. It is not recommended to use reserve anons as their value settings, that is; can be modified in scripts for their value.
     4. Reserve anon if present is usually a placeholder, lookup setting, that in contrast if not found there, might rise exceptions from the application using CNF.
 
-    ```HTML Example 2:
+    ```CNF Example 2:
                 Notice to Admin, following please don't modify in any way! 
                 Start --> { 
                 <<^RELEASE>2.3>>
@@ -134,25 +134,25 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
 
 ### Property Value Tag
 
-   ```HTML
+   ```CNF
         <<{name}<{value}>>>
    ```
 
 ### Instruction Value Tag
 
-   ```HTML
+   ```CNF
         <<<{INSTRUCTION}
         {value\n...valuen\n}>>>
    ```
 
-   ```HTML
+   ```CNF
         <<{name}<{INSTRUCTION}
         {value\n...valuen\n}>>>
    ```
 
 ### Full Tag 
 
-```javascript
+```CNF
     <<{$sig}{name}<{INSTRUCTION}>
         {value\n...value\n}
     >>
@@ -160,7 +160,7 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
 
 **Examples:**
 
-```HTML
+```CNF
         <<$HELP<CONST
             Sorry help is currently.
             Not available.
@@ -185,7 +185,7 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
     3. CNF property value tag turns the instruction the value, if the value is not separated from it.
     4. CNF only instructed, will try to parse the whole value to make multiple property value pairs.
         1. The newline is the separator for each on created.
-    5. Ver. 2.8 of PerlCNF is the third third rewrite to boom and make this algorithm efficient.
+    5. Ver. 2.8 of PerlCNF is the third rewrite to boom and make this algorithm efficient.
 2. Example. Instruction is mauling value:
 
     ```perl
@@ -284,7 +284,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
        - MACRO
           1. Value is searched and replaced by a property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
-          3. Macro format specifications, have been aforementioned in this document. However, make sure that your macro an constant also including the *$* signifier if desired.
+          3. Macro format specifications, have been aforementioned in this document. However, make sure that your macro a constant also including the *$* signifier if desired.
 
 ## Database and SQL Instruction Formatting
 
@@ -299,7 +299,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
 3. There is limited database interaction, handling or processing to be provided.
    1. Mainly for storage transfer of CNF constants, from file to database.
    2. File changes precede database storage only in newly assigned constants.
-4. Database generated is expected to have a system  SYS_CNF_CONFIG table, containing the constants unique name value pairs, with optional description for each.
+4. Database generated is expected to have a system SYS_CNF_CONFIG table, containing the constants unique name value pairs, with optional description for each.
    1. This is a reserved table and name.
    2. This table must contain a **$RELEASE_VER** constants record at least.
 
@@ -309,7 +309,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
 
 1. TABLE
 
-    ```HTML
+    ```CNF
         <<MyAliasTable<TABLE
                     ID INT PRIMARY KEY NOT NULL,
                     ALIAS VCHAR(16) UNIQUE CONSTRAINT,
@@ -320,27 +320,27 @@ CNF supports basic SQL Database structure statement generation. This is done via
 
 2. INDEX
 
-    ```HTML
+    ```CNF
         <<MyAliasTable<INDEX<idx_alias on MyAliasTable (ALIAS);>>>
     ```
 
 3. SQL
      1. SQL statements are actual full SQL placed in the tag body value.
 
-    ```HTML
+    ```CNF
         <<VW_ALIASES>SQL
             CREATE VIEW VW_ALIASES AS SELECT ID,ALIAS ORDER BY ALIAS;
         >>>
     ```
 
 4. MIGRATE
-   1. Migration are brute sql statements to be run based on currently installed previous version of the SQL database.
+   1. Migration are brute SQL statements to be run based on currently installed previous version of the SQL database.
    2. Migration is to be run from version upwards as stated and in the previous database encountered.
       1. i.e. If encountered old v.1.5, it will be upgraded to v.1.6 first, then v.1.7...
    3. Migration is not run on newly created databases. These create the expected latest data structure.
    4. SQL Statements a separated by ';' terminator. To be executed one by one.
 
-    ```HTML
+    ```CNF
         <<1.6<MIGRATE
                 ALTER TABLE LOG ADD STICKY BOOL DEFAULT 0;
         >>
@@ -366,7 +366,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
        1. This behavior can be controlled by disabling something like an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
        2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
 
-    ```HTML
+    ```CNF
         <<MyAliasTable<DATA
         01`admin`admin@inc.com`Super User~
         02`chef`chef@inc.com`Bruno Allinoise~
@@ -380,7 +380,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
    3. File is to be sequentially buffer read and processed instead as a whole in one go.
    4. The same principles apply in the file as to the DATA instruction CNF tag format, that is expected to be contained in it.
 
-    ```HTML
+    ```CNF
         <<MyItemsTbl<FILE data_my_app.cnf>
     ```
 
@@ -398,7 +398,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
     3. Requirements are for plugins to work to have the DO_ENABLED=>1 config attribute set.
         1. Plugins currently also will require be last specified in the file, to have access to previous anons that are instructed.
 
-    ```HTML
+    ```CNF
        /**
         * Plugin instructions are the last one setup and processed,
         * by placing the actual result into the plugins tag name.
@@ -411,15 +411,15 @@ CNF supports basic SQL Database structure statement generation. This is done via
     ```
 
 4. TREE (NEW FEATURE - 20221128)
-   1. Will create an CNF property having a CNFNode object, that contains further child nodes or attributes in a tree structure.
-        1. This is a hash of anons for attributes and a list of further nodes, all having is of one value.
+   1. Will create an CNF property having a CNF Node object, that contains further child nodes or attributes in a tree structure.
+        1. This is a hash of anons for attributes and a list of further nodes, all having their own one text value.
         2. Property can have its value, contain attributes, and also other properties within.
-            1. The property markup in the tree script is called body, and follows the PerlCNF style.
+            1. The property markup in the tree script is called body, and follows the Perl CNF style.
                The difference is that both ' **<,>** ' and ' **[,]** ' are signifiers for the property or multiline value, start and end tags.
                 1. All tags require to be on a line of their own.
-                2. Current algorithm uses sub buffering to parse each properties body.
-                    So deeply nesting an large property body is not recommended and also not suitable for encapsulating there data.
-                3. An opening tag is opened being surround with the same signifier into the direction of the property body.
+                2. Current algorithm uses sub buffering to parse each property's body.
+                    So deeply nesting a large property body is not recommended and also not suitable for encapsulating in there data.
+                3. An opening tag is opened being surrounded with the same signifier into the direction of the property body.
                 4. The closing tag is in the opposite direction same signifiers.
                     - **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
         3. The node characteristic is that each sub property is linked to its parent property
@@ -427,24 +427,32 @@ CNF supports basic SQL Database structure statement generation. This is done via
            2. Node characteristic is also the tree can be searched via path.
            3. Perl doesn't require type casting and conversion for node values, but for only few rare occasions.
         4. All attributes and sub properties have to have unique names.
-            1. Emphasis of having uniquely named properties is to avoid having a tree to be used as an collection.
+            1. Emphasis of having uniquely named properties is to avoid having a tree to be used as a collection.
             2. A property can have its contained collection however, which are multiple sub properties placed into an ' **@@** ' field or attribute.
-        5. However deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
+        5. However, deeply nested in. The contained attributes and other properties are assigned and accessed by a path statement.
         6. Attributes can be either assigned with an ' **:** ' or ' **=** ' signifier, no quotes are needed; unless capturing space.
-            - Attributes must specified on a single line.
+            - Attributes must be specified on a single line.
             - Future versions might provide for allowing to assign similar as property values, with the multiline value tag.
-   2. The TREE instruction will create an CNFNode object assigned to an unique anon.
-        1. The value of an property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
-            - Each properties start and end tag must stand and be on its own line, withing the body.
+   2. The TREE instruction will create an CNF Node object assigned to a unique anon.
+        1. The value of a property is delimited with an [ **#** ] tag as start, end [ **/#** ] as the ending.
+            1. Each property's start and end tag must stand and be on its own line, withing the body, except for the value or array attributes.
+            2. A value tagged property section is its text and can't contain further nested tree notes.
+                ``` Invalid: [#[<*<link/to/something>*>]#] ```
    3. Tree can contain links to other various properties, anons, that means also to other trees then the current one.
-        1. A link (pointer) to an outside anon or property is specified in form of -> ```[*[ {path/name} ]*]```.
-        2. It is not recommended to make circular links, or to priorities properties themselves containing links.
+        1. A link (pointer) to an outside anon or property is specified in form of ⇾ ``` [*[ {path/name} ]*] ```.
+           1. The link can read only point to:
+              - A repository anon or constant value.
+              - A tree path value.
+              - A Perl package constant value,``` MyPackage::SOME_CONSTANCE ```.
+              - A Perl static subroutine accepting **this** CNF node and changing possible its value, ``` main::setNodeValue(.) ```.
+        2. It is not recommended to make circular links, or to prioritize properties themselves containing links.
         3. To aid parsing priority a parse special instruction can be used if for example linking trees.
-            1. Specified the best just after the tree instruction as -> ```<<...<TREE> _HAS_PROCESSING_PRIORITY_```.
-            2. This is currently a TREE instruction only inbuilt option in PerlCNF, for the CNFNodes individuals scripts order of processing.
+            1. Specified the best just after the tree instruction as ⇾ ``` <<...<TREE> _HAS_PROCESSING_PRIORITY_ ```.
+            2. This is currently a TREE instruction only inbuilt option in Perl CNF, for the CNF Nodes individuals scripts order of processing.
+        4. Links in the root parent node of the tree are assigned as attributes or unique values. In subroperties they are set as own nodes.
    4. Tree Format Example:
 
-        ```HTML
+        ```CNF
         <<APP<My Nice Application by ACME Wolf PTY>>
 
         <<doc<TREE>
@@ -468,12 +476,12 @@ CNF supports basic SQL Database structure statement generation. This is done via
 Quick Jump: [Introduction](#introduction) | [CNF Collections Formatting](#cnf-collections-formatting) | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions) | [CNF Tag Formats](#cnf-tag-formats)
 
 1. *DO*
-   1. CNF DO instruction is *experimental*, purely perl programming language related.
-   2. It provides perl code evaluation during parsing giving also access to parser and its variables as DO's there sequentially appear.
-   3. It is recommended to comment out this feature, if never is to be used or found not safe to have such thing enabled.
-   4. This if named are assigned as anons, with the last processed value as the return. Making them evaluated and processed ever only once.
+   1. CNF DO instruction is *experimental*, purely Perl programming language related.
+   2. It provides Perl code evaluation during parsing giving also access to parser and its variables as DO's further sequentially appear.
+   3. It is recommended to disable this feature, if not need Perl code snippets to be in the configuration file.
+   4. These, if named are assigned as anons, with the last processed value as the return. Making them evaluated and processed ever only once.
 
-```perl
+```CNF
 <<<DO
 print "Hello form CNF, you have ".(scalar %anons) ." anons so far.\n"
 >>>
@@ -517,7 +525,7 @@ print "Welcome to ", $cnf->constant('$APP_NAME'), " version ", $cnf->constant('$
 
 **~//perl_dev/WB_CNF/db/configuration.cnf** file contents:
 
-```HTML
+```CNF
 
 # List command anon with the name of 'list'.
 <<list<ls -lh dev|sort>>>
@@ -530,9 +538,9 @@ $APP_NAME="My Application Sample"
 
 ***
 
-   Document is from project ->  <https://github.com/wbudic/PerlCNF/>
+   Document is from project ⇾  <https://github.com/wbudic/PerlCNF/>
 
    An open source application.
 
-<center>Sun Stage - v.2.8 2024</center>
+<center>Sun Stage - v.2.8 2023</center>
 
