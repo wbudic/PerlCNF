@@ -26,11 +26,12 @@ sub new {
 sub failed {
     my ($self, $err) = @_; 
     $err="" if !$err;
-    my $sub_cnt = $self->{sub_cnt};
+    my $sub_cnt = ++$self->{sub_cnt};
     ++$self->{sub_err};
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
-    return BLINK. BRIGHT_RED. "\tFailed Case: ".$self->{test_cnt}.".".$sub_cnt." -> $err",
-                         BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET
+    print BLINK. BRIGHT_RED. "\t   Fail ".$self->{test_cnt}.".".$sub_cnt.": $err",
+                         BLUE, qq(\n\t\t at -> ./$filename line on $line.\n), RESET;
+    return $self
 }
 
 sub passed {
@@ -38,8 +39,8 @@ sub passed {
     $msg ="" if !$msg;
     my $sub_cnt = ++$self->{sub_cnt};
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
-    print BRIGHT_GREEN, "\t   Pass: ".$self->{test_cnt}.".".$sub_cnt." -> $msg", 
-                  BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET
+    print BRIGHT_GREEN, "\t   Pass ".$self->{test_cnt}.".".$sub_cnt.": $msg", 
+                  BLUE, qq( at -> ./$filename line on $line.\n), RESET;
     return $self
 }
 
@@ -47,8 +48,8 @@ sub case {
     my ($self, $out) =@_;
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
     nextCase($self) if $self->{open};
-    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out\n",
-          BLUE, qq(\n\t\t at -> ./$filename line on $line), RESET;    
+    print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out",
+          BLUE, qq(\n\t\t at -> ./$filename line on $line.\n), RESET;    
     $self->{open}=1;
     return $self
 }
@@ -95,17 +96,24 @@ sub stop {
 ###
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
-    if ($aa&&$bb&&$cc) {my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}else{$cc="test-is-undef"}
+    if ($aa&&$bb&&$cc) {
+        my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}
+    else{
+        $cc="test-is-undef"
+    }
     if (@_== 2 && $aa || $aa && !$bb && $cc eq 'test-is-undef'){
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> [$aa] object is defined!\n"
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> a-> [$aa] object is defined!\n"
     }elsif(defined $aa && $aa eq $bb){        
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> $cc [$aa] equals [$bb]\n"
+        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed $cc a-> [$aa] equals b-> [$bb]\n"
     }else{    
         ++$self->{sub_err};
+        if(@_== 3 && $cc eq 'test-is-undef'){
+            my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp
+        }
         my ($package, $filename, $line) = caller; $filename =~ s/^(\.\/.*\/)/\@/;
         print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
               ": Failed! (". $self->{sub_err} .")",RESET, YELLOW, " $filename line $line\n",
-               BRIGHT_RED,"[$cc].eval(\$a->$aa, \$b->$bb)\n",RESET;        
+               BRIGHT_RED,"[$cc].eval(->  \$a->$aa, \$b->$bb  <-)\n",RESET;
         return 0;
     }
     return 1;    
