@@ -2,6 +2,7 @@ package PerlKeywords;
 use strict; use warnings;
 use Exporter;
 our @ISA = 'Exporter';
+our @EXPORT = 'span_to_html';
 our @EXPORT_OK = qw(%RESERVED_WORDS %KEYWORDS %FUNCTIONS @REG_EXP &matchForCSS &CAP);
 
 our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT VARIABLE VAR 
@@ -63,6 +64,7 @@ sub CAP{
 
 ###
 # Match regular expression to appropriate style sheet class name.
+# @deprecated This will not be employed as we are only interested from this package in from perl to HTML.
 ###
 sub matchForCSS {
     my $string = shift;
@@ -77,6 +79,40 @@ sub matchForCSS {
     }
     return;
 }
+###
+# Translate any code script int HTML colored version for output to the silly browser.
+###
+sub span_to_html {    my ($script,$css, $code_tag_contain) = @_; if($css .=" "){}else{$css=""} # $css if specified we need to give it some space in its short life.
+    my $out;
+    my $SPC  = "&nbsp;";
+    my $SPAN = qq(<span class="$css);
+    foreach my $line(split /\n/, $script){
+        while($line =~ /(\s+)|(\$\w+)|(['"])|(\w+)|(\W+)/gm){
+
+            my @tkns =  @{^CAPTURE}; 
+            if    ($1) {                        $out .= $SPC x length($1)
+            }elsif($2) {                        $out .= $SPAN.qq(V">$tkns[1]</span>)
+            }elsif($3) {                        $out .= $SPAN.qq(Q">$tkns[2]</span>)
+            }elsif($4) {
+              if    (exists $KEYWORDS{$4}){         $out .= $SPAN.qq(K">$tkns[3]</span>)
+              }elsif(exists $FUNCTIONS{$4}){        $out .= $SPAN.qq(F">$tkns[3]</span>)
+              }else{                                $out .= $SPAN.qq($tkns[3]</span>) 
+              }
+            }elsif($5){                         $out .= $SPAN.qq(O">$tkns[4]</span>)
+            }
+        }   
+        $out .= "<br>\n";
+    }
+    if($code_tag_contain){
+       if($code_tag_contain == 1) {
+            $out = "<code>\n".$out."\n</code>"
+       }else{
+            $out = "<$code_tag_contain>\n".$out."\n</$code_tag_contain>"
+       }
+    }
+return \$out;    
+}
+
 
 
 1;
