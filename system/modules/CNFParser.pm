@@ -91,7 +91,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
 #
 
 sub import {     
-    my $caller = caller;    
+    my $caller = caller;    no strict "refs";
     {
          *{"${caller}::configDumpENV"}  = \&dumpENV;
          *{"${caller}::anon"}           = \&anon;

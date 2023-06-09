@@ -24,7 +24,16 @@ sub name {
 sub val {
     my $self = shift;
     my $ret = $self->{'#'};
-    $ret = $self->{'*'} if !$ret;
+       $ret = $self->{'*'} if !$ret;
+    if(!$ret && $self->{'@$'}){ #return from subproperties.
+        my $buf;
+        my @arr = @{$self->{'@$'}};
+        foreach my $nv(@arr){
+            $nv = $nv->val();
+            $buf .= qq($nv\n);
+        }
+        return $buf;
+    }
     if(ref($ret) eq 'SCALAR'){
            $ret = $$ret;
      }
@@ -68,20 +77,18 @@ sub find {
                     return $prev->val()
                 }
             }elsif($name =~ /\[(\d+)\]/){
-                    $self = $ret = @$ret[$1];
-                    next
+                   $self = $ret = @$ret[$1];
+                   next
 
             }else{
-                #if(@$self == 1){
-                    $ret = $prev->{'@$'};
-               # }
+                   $ret = $prev->{'@$'};               
             }
         }else{             
             if($name eq '@@') {
                 $ret = $self->{'@@'}; $seekArray = 1;
                 next
             }elsif($name eq '@$') {
-                $ret = $self->{'@$'}; #This will initiate further search in subproperties names.
+                $ret = $self->{'@$'}; # This will initiate further search in subproperties names.
                 next
             }elsif($name eq '#'){
                 return $ret->val()
@@ -89,7 +96,7 @@ sub find {
                 $ret = $ret->{$name};
                 next
             }else{ 
-                $ret = $self->{'@$'} if ! $seekArray; #This will initiate further search in subproperties names.                
+                $ret = $self->{'@$'} if ! $seekArray; # This will initiate further search in subproperties names.                
             }
         }
         if($ret){
@@ -123,14 +130,16 @@ sub find {
                     if(!$found){
                        $self = $ret = $_
                     }else{ 
-                       $ret = \@arr;
+                       $ret  = \@arr;
                     }
                     $found=1
                 }
             }
             $ret = $self->{$name} if(!$found && $name ne '@$');
         }else{ 
-            $ret = $self->{$name} ;
+            if(ref($ret) ne "ARRAY"){
+                   $ret = $self->{$name} 
+            }
         }   
     }
     return $ret;
@@ -379,7 +388,8 @@ sub process {
                        $val = $ln if $val;
                     }                   
                 }
-                 $body .= qq($ln\n) if $ln!~/^\#/
+                                    # Very complex rule, allow #comment lines in buffer withing an node value tag, ie [#[..]#]
+                 $body .= qq($ln\n) #if !$tag &&  $ln!~/^\#/ || $tag eq '#' 
             }
             elsif($tag eq '#'){
                  $body .= qq(\n)

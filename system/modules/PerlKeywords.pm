@@ -82,7 +82,7 @@ sub matchForCSS {
 ###
 # Translate any code script int HTML colored version for output to the silly browser.
 ###
-sub span_to_html {    my ($script,$css, $code_tag_contain) = @_; if($css .=" "){}else{$css=""} # $css if specified we need to give it some space in its short life.
+sub span_to_html {    my ($script,$css, $code_tag_contain) = @_; if($css){$css.=" "}else{$css=""} # $css if specified we need to give it some space in its short life.
     my $out;
     my $SPC  = "&nbsp;";
     my $SPAN = qq(<span class="$css);
