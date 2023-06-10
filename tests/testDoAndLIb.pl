@@ -1,7 +1,7 @@
 use warnings; use strict;
 use 5.36.0;
 use lib "tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;
@@ -20,7 +20,7 @@ use Syntax::Keyword::Try; try {
         # It loads the package based on file location or in form of a normal module declaration, which must available via the @INC paths.
         # Hence LIB instruction must be put at the begining of a config script file to load before a package is used.
         # This feature enables you also to specify now from a config file, which packages you use from CNF, 
-        # and not to have it declared in your perl source.
+        # and not to have to declared them in your perl source with use or require.
         #
             <<<LIB libs/LoadTestPackage.pm>>>
         #
