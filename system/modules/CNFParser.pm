@@ -371,7 +371,12 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
 
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
         $v =~ s/^\s//;        
-        $self->{$e} = $v if not $self->{$e}; # Not allowed to overwrite constant.
+        # Not allowed to overwrite constant. i.e. it could be DO_ENABLED which is restricted.
+        if (not $self->{$e}){
+            $self->{$e} = $v if not $self->{$e};
+        }else{
+            warn "Skipped constant detected assignment for '$e'.";
+        }
     }
     elsif($t eq 'VAR' or $t eq 'VARIABLE'){
         $v =~ s/^\s//;        
