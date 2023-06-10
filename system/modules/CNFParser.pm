@@ -41,7 +41,7 @@ our %ANONS;
 
 our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT VARIABLE VAR 
                                         FILE TABLE TREE INDEX 
-                                        VIEW SQL MIGRATE DO 
+                                        VIEW SQL MIGRATE DO LIB
                                         PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
 
 sub isReservedWord    { my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef }
@@ -54,7 +54,7 @@ our $CONSTREQ = 0;
 
 ###
 # Create a new CNFParser instance.
-# $path - Path to some .cnf file, to parse, not compsuluory to add now.
+# $path - Path to some .cnf_file file, to parse, not compsuluory to add now? Make undef.
 # $attrs - is reference to hash of constances and settings to dynamically employ.
 # $del_keys -  is a reference to an array of constance attributes to dynamically remove. 
 sub new { my ($class, $path, $attrs, $del_keys, $self) = @_; 
@@ -62,29 +62,32 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
         $self = \%$attrs;        
     }else{
         $self = {
-                  DO_ENABLED      => 0, # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
-                  ANONS_ARE_PUBLIC=> 1, # Anon's are shared and global for all of instances of this object, by default.
-                  ENABLE_WARNINGS => 1, # Disable this one, and you will stare into the void, on errors or operations skipped.
-                  STRICT          => 1, # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
-                  HAS_EXTENSIONS  => 0, # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
-                  DEBUG           => 0  # Not internally used by the parser, but possible a convience bypass setting for code using it.
+                  DO_ENABLED      => 0,  # Enable/Disable DO instruction. Which could evaluated potentially be an doom execute destruction.
+                  ANONS_ARE_PUBLIC=> 1,  # Anon's are shared and global for all of instances of this object, by default.
+                  ENABLE_WARNINGS => 1,  # Disable this one, and you will stare into the void, about errors or operations skipped.
+                  STRICT          => 1,  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
+                  HAS_EXTENSIONS  => 0,  # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
+                  DEBUG           => 0,  # Not internally used by the parser, but possible a convience bypass setting for code using it.
+                  CNF_CONTENT     => "", # Origin of the script, this wull be set by the parser, usually the path of a script file or is direct content.                 
         }; 
     }    
-    $CONSTREQ = $self->{'CONSTANT_REQUIRED'};
-    if (!$self->{'ANONS_ARE_PUBLIC'}){ #Not public, means are private to this object, that is, anons are not static.
-         $self->{'ANONS_ARE_PUBLIC'} = 0; #<- Caveat of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
-         $self->{'__ANONS__'} = {};
-    }    
-    $self->{'__DATA__'}  = {};
-    if(exists $self->{'%LOG'}){
+    $CONSTREQ = $self->{CONSTANT_REQUIRED};
+    if (!$self->{ANONS_ARE_PUBLIC}){ #Not public, means are private to this object, that is, anons are not static.
+         $self->{ANONS_ARE_PUBLIC} = 0; #<- Caveat of Perl, if this is not set to zero, it can't be accessed legally in a protected hash.
+         $self->{__ANONS__} = {};
+    }        
+    if(exists  $self->{'%LOG'}){
         if(ref($self->{'%LOG'}) ne 'HASH'){
             die '%LOG'. "passed attribute is not an hash reference."
         }else{
             $properties{'%LOG'} = $self->{'%LOG'}
         }
     }
-    $self->{'STRICT'} = 1  if not exists $self->{'STRICT'}; #make strict by default if missing. 
-    $self->{'HAS_EXTENSIONS'} = 0 if not exists $self->{'HAS_EXTENSIONS'};
+    $self->{STRICT}          = 1 if not exists $self->{STRICT}; #make strict by default if missing. 
+    $self->{ENABLE_WARNINGS} = 1 if not exists $self->{ENABLE_WARNINGS};
+    $self->{HAS_EXTENSIONS}  = 0 if not exists $self->{HAS_EXTENSIONS};
+    $self->{CNF_VERSION}     = VERSION;
+    $self->{__DATA__}        = {};
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
@@ -123,8 +126,6 @@ package InstructedDataItem {
     }
 }
 #
-
-
 
 ###
 # PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
@@ -420,9 +421,9 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         }           
         
     }elsif($t eq 'FILE'){#@TODO Test case this
-        my ($i,$path,$cnf) = (0,"",$self->{CNF_CONTENT});
+        my ($i,$path,$cnf_file) = (0,"",$self->{CNF_CONTENT});
         $v=~s/\s+//g;
-        $path = substr($path, 0, rindex($cnf,'/')) .'/'.$v;
+        $path = substr($path, 0, rindex($cnf_file,'/')) .'/'.$v;
         push @files, $path;
         next if !$self->{'$AUTOLOAD_DATA_FILES'};
         open(my $fh, "<:perlio", $path ) or  CNFParserException->throw("Can't open $path -> $!");
@@ -498,12 +499,42 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }
     elsif($t eq 'DO'){
         if($DO_ENABLED){
-            ## no critic BuiltinFunctions::ProhibitStringyEval
-            $v = eval $v;
-            ## use critic
-            chomp $v; $anons->{$e} = $v;
+            my $ret;
+            if (!$v){                
+                 $v = $e;
+                 $e = 'LAST_DO';
+            }
+            ## no critic BuiltinFunctions::ProhibitStringyEval            
+            $ret = eval $v if not $ret;
+            ## use critic            
+             if ($ret){
+                 chomp $ret;
+                 $anons->{$e} = $ret;
+             }else{
+                 $self->warn("Perl DO_ENABLED script evaluation failed to evalute: $e Error:$@");
+                 $anons->{$e} = '<<ERROR>>';
+             }
         }else{
             $self->warn("DO_ENABLED is set to false to process property: $e\n")
+        }
+    }elsif($t eq 'LIB'){
+        if($DO_ENABLED){
+            if (!$v){                
+                        $v = $e;
+                        $e = 'LAST_LIB';
+            }          
+            try{
+                use Module::Load;
+                autoload $v;
+                $v =~ s/^(.*\/)*|(\..*)$//g;
+                $anons->{$e} = $v;           
+            }catch{
+                    $self->warn("Module DO_ENABLED library failed to load: $v\n");
+                    $anons->{$e} = '<<ERROR>>';
+            }
+        }else{
+            $self->warn("DO_ENABLED is set to false to process a LIB property: $e\n");
+            $anons->{$e} = '<<ERROR>>';
         }
     }
     elsif($t eq 'PLUGIN'){ 
@@ -554,7 +585,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
 ###
 # Parses a CNF file or a text content if specified, for this configuration object.
 ##
-sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
+sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
 
     my @tags;
     if($self->{'ANONS_ARE_PUBLIC'}){  
@@ -566,26 +597,27 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
     #private instructs on this parse call.
     %instructs = ();
 
+    # We control from here the constances, as we need to unlock them if previous parse was run.
+    unlock_hash(%$self);
+
     if(not $content){
-        open(my $fh, "<:perlio", $cnf )  or  die "Can't open $cnf -> $!";        
+        open(my $fh, "<:perlio", $cnf_file )  or  die "Can't open $cnf_file -> $!";        
         read $fh, $content, -s $fh;        
         close $fh;
-        my @stat = stat($cnf);
+        my @stat = stat($cnf_file);
         $self->{CNF_STAT}    = \@stat; 
-        $self->{CNF_CONTENT} = $cnf;        
+        $self->{CNF_CONTENT} = $cnf_file;        
     }else{
         my $type =Scalar::Util::reftype($content);
         if($type && $type eq 'ARRAY'){
            $content = join  "",@$content;
            $self->{CNF_CONTENT} = 'ARRAY';
-        }
+        }else{$self->{CNF_CONTENT} = 'script'};
     }
     $content =~ m/^\!(CNF\d+\.\d+)/;
     my $CNF_VER = $1; $CNF_VER="Undefined!" if not $CNF_VER;
     $self->{CNF_VERSION} = $CNF_VER if not defined $self->{CNF_VERSION};
 
-    # We control from here the constances, need to unlock them if previous parse was run.
-    unlock_hash(%$self);
 
     my $spc =   $content =~ /\n/ ? '(<{2,3}?)(<*.*?>*)(>{2,3})' : '(<{2,3}?)(<*.*?>*?)(>{2,3})$';
     @tags   =  ($content =~ m/$spc/gms);    
@@ -594,11 +626,11 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
 	  next if not $tag;
       next if $tag =~ m/^(>+)|^(<<)/;
       if($tag =~ m/^<(\w*)\s+(.*?)>*$/gs){ # Original fastest and early format: <<<anon value>>>
-           my $p = $1;
+           my $t = $1;
            my $v = $2;
-           if(isReservedWord($self,$p)){
-              my $isVar = ($p eq 'VARIABLE' || $p eq 'VAR');
-              if($p eq 'CONST' or $isVar){ #constant multiple properties.                 
+           if(isReservedWord($self,$t)){
+              my $isVar = ($t eq 'VARIABLE' || $t eq 'VAR');
+              if($t eq 'CONST' or $isVar){ #constant multiple properties.                 
                     foreach  my $line(split '\n', $v) { 
                             $line =~ s/^\s+|\s+$//;  # strip unwanted spaces                            
                             $line =~ s/\s*>$//;
@@ -620,15 +652,12 @@ sub parse {  my ($self, $cnf, $content, $del_keys) = @_;
                                 }
                             }
                     }
-              }else{
-                my $t = $p; (m/(\w+)(.*)/s);
-                my $e = $1;
-                $v    = $2;
-                doInstruction($self,$e,$t,$v);
+              }else{                                
+                doInstruction($self,$v,$t,undef);
               }
            }else{
               $v =~ s/\s*>$//;
-              $anons->{$p} = $v;
+              $anons->{$t} = $v;
            }
 
         }else{
@@ -1054,14 +1083,16 @@ sub writeOut { my ($self, $handle, $property) = @_;
 sub log {
     my $self    = shift;
 	my $message = shift;
+    my $type    = shift;
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');    
     my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
-    if($message =~ /^ERROR/){
-        warn  $time . " " . $message;
+    $message = "$type $message" if 'WARNG';
+    if($message =~ /^ERROR/ || defined($type eq 'WARNG')){
+        warn  $time . " " .$message;
     }
     elsif(%log && $log{console}){
-        print $time . " " . $message ."\n"
+        print $time . " " .$message ."\n"
     }
     if(%log && $log{enabled} && $message){
         my $logfile  = $log{file};
@@ -1089,13 +1120,9 @@ sub error {
 use Carp qw(cluck); #what the? I know...
 sub warn {
     my $self    = shift;
-	my $message = shift; 
-    my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
-    $message = "$time WARNG $message\t".$self->{CNF_CONTENT};
+	my $message = shift;    
     if($self->{ENABLE_WARNINGS}){
-        $self -> log($message)
-    }else{
-        cluck $message
+       $self -> log($message,'WARNG');    
     }
 }
 sub trace {

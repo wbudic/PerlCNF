@@ -7,7 +7,7 @@ our @EXPORT_OK = qw(%RESERVED_WORDS %KEYWORDS %FUNCTIONS @REG_EXP &matchForCSS &
 
 our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT VARIABLE VAR 
                                         FILE TABLE TREE INDEX 
-                                        VIEW SQL MIGRATE DO 
+                                        VIEW SQL MIGRATE DO LIB
                                         PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
 
 
