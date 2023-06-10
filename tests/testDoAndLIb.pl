@@ -16,9 +16,11 @@ use Syntax::Keyword::Try; try {
     my $parser = CNFParser -> new(undef,{DO_ENABLED=>1});
        $parser->parse(undef,qq(
         #
-        # LIB instruction is very  powerfull, took a while to figure out.
+        # LIB instruction is very  powerfull, it took me a while to figure out.
         # It loads the package based on file location or in form of a normal module declaration, which must available via the @INC paths.
         # Hence LIB instruction must be put at the begining of a config script file to load before a package is used.
+        # This feature enables you also to specify now from a config file, which packages you use from CNF, 
+        # and not to have it declared in your perl source.
         #
             <<<LIB libs/LoadTestPackage.pm>>>
         #
@@ -46,7 +48,7 @@ use Syntax::Keyword::Try; try {
         $test->subcase("Test if we can create a ghost object?");
             my $ghost = $last_lib -> new();
             $test -> isDefined("\$ghost", $ghost);
-             $test -> evaluate("ghost is comming from?","out of thin air!",$ghost->{'Comming from where?'});
+            $test -> evaluate("ghost is comming from?",$ghost->{'Comming from where?'},"out of thin air!");
 
     #
     $test->done();
