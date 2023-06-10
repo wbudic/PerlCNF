@@ -285,6 +285,8 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
           1. Value is searched and replaced by a property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
           3. Macro format specifications, have been aforementioned in this document. However, make sure that your macro a constant also including the *$* signifier if desired.
+       - LIB      - Loads dynamically an external Perl package via either path or as a standard module. This is ghosting normal 'use' and 'require' statements.
+       - DO       - Performs a controlled out scope evaluation of an embedded Perl script or execution of a shell system command. This requires the DO_ENABLED constance to be set for the parser. Otherwise, is not enabled by default.
 
 ## Database and SQL Instruction Formatting
 
@@ -352,7 +354,9 @@ CNF supports basic SQL Database structure statement generation. This is done via
         >>
     ```
 
-### Scripted Data Related Instructions
+### CNF Instruction Section
+
+CNF Instructions are parallel with the reserved words. Which means, you can't use these reserved words to replace with your own instruction. This section explains in more detail, what these are, and how are implemented.
 
 1. DATA
     1. Data is specifically parsed, not requiring quoted strings and isn't delimited by new lines alone.
@@ -470,6 +474,20 @@ CNF supports basic SQL Database structure statement generation. This is done via
             >client>
         >>
         ```
+
+5. LIB (NEW FEATURE - 20230710)
+    1. Dynamically loads a module or a library for internal use and processing with the scope of the parser.
+    2. It can be a standard module name that is in the paths of some Perl's applications @INC array of paths.
+    3. It can be a file path containing the package (.pm extension) or some ordinary Perl file, which contains methods or variables of interest (.pl extension).
+        1. Relative path to the library is ok to specify.
+        2. The evaluation is not guarantied to be success or easy to debug. And shouldn't be done without tests and if is fainthearted.
+    4. DO_ENABLED is required to be activated for this instruction.
+6. DO
+    1. Execute's a shell system command or evaluates an embedded Perl script snippet.
+    2. The system commands is captured and requires to be ticked. i.e. ```<<<SYS_DATE_STRING<DO> `data` ```.
+    3. The Perl snipped to be evaluated can use the scalar '''$self''' to access the CNF parser for functionality, within the snipped itself.
+        1. To load modules or packages to use within the snipped, the LIB instruction can be used in precedence of issuing a DO.
+    4. DO_ENABLED is required to be activated for this instruction.
 
 ## Sample Perl Language Usage
 
