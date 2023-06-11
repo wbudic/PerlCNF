@@ -9,6 +9,7 @@ use Term::ANSIColor qw(:constants);
 use Timer::Simple;
 
 my $timer = Timer::Simple->new(start => 0, string => 'human');
+my $stab  = "";
 
 ###
 #  Notice All test are to be run from the project directory.
@@ -29,8 +30,8 @@ sub failed {
     my $sub_cnt = ++$self->{sub_cnt};
     ++$self->{sub_err};
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
-    print BLINK. BRIGHT_RED. "\t   Fail ".$self->{test_cnt}.".".$sub_cnt.": $err",
-                         BLUE, qq(\n\t\t at -> ./$filename line on $line.\n), RESET;
+    print BLINK. BRIGHT_RED. "\t$stab   Fail ".$self->{test_cnt}.".".$sub_cnt.": $err",
+                         BLUE, qq(\n\t$stab\t at -> ./$filename line on $line.\n), RESET;
     return $self
 }
 
@@ -39,7 +40,7 @@ sub passed {
     $msg ="" if !$msg;
     my $sub_cnt = ++$self->{sub_cnt};
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
-    print BRIGHT_GREEN, "\t   Pass ".$self->{test_cnt}.".".$sub_cnt.": $msg", 
+    print BRIGHT_GREEN, "\t$stab   Pass ".$self->{test_cnt}.".".$sub_cnt.": $msg", 
                   BLUE, qq( at -> ./$filename line on $line.\n), RESET;
     return $self
 }
@@ -47,6 +48,7 @@ sub passed {
 sub case { 
     my ($self, $out) =@_;
     my ($package, $filename, $line) = caller; $filename =~ s/^(\/(.+)\/)//gs;
+    $stab="";
     nextCase($self) if $self->{open};
     print BRIGHT_CYAN,"\tCase ".$self->{test_cnt}.": $out",
           BLUE, qq(\n\t\t at -> ./$filename line on $line.\n), RESET;    
@@ -56,8 +58,9 @@ sub case {
 
 sub subcase {
     my ($self, $out) =@_;
-    my $sub_cnt = ++$self->{sub_cnt};
-    print GREEN,"\t   Case ".$self->{test_cnt}.".$sub_cnt: $out\n", RESET;
+    my $sub_cnt = ++$self->{sub_cnt};    
+    print GREEN,"\t$stab   Sub->".$self->{test_cnt}.".$sub_cnt: $out\n", RESET;
+    $stab ="     ";
     return $self;
 }
 
@@ -102,16 +105,16 @@ sub evaluate {
         $cc="test-is-undef"
     }
     if (@_== 2 && $aa || $aa && !$bb && $cc eq 'test-is-undef'){
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> a-> [$aa] object is defined!\n"
+        print GREEN."\t$stab   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> a-> [$aa] object is defined!\n"
     }elsif(defined $aa && $aa eq $bb){        
-        print GREEN."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed $cc a-> [$aa] equals b-> [$bb]\n"
+        print GREEN."\t$stab   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed $cc a-> [$aa] equals b-> [$bb]\n"
     }else{    
         ++$self->{sub_err};
         if(@_== 3 && $cc eq 'test-is-undef'){
             my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp
         }
         my ($package, $filename, $line) = caller; $filename =~ s/^(\.\/.*\/)/\@/;
-        print BLINK. BRIGHT_RED."\t   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
+        print BLINK. BRIGHT_RED."\t$stab   Test ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.              
               ": Failed! (". $self->{sub_err} .")",RESET, YELLOW, " $filename line $line\n",
                BRIGHT_RED,"[$cc].eval(->  \$a->$aa, \$b->$bb  <-)\n",RESET;
         return 0;
@@ -127,10 +130,10 @@ sub evaluate {
 sub isDefined{
     my ($self, $var, $val)=@_;     
     if (defined $val){
-        print GREEN."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is defined.\n"
+        print GREEN."\t$stab   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is defined.\n"
     }else{        
         ++$self->{sub_err};
-        print BLINK. BRIGHT_RED."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
+        print BLINK. BRIGHT_RED."\t$stab   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
         return 0;
     }
     return 1;
@@ -139,10 +142,10 @@ sub isDefined{
 sub isZeroOrEqual{
     my ($self, $var, $aa, $bb)=@_;     
     if ($aa == 0 or $aa==$bb){
-        print GREEN."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is ZeroOrEqual.\n"
+        print GREEN."\t$stab   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is ZeroOrEqual.\n"
     }else{        
         ++$self->{sub_err};
-        print BLINK. BRIGHT_RED."\t   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
+        print BLINK. BRIGHT_RED."\t$stab   YDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is not defined!\n";        
         return 0;
     }
     return 1;
@@ -156,10 +159,10 @@ sub isZeroOrEqual{
 sub isNotDefined{
     my ($self, $var, $val)=@_;
     if (not defined $val){
-        print GREEN."\t   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is not defined.\n"
+        print GREEN."\t$stab   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}.": Passed -> Scalar [$var] is not defined.\n"
     }else{        
         ++$self->{sub_err};
-        print BLINK. BRIGHT_RED."\t   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is defined!\n";
+        print BLINK. BRIGHT_RED."\t$stab   NDef ".$self->{test_cnt} .'.'. ++$self->{sub_cnt}. ": Failed!"." ($self->{sub_err}) ".RESET. RED."Scalar [$var] is defined!\n";
         return 0;
     }
     return 1;
