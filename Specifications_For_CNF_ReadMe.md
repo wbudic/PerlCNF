@@ -288,6 +288,24 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
        - LIB      - Loads dynamically an external Perl package via either path or as a standard module. This is ghosting normal 'use' and 'require' statements.
        - DO       - Performs a controlled out scope evaluation of an embedded Perl script or execution of a shell system command. This requires the DO_ENABLED constance to be set for the parser. Otherwise, is not enabled by default.
 
+## CNF META Instructions
+
+1. Some instructions accept to have special in header value meta flags.
+    1. These are not to be impeding normal evaluation or processing of and instruction.
+    2. The CNFMeta package is having the latest list of meta tags, a help about and for the purpose utilities.
+    3. Most common use is to compare and act up on if found at the beginning of a property value.
+2. Meta tag declared in a value begins and ends with an underscore **_** character.
+3. The name is by convention all uppercase [A-Z] and must not contain any others but the underscore.
+    1. The meta flag is expected to be removed by the instruction from the value if is expecting it.
+    2. The CONST instruction thus ignores and skips such tags. 
+        - Other instructions not using meta might preserve in value, particularly of anon type property.
+4. Sample list of meta tags:
+      META TAG                   | Instruction| Description
+    -----------------------------|------------|-----------------------------------------
+    \_HAS_PROCESSING_PRIORITY\_\_| TREE       | Schedule to process before the rest in synchronous line of instructions.
+    \_\_ON_DEMAND\_\_            | DO        | Postpone to evaluate on demand.
+    \_SHELL\______               | DO         | Execute via system shell and not as the default Perl evaluate.
+
 ## Database and SQL Instruction Formatting
 
 (Note - this documentation section not complete, as of 2020-02-14)

@@ -1,30 +1,56 @@
 # 
 # Represents a tree node CNF object having children and a parent node if it is not the root.
 # Programed by  : Will Budic
-# Source Origin : https://github.com/wbudic/PerlCNF.git
-# Open Source License -> https://choosealicense.com/licenses/isc/
+# Notice - This source file is copied and usually placed in a local directory, outside of its project.
+# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+# Please leave source of origin in this file for future references.
+# Source of Origin : https://github.com/wbudic/PerlCNF.git
+# Documentation : Specifications_For_CNF_ReadMe.md
+# Open Source Code License -> https://choosealicense.com/licenses/isc/
 #
 package CNFNode;
 use strict;
 use warnings;
 use Carp qw(cluck);
 
+require CNFMeta; CNFMeta::import();
+
 sub new {
-    my ($class,$attrs, $self) = @_;
-    $self = \%$attrs;
+    my ($class, $attrs) = @_;
+    my $self = \%$attrs;
     bless $self, $class;
 }
 sub name {
     my $self = shift;
     return $self->{'_'}
 }
+
+sub _run {
+    my $value = shift;
+    my $meta =  meta(SHELL());    
+    if($value =~ s/($meta)//i){
+       $value =~ s/^`|`\s*$/""/g; #we strip as a possible monkey copy had now redundant meta in the value.
+       $value = '`'.$value.'`';
+    }
+    ## no critic BuiltinFunctions::ProhibitStringyEval                        
+    my $ret = eval $value;
+    ## use critic            
+    if ($ret){
+        chomp  $ret;
+        return $ret;
+    }else{
+        cluck("Perl DO_ENABLED script evaluation failed to evalute: $value Error: $@");
+        return '<<ERROR>>';
+    }
+}
 ###
 # Convenience method, returns string scalar value dereferenced (a copy) of the property value.
 ##
 sub val {
     my $self = shift;
-    my $ret = $self->{'#'};
-       $ret = $self->{'*'} if !$ret;
+    my $ret = $self->{'#'};          # Standard value
+       $ret = $self->{'*'} if !$ret; # Linked value
+       $ret = _run($self->{'&'}) if !$ret and exists $self->{'&'}; # Evaluated value
     if(!$ret && $self->{'@$'}){ #return from subproperties.
         my $buf;
         my @arr = @{$self->{'@$'}};

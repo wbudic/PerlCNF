@@ -15,6 +15,11 @@ use Syntax::Keyword::Try; try {
  
     my $parser = CNFParser -> new(undef,{DO_ENABLED=>1});
        $parser->parse(undef,qq(
+
+            <<SYS_SHELL_PERL_SETTINGS   <DO> _ON_DEMAND____ _SHELL_____
+                                             `env -i perl -V`
+            >>
+
         #
         # LIB instruction is very  powerfull, it took me a while to figure out.
         # It loads the package based on file location or in form of a normal module declaration, which must available via the @INC paths.
@@ -32,6 +37,9 @@ use Syntax::Keyword::Try; try {
     my $sys_date = $parser->anon('SYS_DATE');
         $test -> isDefined("\$sys_date:$sys_date",$sys_date);
         $test -> isDefined("\$WARNINGS_SET:".$parser->anon('WARNINGS_SET'),$parser->anon('WARNINGS_SET'));
+            $test->subcase("Test SYS_SHELL_PERL_SETTINGS.");
+            my $perl_settings = $parser->anon('SYS_SHELL_PERL_SETTINGS');
+            $test -> isDefined("\$SYS_SHELL_PERL_SETTINGS",$perl_settings);
     #
 
     #

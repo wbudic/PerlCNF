@@ -1,10 +1,11 @@
 # Main Parser for the Configuration Network File Format.
-# This source file is copied and usually placed in a local directory, outside of its project.
-# So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
 # Programed by  : Will Budic
-# Source Origin : https://github.com/wbudic/PerlCNF.git
+# Notice - This source file is copied and usually placed in a local directory, outside of its project.
+# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+# Please leave source of origin in this file for future references.
+# Source of Origin : https://github.com/wbudic/PerlCNF.git
 # Documentation : Specifications_For_CNF_ReadMe.md
-# Open Source License -> https://choosealicense.com/licenses/isc/
+# Open Source Code License -> https://choosealicense.com/licenses/isc/
 #
 package CNFParser;
 
@@ -14,6 +15,9 @@ use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
 use Time::HiRes qw(time);
 use DateTime;
+
+require CNFMeta; CNFMeta::import();
+require CNFNode;
 
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
@@ -111,7 +115,7 @@ package InstructedDataItem {
     our $dataItemCounter = int(0);
 
     sub new { my ($class, $ele, $ins, $val) = @_;
-        my $priority = ($val =~ s/_HAS_PROCESSING_PRIORITY_//si)?1:0;
+        my $priority = ($val =~ s/CNFMETA::HAS_PRIORITY//sexi)?1:0;
         bless {
                 ele => $ele,
                 aid => $dataItemCounter++,
@@ -252,8 +256,10 @@ sub anon {  my ($self, $n, $args)=@_;
                 warn "Scalar argument passed $args, did you mean array to pass? For property $n=$ret\n" 
                                  unless $self and not $self->{ENABLE_WARNINGS}                
             }
-        }        
-        return $$ret if ref($ret) eq "REF";
+        }
+        my $ref = ref($ret);   
+        return $$ret if $ref eq "REF";
+        return $ret->val() if $ref eq "CNFNode";
         return $ret;
     }
     return $anechoic;
@@ -509,14 +515,19 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                  $v = $e;
                  $e = 'LAST_DO';
             }
-            ## no critic BuiltinFunctions::ProhibitStringyEval            
-            $ret = eval $v if not $ret;
+            my $meta = meta(ON_DEMAND());
+            if($v=~ s/($meta)//i){
+               $anons->{$e} = CNFNode -> new({'_'=>$e,'&'=>$v});
+               return;
+            }
+            ## no critic BuiltinFunctions::ProhibitStringyEval                        
+                  $ret = eval $v if not $ret;
             ## use critic            
              if ($ret){
                  chomp $ret;
                  $anons->{$e} = $ret;
              }else{
-                 $self->warn("Perl DO_ENABLED script evaluation failed to evalute: $e Error:$@");
+                 $self->warn("Perl DO_ENABLED script evaluation failed to evalute: $e Error: $@");
                  $anons->{$e} = '<<ERROR>>';
              }
         }else{
@@ -818,11 +829,11 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                 $ditms[@ditms] = $struct;
             }
         }
-        my @del;
+        my @del; my $meta = meta(HAS_PRIORITY());
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && ($struct->{'script'} =~ s/_HAS_PROCESSING_PRIORITY_//si)){ # This will within trim out the flag if found.
+            if($type eq 'CNFNode' && ($struct->{'script'} =~ s/$meta//i)){ # This will trim out the flag within if found.
                $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};
                $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
                #splice @ditms, $idx,1; <- causing havoc when key order is scrambled. Weirdest thing in perl!
