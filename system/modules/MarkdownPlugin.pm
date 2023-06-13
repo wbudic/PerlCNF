@@ -161,7 +161,7 @@ try{
                   $code = 2;
                 }else{
                   if($class eq 'cnf' or $class eq 'html'){
-                     $bfCode .= '<h1><span>'.uc $class.'</span></h1>'
+                     $bfCode .= '<h1><span class="cnf"><a title="M.C. Hammer -- Can\'t  touch this!" href="/" style="text-decoration: none;">Perl&nbsp;'.uc $class.'</a></span></h1>'
                   }
                   $code = 1
                 }
@@ -544,28 +544,35 @@ sub style ($script){
 # Link with <*<MarkdownPlug::CSS>*> in a TREE instructed property.
 ###
 use constant CSS => q/
-<style>
 
+div .cnf {
+    background: aliceblue;
+}
+.cnf h1 span  {
+    color:#05b361;
+    background: aliceblue;
+}
     .B {
-        color: maroon;
+        color: #c60000;
         padding: 2px;        
     }
 
     .Q {
-        color: yellow;     
+        color: #b7ae21;  
+        font-weight: bold;
     }
 
     .pn {
-        color: blue;        
+        color: #6800ff;        
     }
 
     .pv {
-        color: gray;        
+        color: #883ac8;        
     }
 
     .pi {
-        color: green;        
-        font-weight: bold;   
+        color: #18a7c8;;        
+        font-weight: bold;
     }
 
     .opr {
@@ -576,8 +583,6 @@ use constant CSS => q/
         color: red;        
         font-weight: bold;   
     }
-
-<style>
 /;
 
 

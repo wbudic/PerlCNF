@@ -851,13 +851,13 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                $struct->validate() if $self->{ENABLE_WARNINGS};            
                $anons->{$struct->name()} = $struct->process($self, $struct->script());
                push @del, $idx; 
-            }elsif($type eq 'InstructedDataItem' && $struct->{'priority'}){ 
+            }elsif($type eq 'InstructedDataItem' && $struct->{'priority'} || $struct->{'val'} =~ s/$meta//i){ 
                 my $t = $struct->{ins};
                 if($t eq 'PLUGIN'){ 
                    instructPlugin($self,$struct,$anons);
-            }
+                }
                 push @del, $idx; 
-        }
+            }
         }
         while(@del){
             splice @ditms,pop @del, 1
@@ -870,6 +870,8 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                 my $t = $struct->{ins};
                 if($t eq 'PLUGIN'){  
                    instructPlugin($self,$struct,$anons);
+                }else{
+                   warn "Undefined instruction detected: ".$struct->toString()
                 }
             }
         }
