@@ -20,67 +20,72 @@ sub new {
     my $self = \%$attrs;
     bless $self, $class;
 }
-sub name {
-    my $self = shift;
-    return $self->{'_'}
-}
-
-sub _run {
-    my $value = shift;
-    my $meta =  meta(SHELL());    
-    if($value =~ s/($meta)//i){
-       $value =~ s/^`|`\s*$/""/g; #we strip as a possible monkey copy had now redundant meta in the value.
-       $value = '`'.$value.'`';
-    }
-    ## no critic BuiltinFunctions::ProhibitStringyEval                        
-    my $ret = eval $value;
-    ## use critic            
-    if ($ret){
-        chomp  $ret;
-        return $ret;
-    }else{
-        cluck("Perl DO_ENABLED script evaluation failed to evalute: $value Error: $@");
-        return '<<ERROR>>';
-    }
-}
-###
-# Convenience method, returns string scalar value dereferenced (a copy) of the property value.
-##
-sub val {
-    my $self = shift;
-    my $ret = $self->{'#'};          # Standard value
-       $ret = $self->{'*'} if !$ret; # Linked value
-       $ret = _run($self->{'&'}) if !$ret and exists $self->{'&'}; # Evaluated value
-    if(!$ret && $self->{'@$'}){ #return from subproperties.
-        my $buf;
-        my @arr = @{$self->{'@$'}};
-        foreach my $nv(@arr){
-            $nv = $nv->val();
-            $buf .= qq($nv\n);
-        }
-        return $buf;
-    }
-    if(ref($ret) eq 'SCALAR'){
-           $ret = $$ret;
-     }
-    return $ret
-}
-sub parent {
-    my $self = shift;
-    return $self->{'@'}
-}
-
+sub name   {shift -> {'_'}}
+sub parent {shift -> {'@'}}
+sub isRoot {not exists shift -> {'@'}}
+sub list   {shift -> {'@@'}}
+sub script {shift -> {'~'}}
 sub attributes {
     my $self = shift;
     my @nodes;
     foreach(sort keys %$self){
         my $node = $self->{$_};        
-        if($_ !~ /@|@\$|#_/){
+        if($_ !~ /@|@\$|#_~/){
            $nodes[@nodes] = [$_, $node]
         }
     }
     return @nodes;
 }
+sub nodes {
+    my $self = shift;
+    my $ret = $self->{'@$'};
+    if($ret){
+        return @$ret;
+    }
+    return ();
+}
+
+###
+# Convenience method, returns string scalar value dereferenced (a copy) of the property value.
+##
+sub val {
+    my $self = shift;
+    my $ret =  $self->{'#'};          # Standard value
+       $ret =  $self->{'*'} if !$ret; # Linked value
+       $ret = _evaluate($self->{'&'}) if !$ret and exists $self->{'&'}; # Evaluated value
+    if(!$ret && $self->{'@$'}){ #return from subproperties.
+        my $buf;
+        my @arr = @{$self->{'@$'}};
+        foreach my $node(@arr){           
+           $buf .= qq($node->val()\n);
+        }
+        return $buf;
+    }
+    if(ref($ret) eq 'SCALAR'){
+           $ret = $$ret;
+    }
+    return $ret
+}
+
+    my $meta =  meta(SHELL());
+    sub _evaluate {
+        my $value = shift;    
+        if($value =~ s/($meta)//i){
+        $value =~ s/^`|`\s*$/""/g; #we strip as a possible monkey copy had now redundant meta in the value.
+        $value = '`'.$value.'`';
+        }
+        ## no critic BuiltinFunctions::ProhibitStringyEval                        
+        my $ret = eval $value;
+        ## use critic            
+        if ($ret){
+            chomp  $ret;
+            return $ret;
+        }else{
+            cluck("Perl DO_ENABLED script evaluation failed to evalute: $value Error: $@");
+            return '<<ERROR>>';
+        }
+    }
+
 #
 
 ###
@@ -96,34 +101,34 @@ sub find {
     my ($self, $path, $ret, $prev, $seekArray)=@_;
     foreach my $name(split(/\//, $path)){  
         if(ref($self) eq "ARRAY"){            
-            if($name eq '#'){
-                if(ref($ret) eq "ARRAY"){                    
+                if($name eq '#'){
+                    if(ref($ret) eq "ARRAY"){                    
+                        next
+                    }else{
+                        return $prev->val()
+                    }
+                }elsif($name =~ /\[(\d+)\]/){
+                    $self = $ret = @$ret[$1];
                     next
-                }else{
-                    return $prev->val()
-                }
-            }elsif($name =~ /\[(\d+)\]/){
-                   $self = $ret = @$ret[$1];
-                   next
 
-            }else{
-                   $ret = $prev->{'@$'};               
-            }
+                }else{
+                    $ret = $prev->{'@$'};               
+                }
         }else{             
-            if($name eq '@@') {
-                $ret = $self->{'@@'}; $seekArray = 1;
-                next
-            }elsif($name eq '@$') {
-                $ret = $self->{'@$'}; # This will initiate further search in subproperties names.
-                next
-            }elsif($name eq '#'){
-                return $ret->val()
-            }if(ref($ret) eq "CNFNode" && $seekArray){
-                $ret = $ret->{$name};
-                next
-            }else{ 
-                $ret = $self->{'@$'} if ! $seekArray; # This will initiate further search in subproperties names.                
-            }
+                if($name eq '@@') {
+                    $ret = $self->{'@@'}; $seekArray = 1;
+                    next
+                }elsif($name eq '@$') {
+                    $ret = $self->{'@$'}; # This will initiate further search in subproperties names.
+                    next
+                }elsif($name eq '#'){
+                    return $ret->val()
+                }if(ref($ret) eq "CNFNode" && $seekArray){
+                    $ret = $ret->{$name};
+                    next
+                }else{ 
+                    $ret = $self->{'@$'} if ! $seekArray; # This will initiate further search in subproperties names.                
+                }
         }
         if($ret){
             my $found = 0;
@@ -164,7 +169,7 @@ sub find {
             $ret = $self->{$name} if(!$found && $name ne '@$');
         }else{ 
             if(ref($ret) ne "ARRAY"){
-                   $ret = $self->{$name} 
+                   $ret  = $self->{$name} 
             }
         }   
     }
@@ -189,15 +194,6 @@ sub node {
     return $ret;    
 }
 
-sub nodes {
-    my $self = shift;
-    my $ret = $self->{'@$'};
-    if($ret){
-        return @$ret;
-    }
-    return ();
-}
-
 ###
 # Outreached subs list of collected node links found in a property.
 my  @linked_subs;
@@ -209,9 +205,9 @@ sub process {
 
     my ($self, $parser, $script)=@_;      
     my ($sub, $val, $isArray,$body) = (undef,0,0,"");
-    my ($tag,$sta,$end)=("","","");    
-    my @array;
+    my ($tag,$sta,$end)=("","","");
     my ($opening,$closing,$valing)=(0,0,0);
+    my @array;
 
     if(exists $self->{'_'} && $self->{'_'} eq '#'){
        $val = $self->{'#'};
@@ -231,7 +227,7 @@ sub process {
                    $tag = $2;
                    $end = $3;
                    my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
-                    if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
+                   if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $2;
                             my $rval = $self -> obtainLink($parser, $link);                                                             
@@ -250,7 +246,7 @@ sub process {
                                             @nodes = ();                                   
                                         }
                                         $nodes[@nodes] = CNFNode->new({'_'=>$link, '*'=>$rval,'@' => \$self});
-                                        $self->{'@$'} = \@nodes;
+                                        $self->{'@$'}  = \@nodes;
                                     }
                                     else{
                                         #Links scripted in main tree parent are copied main tree attributes.
@@ -269,8 +265,7 @@ sub process {
                          }else{ 
                             $val = $2;                            
                          }                         
-                    }
-                    elsif($tag =~ /^(.*)[\[<]\/*(.*)[\]>](.*)$/ && $1 eq $3){
+                   }elsif($tag =~ /^(.*)[\[<]\/*(.*)[\]>](.*)$/ && $1 eq $3){
                         if($opening){
                                 $body .= qq($ln\n)
                         }
@@ -287,12 +282,10 @@ sub process {
                                 $self->{'@$'} = \@nodes;
                         }
                         next
-                    }
-                    elsif($isClosing){
+                    }elsif($isClosing){
                         $opening--;
                         $closing++;                        
-                    }
-                    else{
+                    }else{
                         $opening++;
                         $closing--;                        
                     }
@@ -315,7 +308,7 @@ sub process {
                             }else{         
                                 my $a = $isArray;
                                 my $property = CNFNode->new({'_'=>$sub, '@' => \$self});                                   
-                                $property->process($parser, $body);
+                                $property   -> process($parser, $body);
                                 $isArray = $a;
                                 if($tag eq '@@'){
                                    $array[@array] = $property;
@@ -343,8 +336,7 @@ sub process {
                 }elsif($tag eq '#'){
                        $valing = 1;
                 }elsif($opening==0 && $isArray){
-                    $array[@array] = $ln;  
-                   # next              
+                       $array[@array] = $ln;              
                 }elsif($opening==0 && $ln =~ /^([<\[])(.+)([<\[])(.*)([>\]])(.+)([>\]])$/ && 
                               $1 eq $3 && $5 eq $7 ){ #<- tagged in line
                         if($2 eq '#') {
@@ -404,25 +396,28 @@ sub process {
                        $array[@array] = $2;
                        next;
                     }
-                    my @attr = ($ln =~m/([\s\w]*?)\s*[=:]\s*(.*)\s*/);
+                    my @attr = ($ln =~ m/([\s\w]*?)\s*[=:]\s*(.*)\s*/);
                     if(@attr>1){
                         my $n = $attr[0];
-                        my $v = $attr[1];                         
-                        $self->{$n} = $v;
+                        my $v = $attr[1]; 
+                        if($v =~ /[<\[]\*[<\[](.*)[]>\]]\*[>\]]/){
+                           $v = $self-> obtainLink($parser, $1) 
+                         } $v =~ m/^(['"]).*(['"])$/g; 
+                           $v =~ s/^$1|$2$//g if($1 && $2 && $1 eq $2);                            
+                        $self->{$n} = $v; 
                         next;
                     }else{ 
                        $val = $ln if $val;
                     }                   
                 }
                                     # Very complex rule, allow #comment lines in buffer withing an node value tag, ie [#[..]#]
-                 $body .= qq($ln\n) #if !$tag &&  $ln!~/^\#/ || $tag eq '#' 
+                $body .= qq($ln\n)  #if !$tag &&  $ln!~/^\#/ || $tag eq '#' 
             }
             elsif($tag eq '#'){
-                 $body .= qq(\n)
+                  $body .= qq(\n)
             }
         }        
     }
-
     $self->{'@@'} = \@array if @array;
     $self->{'#'} = \$val if $val;
     ## no critic BuiltinFunctions::ProhibitStringyEval
@@ -431,7 +426,7 @@ sub process {
        my $entry = pop (@linked_subs);  
        my $node  = $entry->{node};
        my $res   = &{+$entry->{sub}}($node);
-       $entry->{node}->{'*'} = \$res;
+          $entry->{node}->{'*'} = \$res;
     }
     return \$self;
 }
@@ -460,11 +455,11 @@ sub obtainLink {
 # Validates a script if it has correctly structured nodes.
 #
 sub validate {
-    my ($self, $script) = @_;
+    my $self = shift;
     my ($tag,$sta,$end,$lnc,$errors)=("","","",0,0); 
     my (@opening,@closing,@singels);
     my ($open,$close) = (0,0);
-    my @lines = split(/\n/, $script);    
+    my @lines = split(/\n/, $self->{'~'});    
     foreach my $ln(@lines){
         $ln =~ s/^\s+|\s+$//g;
         $lnc++;
@@ -506,8 +501,7 @@ sub validate {
     }else{
        my $errors = 0; my $error_tag; my $nesting;
        my $cnt = $#opening;
-       for my $i (0..$cnt){
-          
+       for my $i (0..$cnt){          
           my $o = $opening[$i];          
           my $c = $closing[$cnt - $i];
           if($o->{T} ne $c->{T}){

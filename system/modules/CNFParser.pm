@@ -18,6 +18,7 @@ use DateTime;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
+require CNFtoJSON;
 
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
@@ -498,8 +499,8 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }elsif($t eq 'INCLUDE'){
             $includes{$e} = {loaded=>0,path=>$e,v=>$v};
     }elsif($t eq 'TREE'){
-        my  $tree = CNFNode->new({'_'=>$e,script=>$v}); 
-            $tree->{DEBUG} = $self->{DEBUG};
+        my  $tree = CNFNode->new({'_'=>$e,'~'=>$v}); 
+            $tree->{DEBUG} = 1 if $self->{DEBUG};
             $instructs{$e} = $tree; 
     }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
         SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
@@ -521,7 +522,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                return;
             }
             ## no critic BuiltinFunctions::ProhibitStringyEval                        
-                  $ret = eval $v if not $ret;
+               $ret = eval $v if not $ret;
             ## use critic            
              if ($ret){
                  chomp $ret;
@@ -833,10 +834,9 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
         for my $idx(0..$#ditms) {
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && ($struct->{'script'} =~ s/$meta//i)){ # This will trim out the flag within if found.
-               $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};
-               $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
-               #splice @ditms, $idx,1; <- causing havoc when key order is scrambled. Weirdest thing in perl!
+            if($type eq 'CNFNode' && ($struct->{'~'} =~ s/$meta//i)){ # This will trim out the flag within if found.
+               $struct->validate() if $self->{ENABLE_WARNINGS};
+               $anons ->{$struct->name()} = $struct->process($self, $struct->script());
                push @del, $idx; 
             }
         }
@@ -848,8 +848,8 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
             my $struct = $ditms[$idx];
             my $type =  ref($struct); 
             if($type eq 'CNFNode'){   
-               $struct->validate($struct->{'script'}) if $self->{ENABLE_WARNINGS};            
-               $anons->{$struct->{'_'}} = $struct->process($self, $struct->{'script'});
+               $struct->validate() if $self->{ENABLE_WARNINGS};            
+               $anons->{$struct->name()} = $struct->process($self, $struct->script());
                push @del, $idx; 
             }elsif($type eq 'InstructedDataItem' && $struct->{'priority'}){ 
                 my $t = $struct->{ins};
@@ -877,7 +877,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     }
     #Do scripted includes.
     my @inc = sort values %includes;    
-    $includes{$0} = {loaded=>1,path=>$self->{CNF_CONTENT}}; #<- to prevent circular includes.
+    $includes{$0} = {loaded=>1, path=>$self->{CNF_CONTENT}}; #<- to prevent circular includes.
     foreach my $file(@inc){
         if(!$file->{loaded} && $file->{path} ne $self->{CNF_CONTENT}){
            if(open(my $fh, "<:perlio", $file->{path} )){
@@ -1164,6 +1164,15 @@ sub  SQL {
     $SQL->addStatement(@_) if @_;
     return $SQL;
 }
+our $JSON;
+sub  JSON {
+    my $self    = shift;
+    if(!$JSON){
+        require CNFtoJSON; $JSON = CNFtoJSON-> new();
+    }    
+    return $JSON;
+}
+
 
 sub END {
 undef %ANONS;
