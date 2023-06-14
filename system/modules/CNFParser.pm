@@ -25,7 +25,7 @@ require CNFtoJSON;
 ##no critic qw(Subroutines::RequireFinalReturn)
 ##no critic Perl::Critic::Policy::ControlStructures::ProhibitMutatingListFunctions
 
-use constant VERSION => '2.8';
+use constant VERSION => '2.9';
 our @files;
 our %lists;
 our %properties;
