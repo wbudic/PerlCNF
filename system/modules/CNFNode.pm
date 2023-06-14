@@ -21,6 +21,8 @@ sub new {
     bless $self, $class;
 }
 
+use constant PRIVATE_FIELDS => qr/@\$|[@#_~^&]/o;
+
 ###
 # CNFNode uses symbol offcodes for all its own field values, foe efficiancy.
 ###
@@ -34,9 +36,10 @@ sub evaluate {shift -> {'&'}}
 sub attributes {
     my $self = shift;
     my @nodes;
+    my $regex  = PRIVATE_FIELDS();
     foreach(sort keys %$self){
         my $node = $self->{$_};        
-        if($_ !~ /@|@\$|#_~/){
+        if($_ !~ /$regex/){
            $nodes[@nodes] = [$_, $node]
         }
     }

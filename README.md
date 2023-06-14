@@ -7,15 +7,17 @@ Has own textual data tag format. Therefore can also be useful for database data 
 
 This project also contains custom build TestManager module for general and all test driven development.
 
-It is at current v.2.8, and specification implemented.
+It is at current v.2.9, and specification implemented.
 
 ### [You can find the specification here](./Specifications_For_CNF_ReadMe.md).
 
 ---
 
 ## Status
-
-(2024-5-13) - v.2.8, has new instructions VARIABLE, to stream line under one tag like CONST, but for anons.
+(2023-14-6) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
+              Node processing on demand and JSON translation on demand of CNFNode's (TREE instruction) is now available.  
+              Online demo made available.
+(2023-5-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.
 Has better tag mauling algorithm. PLUGIN code has been improved, particularly the synchronizing and the linking of properties.
 
 (2022-11-18) - PerlCNF now provides custom test manager and test cases. 
@@ -91,6 +93,15 @@ print "App Name: ".$cnf->constant('$APP_NAME')."]";
 #prints -> App Name: Test Application
 
 ```
+
+## Check Online Demo
+
+* Subject to availability, please check out the online demo ⇒ [PerlCNF Online](https://lifelog.hopto.org/index.cgi)
+* Access to it might raise browser certificate errors in your browser, that is ok.
+  * It is at the moment an experimental development server.
+* All pages there are running and are implemented dynamically by using this framework and might be still in some sections, under development.
+  * Yes the /index.cgi uses PerlCNF to render and work with an index.cnf file, containing page structure and all web page bits in one place.
+  * There is a plugin for conversion from CNF to HTML and plugin for Markup to HTML, centralized all in this index.cnf file.
 
 ## Run Test Cases
 

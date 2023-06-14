@@ -27,10 +27,11 @@ sub nodeToJSON {
        my $tab =  $tab_cnt == 1 ? '' : '   ' x $tab_cnt;
        my $name = $node -> {'_'};
        my $val  = $node -> {'#'}; $val = $node->{'*'} if !$val; $val = _translateNL($val);
-       my @arr  = sort (keys %$node);       
+       my @arr  = sort (keys %$node);  
+       my $regex  = $node->PRIVATE_FIELDS();
           foreach (@arr){
             my $attr = $_;            
-            if($attr !~ /@\$|[@+#_~]/){
+            if($attr !~ /$regex/){
                my $aval = _translateNL($node->{$attr});               
                   $attributes .= ",\n" if $attributes;
                   $attributes .= "$tab\"$attr\" : \"$aval\"";
@@ -60,8 +61,9 @@ sub nodeToJSON {
           }          
        }
        if($attributes){
+          $closeBrk=2 if (!$buffer && !$node->isRoot());
           $buffer     .= $node->isRoot() ? "$tab$attributes" :  "$tab\"$name\" : {\n$tab$attributes";
-          $attributes  = "";  $closeBrk=2;
+          $attributes  = "";  
        }
        #
             @arr  = exists $node-> {'@@'}  ?  @{$node -> {'@@'}} : ();

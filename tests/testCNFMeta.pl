@@ -1,7 +1,7 @@
 use warnings; use strict;
 use 5.36.0;
 use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;
@@ -44,7 +44,7 @@ use Syntax::Keyword::Try; try {
         >>
         <<B<TREE> _PRIORITY_1_
         #Should be first property in list, named B otherwise would be first as it goes in a hash of instructs, 
-        and all are seen unique names, allowing overides for of annons..
+        #and all are seen unique names, allowing overides for of annons..
         >>
 
             <<PROPERTIES   <TREE> _PRIORITY_28_
