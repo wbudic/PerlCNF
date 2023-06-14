@@ -15,12 +15,14 @@ use warnings;
 ###
 # TREE instuction meta.
 use constant  HAS_PRIORITY  => "HAS_PROCESSING_PRIORITY"; # Schedule to process before the rest in synchronous line of instructions.
+
 #
 ###
 # DO instruction meta.
 #
 use constant  ON_DEMAND      => "ON_DEMAND"; #Postpone to evaluate on demand.
 use constant  SHELL          => "SHELL"; #Execute via system shell.
+
 #
 
 ###
@@ -33,14 +35,17 @@ sub _meta {
     }
     $constance;
 }
+#Priority order no. for instructions.
+use constant PRIORITY => qr/(\s*\_+PRIORITY\_(\d+)\_+\s*)/o;
 
 sub import {     
     my $caller = caller;    no strict "refs";
     {
          *{"${caller}::meta"}  = \&_meta;
-         *{"${caller}::HAS_PRIORITY"}  = \&HAS_PRIORITY;
-         *{"${caller}::ON_DEMAND"}  = \&ON_DEMAND;
-         *{"${caller}::SHELL"}  = \&SHELL;
+         *{"${caller}::meta_has_priority"}   = sub {return _meta(HAS_PRIORITY)};
+         *{"${caller}::meta_priority"}       = \&PRIORITY;
+         *{"${caller}::meta_on_demand"}      = sub {return _meta(ON_DEMAND)};
+         *{"${caller}::SHELL"}  = \&SHELL;         
     }
     return 1;    
 }

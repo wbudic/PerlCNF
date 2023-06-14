@@ -101,74 +101,16 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
 sub import {     
     my $caller = caller;    no strict "refs";
     {
-         *{"${caller}::configDumpENV"}  = \&dumpENV;
-         *{"${caller}::anon"}           = \&anon;
-         *{"${caller}::SQL"}            = \&SQL;         
+        *{"${caller}::configDumpENV"}  = \&dumpENV;
+        *{"${caller}::anon"}           = \&anon;
+        *{"${caller}::SQL"}            = \&SQL;         
     }
     return 1;    
 }
 
-###
-# Post parsing instructed special item objects.
-##
-package InstructedDataItem {
-    
-    our $dataItemCounter = int(0);
-
-    sub new { my ($class, $ele, $ins, $val) = @_;
-        my $priority = ($val =~ s/CNFMETA::HAS_PRIORITY//sexi)?1:0;
-        bless {
-                ele => $ele,
-                aid => $dataItemCounter++,
-                ins => $ins,
-                val => $val,
-                priority => $priority
-        }, $class    
-    }
-    sub toString {
-        my $self = shift;
-        return "<<".$self->{ele}."<".$self->{ins}.">".$self->{val}.">>"
-    }
-}
-#
-
-###
-# PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
-##
-package PropertyValueStyle {    
-    sub new {
-        my ($class, $element, $script, $self) =  @_;
-        $self = {} if not $self;
-        $self->{element}=$element;
-        if($script){
-            my ($p,$v);                     
-            foreach my $itm($script=~/\s*(\w*)\s*[:=]\s*(.*)\s*/gm){
-                if($itm){
-                    if(!$p){
-                        $p = $itm;
-                    }else{
-                        $self->{$p}=$itm;
-                        undef $p;
-                    }
-                }                
-            }
-        }else{
-            warn "PropertyValue process what?"
-        }
-        bless $self, $class
-    }
-    sub setPlugin{
-        my ($self, $obj) =  @_;
-        $self->{plugin} = $obj;
-    }
-    
-    sub result {
-        my ($self, $value) =  @_;
-        $self->{value} = $value;
-    }
-}
-#
-
+our $meta_has_priority  = meta_has_priority();
+our $meta_priority      = meta_priority();
+our $meta_on_demand     = meta_on_demand();
 ###
 # The metaverse is that further this can be expanded, 
 # to provide further dynamic meta processing of the property value of an anon.
@@ -198,6 +140,70 @@ return <<__JSON
 {"$property"="$val"}
 __JSON
 }
+
+          
+
+###
+# Post parsing instructed special item objects.
+##
+package InstructedDataItem {
+    
+    our $dataItemCounter   = int(0);
+
+    sub new { my ($class, $ele, $ins, $val) = @_;
+        my $priority = ($val =~ s/$meta_has_priority/""/sexi)?1:0; $val =~ s/$meta_priority/""/sexi;
+           $priority = $2 if $2;
+        bless {
+                ele => $ele,
+                aid => $dataItemCounter++,
+                ins => $ins,
+                val => $val,
+                '^' => $priority
+        }, $class    
+    }
+    sub toString {
+        my $self = shift;
+        return "<<".$self->{ele}."<".$self->{ins}.">".$self->{val}.">>"
+    }
+}
+#
+
+###
+# PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
+##
+package PropertyValueStyle {    
+
+    sub new {
+        my ($class, $element, $script, $self) =  @_;
+        $self = {} if not $self;
+        $self->{element}=$element;
+        if($script){
+            my ($p,$v);                     
+            foreach my $itm($script=~/\s*(\w*)\s*[:=]\s*(.*)\s*/gm){
+                if($itm){
+                    if(!$p){
+                        $p = $itm;
+                    }else{
+                        $self->{$p}=$itm;
+                        undef $p;
+                    }
+                }                
+            }
+        }else{
+            warn "PropertyValue process what?"
+        }
+        bless $self, $class
+    }
+    sub setPlugin{
+        my ($self, $obj) =  @_;
+        $self->{plugin} = $obj;
+    }    
+    sub result {
+        my ($self, $value) =  @_;
+        $self->{value} = $value;
+    }
+}
+#
 
 ###
 # Anon properties are public variables. Constance's are protected and instance specific, both config file provided (parsed in).
@@ -373,7 +379,7 @@ sub template { my ($self, $property, %macros) = @_;
 #private to parser sub.
 sub doInstruction { my ($self,$e,$t,$v) = @_;
 
-    my $DO_ENABLED = $self->{'DO_ENABLED'};
+    my $DO_ENABLED = $self->{'DO_ENABLED'};  my $priority = 0;
     $t = "" if not defined $t;
 
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
@@ -499,9 +505,16 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }elsif($t eq 'INCLUDE'){
             $includes{$e} = {loaded=>0,path=>$e,v=>$v};
     }elsif($t eq 'TREE'){
-        my  $tree = CNFNode->new({'_'=>$e,'~'=>$v}); 
+        my  $tree = 0;
+        if( $v =~ s/($meta_has_priority)/""/ei){
+            $priority = 1;
+        }
+        if( $v =~ s/$meta_priority/""/sexi){
+            $priority = $2;
+        }
+            $tree = CNFNode->new({'_'=>$e,'~'=>$v,'^'=>$priority}); 
             $tree->{DEBUG} = 1 if $self->{DEBUG};
-            $instructs{$e} = $tree; 
+            $instructs{$e} = $tree;
     }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
         SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
         elsif($t eq 'INDEX'){ SQL()->createIndex($v)}  
@@ -516,9 +529,14 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                  $v = $e;
                  $e = 'LAST_DO';
             }
-            my $meta = meta(ON_DEMAND());
-            if($v=~ s/($meta)//i){
-               $anons->{$e} = CNFNode -> new({'_'=>$e,'&'=>$v});
+            if( $v =~ s/($meta_has_priority)/""/ei){
+                $priority = 1;
+            }
+            if( $v =~ s/($meta_priority)/""/sexi){
+                $priority = $2;
+            }            
+            if($v=~ s/($meta_on_demand)/""/ei){
+               $anons->{$e} = CNFNode -> new({'_'=>$e,'&'=>$v,'^'=>$priority});
                return;
             }
             ## no critic BuiltinFunctions::ProhibitStringyEval                        
@@ -572,8 +590,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         }
     }
     elsif($t eq 'MACRO'){                  
-          $instructs{$e}=$v;                  
-    
+          $instructs{$e}=$v;
     }else{
         #Register application statement as either an anonymous one. Or since v.1.2 a listing type tag.                 
         if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
@@ -806,9 +823,9 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
             doInstruction($self,$e,$t,$v)
         }
 	}
-    #Do smart instructions and property linking.
-    if(%instructs){ 
-        my @ditms;
+    ###  Do the smart instructions and property linking.
+    if(%instructs){
+        my @items;
         foreach my $e(keys %instructs){
             my $struct = $instructs{$e};
             my $type =  ref($struct);
@@ -827,53 +844,34 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                 }            
                 $anons->{$e}=$v;
             }else{ 
-                $ditms[@ditms] = $struct;
+                $items[@items] = $struct;
             }
-        }
-        my @del; my $meta = meta(HAS_PRIORITY());
-        for my $idx(0..$#ditms) {
-            my $struct = $ditms[$idx];
-            my $type =  ref($struct); 
-            if($type eq 'CNFNode' && ($struct->{'~'} =~ s/$meta//i)){ # This will trim out the flag within if found.
-               $struct->validate() if $self->{ENABLE_WARNINGS};
-               $anons ->{$struct->name()} = $struct->process($self, $struct->script());
-               push @del, $idx; 
-            }
-        }
-        while(@del){
-            splice @ditms,pop @del, 1
         }
 
-        for my $idx(0..$#ditms) {
-            my $struct = $ditms[$idx];
+        @items =  sort {$a->{'^'} <=> $b->{'^'}} @items; #sort by priority;
+
+        for my $idx(0..$#items) {
+            my $struct = $items[$idx];
+            my $type =  ref($struct); 
+            if($type eq 'CNFNode' && $struct-> priority() <= 1){
+               $struct->validate() if $self->{ENABLE_WARNINGS};
+               $anons ->{$struct->name()} = $struct->process($self, $struct->script());               
+               splice @items, $idx, 1
+            }
+        }
+        #Now only what is left instructed data items or plugins, and nodes that have assigned last priority, if any.
+        for my $idx(0..$#items) {
+            my $struct = $items[$idx];
             my $type =  ref($struct); 
             if($type eq 'CNFNode'){   
                $struct->validate() if $self->{ENABLE_WARNINGS};            
-               $anons->{$struct->name()} = $struct->process($self, $struct->script());
-               push @del, $idx; 
-            }elsif($type eq 'InstructedDataItem' && $struct->{'priority'} || $struct->{'val'} =~ s/$meta//i){ 
+               $anons->{$struct->name()} = $struct->process($self, $struct->script());               
+            }elsif($type eq 'InstructedDataItem'){ 
                 my $t = $struct->{ins};
                 if($t eq 'PLUGIN'){ 
                    instructPlugin($self,$struct,$anons);
-                }
-                push @del, $idx; 
-            }
-        }
-        while(@del){
-            splice @ditms,pop @del, 1
-        }
-
-        @ditms =  sort {$a->{aid} <=> $b->{aid}} @ditms if $#ditms > 1;
-        foreach my $struct(@ditms){
-            my $type =  ref($struct); 
-            if($type eq 'InstructedDataItem'){
-                my $t = $struct->{ins};
-                if($t eq 'PLUGIN'){  
-                   instructPlugin($self,$struct,$anons);
-                }else{
-                   warn "Undefined instruction detected: ".$struct->toString()
-                }
-            }
+                }                
+            }else{warn "What is -> $struct type:$type ?"}
         }
         undef %instructs;        
     }

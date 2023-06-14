@@ -20,11 +20,17 @@ sub new {
     my $self = \%$attrs;
     bless $self, $class;
 }
-sub name   {shift -> {'_'}}
-sub parent {shift -> {'@'}}
-sub isRoot {not exists shift -> {'@'}}
-sub list   {shift -> {'@@'}}
-sub script {shift -> {'~'}}
+
+###
+# CNFNode uses symbol offcodes for all its own field values, foe efficiancy.
+###
+sub name     {shift -> {'_'}}
+sub parent   {shift -> {'@'}}
+sub isRoot   {not exists shift -> {'@'}}
+sub list     {shift -> {'@@'}}
+sub script   {shift -> {'~'}}
+sub priority {shift -> {'^'}}
+sub evaluate {shift -> {'&'}}
 sub attributes {
     my $self = shift;
     my @nodes;
