@@ -4,6 +4,7 @@ use warnings; use strict;
 use lib "tests";
 use lib "system/modules";
 
+
 require TestManager;
 require CNFParser;
 require CNFNode;
@@ -91,7 +92,34 @@ use Syntax::Keyword::Try; try {
     )); 
 
     #
-    $test-> nextCase();
+    $test -> nextCase();
+    #
+
+    $test -> case("Test when tree script is collapsed.");
+    $node -> process( CNFParser->new(),q(
+         <Example< __IN_SHORTIFE________
+                                Paths __\
+                                  Attr1 : Hey! Let's Test. Is it corrupt, in da west?
+                                  Ele1 ___\
+                                  List__|
+                                    E1__\
+                                    E2__|
+                                Last__//
+                                __/
+        This line of text collects into the value of this weird <<Example>> node.
+        # This one does not, as it is a comment.
+
+        >Example>
+    ));
+    $test -> isDefined("$node->node('Example')",$node->node('Example'));
+    $test -> evaluate("Do we have the Example node?", 'Example', $node->node('Example')->name());
+        $test -> subcase("Check for a node path.");
+            my $search = $node->find('Example/Paths/Attr1'); 
+            $test -> isDefined("\$search",$search);            
+            $test -> evaluate("\$search", 'Hey! Let\'s Test. Is it corrupt, in da west?', $search);
+
+    #
+    $test -> nextCase();
     #
 
     

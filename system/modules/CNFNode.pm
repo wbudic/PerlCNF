@@ -107,7 +107,7 @@ sub val {
 # NOTICE - 20221222 Future versions might provide also for more complex path statements with regular expressions enabled.
 ###
 sub find {
-    my ($self, $path, $ret, $prev, $seekArray)=@_;
+    my ($self, $path, $ret, $prev, $seekArray,$ref)=@_;
     foreach my $name(split(/\//, $path)){  
         if(ref($self) eq "ARRAY"){            
                 if($name eq '#'){
@@ -124,7 +124,7 @@ sub find {
                     $ret = $prev->{'@$'};               
                 }
         }else{             
-                if($name eq '@@') {
+                if ($name eq '@@') {
                     $ret = $self->{'@@'}; $seekArray = 1;
                     next
                 }elsif($name eq '@$') {
@@ -132,64 +132,96 @@ sub find {
                     next
                 }elsif($name eq '#'){
                     return $ret->val()
-                }if(ref($ret) eq "CNFNode" && $seekArray){
+                }elsif(exists $self->{$name}){
+                    $ret = $self->{$name};
+                    next
+                }
+                   $ref =  ref($ret);
+                if(!$seekArray && $ref eq 'ARRAY'){ # ret can be an array of parent same name elemenents.
+                   foreach my$n(@$ret) {                     
+                     if ($n->node($name)){
+                         $ret = $n; last
+                     }
+                   }### TODO - Search further elements if not found. Many to many.
+                }elsif($ref eq "CNFNode" && $seekArray){
                     $ret = $ret->{$name};
                     next
                 }else{ 
                     $ret = $self->{'@$'} if ! $seekArray; # This will initiate further search in subproperties names.                
                 }
         }
-        if($ret){
+           $ref =  ref($ret);
+        if($ret && $ref eq 'ARRAY'){
             my $found = 0;
             my @arr;
             undef $prev;        
-            foreach(@$ret){
-                if($seekArray && exists $_->{'@$'}){
-                    my $n;
-                    foreach (@{$_->{'@$'}}){
-                        $n = $_;
-                        if ($n->{'_'} eq $name){
-                            $arr[@arr] = $n;
+            foreach my $ele(@$ret){
+                if($seekArray && exists $ele->{'@$'}){                    
+                    foreach my$node(@{$ele->{'@$'}}){                        
+                        if ($node->{'_'} eq $name){
+                            $arr[@arr] = $ele = $node;
                         }                        
                     }
                     if(@arr>1){
                        $ret = \@arr;
-                    }else{ 
-                       $ret = $n;
+                    }else{
+                       $ret = $ele
                     }
                     $found++;
-                }elsif (ref($_) eq "CNFNode" and $_->{'_'} eq $name){
-                    if($prev){
-                       $arr[@arr] = $_;
-                       $self = \@arr;
-                       $prev = $_;
-                    }else{ 
-                       $arr[@arr] = $_;
-                       $prev = $self = $_
+                }elsif (ref($ele) eq "CNFNode"){
+                    if($ele->{'_'} eq $name){
+                        if ($prev) {
+                            $arr[@arr] = $ele;
+                            $self      = \@arr;
+                            $prev      = $ele;
+                        }
+                        else {
+                            $arr[@arr] = $ele;
+                            $prev = $self = $ele;
+                        }
+                        if ( !$found ) {
+                            $self = $ret = $ele;
+                        }
+                        else {
+                            $ret = \@arr;
+                        }
+                        $found = 1
+                    }elsif(exists $ele->{$name}){
+                        $ret = $ele->{$name};
+                        $found = 1
                     }
-                    if(!$found){
-                       $self = $ret = $_
-                    }else{ 
-                       $ret  = \@arr;
-                    }
-                    $found=1
                 }
             }
-            $ret = $self->{$name} if(!$found && $name ne '@$');
-        }else{ 
-            if(ref($ret) ne "ARRAY"){
-                   $ret  = $self->{$name} 
+            if(!$found && $name ne '@$' && exists $self->{$name}){
+                $ret = $self->{$name}
+            }else{
+                undef $ret if !$found
             }
+        }
+        elsif($name && $ref eq "CNFNode"){
+              $ret  =  $ret -> {$name}             
         }   
     }
     return $ret;
 }
 ###
 # Similar to find, put simpler node by path routine.
-# Returns first node found based on path..
+# Returns first node found based on path.
 ###
 sub node {
     my ($self, $path, $ret)=@_;
+    if($path !~ /\//){
+       return $self->{$path} if exists $self->{$path};
+       $ret = $self->{'@$'};
+       if($ret){
+            foreach(@$ret){
+                if ($_->{'_'} eq $path){
+                    return $_; 
+                }
+            }
+       }
+      return
+    }
     foreach my $name(split(/\//, $path)){        
         $ret = $self->{'@$'};
         if($ret){
@@ -213,8 +245,8 @@ my  @linked_subs;
 sub process {
 
     my ($self, $parser, $script)=@_;      
-    my ($sub, $val, $isArray,$body) = (undef,0,0,"");
-    my ($tag,$sta,$end)=("","","");
+    my ($sub, $val, $isArray,$isShortifeScript,$body) = (undef,0,0,0,"");
+    my ($tag,$sta,$end)=("","",""); my $meta_shortife = &meta_node_in_shortife;
     my ($opening,$closing,$valing)=(0,0,0);
     my @array;
 
@@ -229,17 +261,18 @@ sub process {
         my @lines = split(/\n/, $script);
         foreach my $ln(@lines){
             $ln =~ s/^\s+|\s+$//g;          
-            if(length ($ln)){
-                #print $ln, "\n";
+            if(length ($ln)){              
+                my $isShortife = ($ln =~ s/($meta_shortife)/""/sexi);  
                 if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/ && $1 eq $3){
                    $sta = $1;
                    $tag = $2;
-                   $end = $3;
+                   $end = $3;  
+                   $isShortifeScript = 1 if $isShortife;                 
                    my $isClosing = ($sta =~ /[>\]]/) ? 1 : 0;
                    if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $2;
-                            my $rval = $self -> obtainLink($parser, $link);                                                             
+                            my $rval = $self  -> obtainLink($parser, $link);                                                             
                                $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
                             if($rval){                 
                                 if($opening){
@@ -314,10 +347,67 @@ sub process {
                                 }
                                 $valing = 0;
                                 $tag ="" if $isClosing
-                            }else{         
-                                my $a = $isArray;
-                                my $property = CNFNode->new({'_'=>$sub, '@' => \$self});                                   
-                                $property   -> process($parser, $body);
+                            }else{
+                                my $property = CNFNode->new({'_'=>$sub, '@' => \$self});
+                                my $a = $isArray;   
+                                if($isShortifeScript){
+                                    my ($sub,$prev,$cnt_nl,$bck_p);                                    
+                                    while ($body =~ /    (.*)__+   ([\\\|]|\/*)  |  (.*)[:=](.*) | (.*)\n/gmx){
+                                        my @sel =  @{^CAPTURE};                                                                                                                                 
+                                           if(defined $sel[0]){
+                                                if ($sel[1]){
+                                                    my $t = substr $sel[1],0,1;
+                                                    $bck_p=length($sel[1]);
+                                                    my $parent = $sub;
+                                                    if($t eq '\\'){
+                                                        $parent = $sub ? $sub : $property;
+                                                    }elsif($t eq '|'){
+                                                        $parent = $sub ? $sub->parent() : $prev;
+                                                    }elsif($t eq '/') {
+                                                        $parent = $sub;
+                                                        do{$parent = $parent -> parent() if $parent -> parent()}while(--$bck_p>0);
+                                                        if ($sel[0] eq ''){
+                                                            $sub = $parent; next
+                                                        }
+                                                    }
+                                                    $sub = CNFNode->new({'_'=>$sel[0], '@' => $parent});                                                        
+                                                    my @elements = exists $parent -> {'@$'} ? $parent -> {'@$'} : ();
+                                                    $elements[@elements] = $sub; $prev = $parent; $cnt_nl = 0;
+                                                    $parent -> {'@$'} = \@elements;
+                                                }                                           
+                                           }
+                                           elsif (defined $sel[2] && defined $sel[3]){
+                                                  my $attribute = $sel[2]; $attribute =~ s/^\s*|\s*$//g;
+                                                  my $value     = $sel[3]; $value =~ s/^\s*|\s*$//g;
+                                                  if($sub){
+                                                     $sub      -> {$attribute} = $value
+                                                  }else{
+                                                     $property -> {$attribute} = $value
+                                                  }
+                                                 $cnt_nl = 0;
+                                           }
+                                           elsif (defined  $sel[4]){
+                                                  if ($sel[4] eq ''){
+                                                        if(++$cnt_nl>1){ #cancel collapse chain and at root of property that is shorted.
+                                                            ##$sub = $property ; 
+                                                            $cnt_nl =0
+                                                        } 
+                                                        next
+                                                  }elsif($sel[4] !~ /^\s*\#/ ){
+                                                        my $parent = $sub ? $sub->parent() : $property;
+                                                        if (exists $parent->{'#'}){
+                                                                $parent->{'#'} .= "\n" . $sel[4]
+                                                            }else{
+                                                                $parent->{'#'} = $sel[4]
+                                                        }
+                                                    # $sub ="";
+                                                  }
+                                            }
+                                    }#while                                    
+                                    $isShortifeScript = 0;
+                                }else{
+                                    $property -> process($parser, $body);
+                                 }
                                 $isArray = $a;
                                 if($tag eq '@@'){
                                    $array[@array] = $property;
@@ -353,7 +443,7 @@ sub process {
                             else{$val = $4}                           
                         }elsif($2 eq '*'){
                                 my $link = $4;
-                                my $rval = $self->obtainLink($parser, $link);                                                             
+                                my $rval = $self  -> obtainLink($parser, $link);                                                             
                                    $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
                                 if($rval){
                                         #Is this a child node?
@@ -390,7 +480,6 @@ sub process {
                                 $nodes[@nodes] = $property;
                                 $self->{'@$'} = \@nodes;
                         }
-
                     next                               
                 }elsif($val){
                     $val = $self->{'#'};
@@ -468,14 +557,14 @@ sub validate {
     my ($tag,$sta,$end,$lnc,$errors)=("","","",0,0); 
     my (@opening,@closing,@singels);
     my ($open,$close) = (0,0);
-    my @lines = split(/\n/, $self->{'~'});    
+    my @lines = defined $self -> script() ? split(/\n/, $self->script()) :();    
     foreach my $ln(@lines){
         $ln =~ s/^\s+|\s+$//g;
         $lnc++;
         #print $ln, "<-","\n";            
         if(length ($ln)){
             #print $ln, "\n";
-            if($ln =~ /^([<>\[\]])(.*)([<>\[\]])$/ && $1 eq $3){
+            if($ln =~ /^([<>\[\]])(.*)([<>\[\]])(.*)/ && $1 eq $3){
                 $sta = $1;
                 $tag = $2;
                 $end = $3;
@@ -497,16 +586,15 @@ sub validate {
             }
         }
     }
-    if(@opening != @closing){ 
-       cluck "Opening and clossing tags mismatch!";
-       foreach my $o(@opening){          
+    if(@opening != @closing){
+         cluck "Opening and clossing tags mismatch!";
+       foreach my $o(@opening){
           my $c = pop @closing;
           if(!$c){
             $errors++;
              warn "Error unclosed tag-> [".$o->{T}.'[ @'.$o->{L}       
           }
-       }
-       
+       }       
     }else{
        my $errors = 0; my $error_tag; my $nesting;
        my $cnt = $#opening;
@@ -532,8 +620,8 @@ sub validate {
 
           if($o->{T} ne $c->{T} && $o->{N} ne $c->{N}){
              cluck "Error opening and clossing tags mismatch for ". 
-                    brk($o).' ln: '.$o->{L}.' idx: '.$o->{idx}.
-                    ' wrongly matched with '.brk($c).' ln: '.$c->{L}.' idx: '.$c->{idx}."\n";
+                    _brk($o).' ln: '.$o->{L}.' idx: '.$o->{idx}.
+                    ' wrongly matched with '._brk($c).' ln: '.$c->{L}.' idx: '.$c->{idx}."\n";
              $errors++;
           }
        }       
@@ -541,9 +629,52 @@ sub validate {
     return  $errors;
 }
 
-sub brk{
-    my $t = shift;
-    return 'tag: \''.$t->{S}.$t->{T}.$t->{S}.'\''
+    sub _brk{
+        my $t = shift;
+        return 'tag: \''.$t->{S}.$t->{T}.$t->{S}.'\''
+    }
+###
+# Compare one node with  another if is equal in structure.
+##
+sub equals {
+    my ($self, $node, $ref) = @_; $ref = ref($node); 
+    if (ref($node) eq 'CNFNode'){
+        my @s = sort keys %$self;
+        my @o = sort keys %$node; 
+        my $i=$#o;
+        foreach (0..$i){
+            my $n = $o[$i-$_];
+            if($n eq '~' || $n eq '^'){
+               splice @o,$i-$_,1;               
+            }            
+        }
+        $i=$#s;
+        foreach (0..$i){
+            my $n = $s[$i-$_];
+            if($n eq '~' || $n=~/^CNF_/ || $n=~/^DO_/){
+               splice @s,$i-$_,1;                
+            }            
+        }$i=0;
+        if(@s == @o){
+           foreach(@s) {
+             if($_ ne $o[$i++]){
+                return 0
+             }
+           }  
+           if($self -> {'@$'} && $node -> {'@$'}){
+              @s = sort keys @{$self -> {'@$'}};
+              @o = sort keys @{$node -> {'@$'}}; 
+              $i = 0;
+              foreach(@s) {
+                if($_ ne $o[$i++]){
+                    return 0
+                }
+              }              
+           }
+           return 1;
+        }
+    }
+    return 0;
 }
 
 1;

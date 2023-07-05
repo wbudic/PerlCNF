@@ -1,7 +1,7 @@
 use warnings; use strict;
 use 5.36.0;
 use lib "tests";
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 
 require TestManager;
 require CNFParser;

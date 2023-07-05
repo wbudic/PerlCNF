@@ -35,8 +35,14 @@ sub _meta {
     }
     $constance;
 }
-#Priority order no. for instructions.
+###
+# Priority order no. for instructions.
 use constant PRIORITY => qr/(\s*\_+PRIORITY\_(\d+)\_+\s*)/o;
+###
+# Tree instruction has been scripted in collapsed nodes shorthand format.
+# Shortife is parsed faster and with less recursion, but can be prone to script errors, 
+# resulting in unintended placings.
+use constant IN_SHORTIFE  => qr/(\s*\_+IN_SHORTIFE\_+\s*)/o;
 
 sub import {     
     my $caller = caller;    no strict "refs";
@@ -45,6 +51,7 @@ sub import {
          *{"${caller}::meta_has_priority"}   = sub {return _meta(HAS_PRIORITY)};
          *{"${caller}::meta_priority"}       = \&PRIORITY;
          *{"${caller}::meta_on_demand"}      = sub {return _meta(ON_DEMAND)};
+         *{"${caller}::meta_node_in_shortife"} =\&IN_SHORTIFE;
          *{"${caller}::SHELL"}  = \&SHELL;         
     }
     return 1;    

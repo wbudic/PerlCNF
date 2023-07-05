@@ -1,5 +1,4 @@
 use warnings; use strict;
-use 5.36.0;
 use lib "tests";
 use lib "system/modules";
 
@@ -13,7 +12,7 @@ use Syntax::Keyword::Try; try {
     ###
     $test->case("Test CNF to JSON.");
  
-    my $parser = CNFParser -> new(undef, {DO_ENABLED=>1})-> parse(undef, qq(
+    my $parser = CNFParser -> new(undef, {DO_ENABLED=>1}) -> parse(undef, qq(
         <<SYS_DATE><DO>
             use POSIX qw(strftime);
             print strftime "%F", localtime;            
@@ -32,15 +31,50 @@ use Syntax::Keyword::Try; try {
                 [OS[
                     value:<*<SYS_OS>*>   
                 ]OS]
+                # empty property is allowed.
                 <boss<
                 >boss>
+                <LIST<
+                    [@@[One]@@]
+                    [@@[owT]@@]
+                    [@@[Three]@@]
+                >LIST>
             >>
 
+        # Annon for the TREE is Collapsed.
+        <<<TREE
+                <Collapsed< __IS_COLLAPSED__
+                                Paths __\
+                                    attr1: test
+                                    ele = some value__\
+                                 List__/
+                >Collapsed>
+                <Uncollapsed<
+                                <Paths<
+                                    attr1:test
+                                    <ele<
+                                            <#<some value>#>
+                                    >ele>
+                                    [List[                                        
+                                    ]List]
+                                >Paths>
+                >Uncollapsed>
+        >>>
+
         ));
-    my $props = $parser->anon('PROPERTIES');
-       $test -> isDefined("\$props",$props); 
-       my $json = $parser->JSON()->nodeToJSON($props);
-       print $$json,"\n"; 
+    my $properties = $parser->anon('PROPERTIES');
+       $test -> isDefined("\$properties",$properties); 
+       my $boss = $properties->node('boss');
+       $test -> isDefined("\$boss",$boss); 
+       $test -> evaluate('$boss=""',$boss->val(),"");
+       my $json = $parser->JSON()->nodeToJSON($properties);
+       #print $$json,"\n";
+       my $cnf = $parser ->JSON()->jsonToCNFNode($$json);
+       if($cnf  -> equals($properties)){
+          $test -> passed("JSON conversion forth and back.");
+       }else{
+          $test -> failed("JSON conversion forth and back.");
+       }
     #
     $test->nextCase();  
     #

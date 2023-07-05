@@ -18,7 +18,7 @@ use DateTime;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
-require CNFtoJSON;
+
 
 # Do not remove the following no critic, no security or object issues possible. 
 # We can use perls default behaviour on return.
@@ -506,6 +506,10 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             $includes{$e} = {loaded=>0,path=>$e,v=>$v};
     }elsif($t eq 'TREE'){
         my  $tree = 0;
+        if (!$v){                
+                $v = $e;
+                $e = 'LAST_DO';
+        }
         if( $v =~ s/($meta_has_priority)/""/ei){
             $priority = 1;
         }
@@ -1168,7 +1172,11 @@ our $JSON;
 sub  JSON {
     my $self    = shift;
     if(!$JSON){
-        require CNFtoJSON; $JSON = CNFtoJSON-> new();
+        require CNFJSON; 
+        $JSON = CNFJSON-> new( {CNF_VERSION=>$self->{CNF_VERSION},
+                                CNF_CONTENT=>$self->{CNF_CONTENT},
+                                DO_ENABLED=>$self->{DO_ENABLED}
+                                } );
     }    
     return $JSON;
 }

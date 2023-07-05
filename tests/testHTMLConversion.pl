@@ -1,5 +1,4 @@
 use warnings; use strict;
-use 5.36.0;
 use lib "tests";
 use lib "system/modules";
 
