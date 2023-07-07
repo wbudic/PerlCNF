@@ -185,7 +185,7 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
     3. CNF property value tag turns the instruction the value, if the value is not separated from it.
     4. CNF only instructed, will try to parse the whole value to make multiple property value pairs.
         1. The newline is the separator for each on created.
-    5. Ver. 2.8 of PerlCNF is the third rewrite to boom and make this algorithm efficient.
+    5. Ver. 2.8 of PerlCNF is the third rewrite to boom and make this algorithm more efficient.
 2. Example. Instruction is mauling value:
 
     ```perl
@@ -305,6 +305,18 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
     \_HAS_PROCESSING_PRIORITY\_\_| TREE       | Schedule to process before the rest in synchronous line of instructions.
     \_\_ON_DEMAND\_\_            | DO        | Postpone to evaluate on demand.
     \_SHELL\______               | DO         | Execute via system shell and not as the default Perl evaluate.
+
+## Processing and Priorities
+
+1. Parser processing can be dictated and adhered by certain rules or priorities, this ensures that certain order and visibility of properties is in place as expected.
+2. Processing Types in order of significance.
+    1. Autonumbering and ID's, this is the **$$** signifier.
+    2. By order of appearance of property or tag in script (the default).
+    3. By type of property or instruction.
+        1. CNFNodes have higher priority then instructed item types (plugins).
+    4. By meta instruction.
+        1. Meta instruction priority order (__PRIORITY_01__), the higher the no. the later will be processed.
+        2. Meta on demand, this is experimental, and usually out of the scope of the processor.
 
 ## Database and SQL Instruction Formatting
 
@@ -578,5 +590,5 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.8 2023</center>
+<center>Sun Stage - v.2.9 2023</center>
 

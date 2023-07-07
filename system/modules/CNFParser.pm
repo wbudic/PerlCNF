@@ -144,14 +144,14 @@ __JSON
           
 
 ###
-# Post parsing instructed special item objects.
+# Post parsing instructed special item objects. They have lower priority to Order of apperance and from CNFNodes.
 ##
 package InstructedDataItem {
     
     our $dataItemCounter   = int(0);
 
     sub new { my ($class, $ele, $ins, $val) = @_;
-        my $priority = ($val =~ s/$meta_has_priority/""/sexi)?1:0; $val =~ s/$meta_priority/""/sexi;
+        my $priority = ($val =~ s/$meta_has_priority/""/sexi)?2:3; $val =~ s/$meta_priority/""/sexi;
            $priority = $2 if $2;
         bless {
                 ele => $ele,
@@ -857,7 +857,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
         for my $idx(0..$#items) {
             my $struct = $items[$idx];
             my $type =  ref($struct); 
-            if($type eq 'CNFNode' && $struct-> priority() <= 1){
+            if($type eq 'CNFNode' && $struct-> priority() > 0){
                $struct->validate() if $self->{ENABLE_WARNINGS};
                $anons ->{$struct->name()} = $struct->process($self, $struct->script());               
                splice @items, $idx, 1
