@@ -1,3 +1,15 @@
+###
+# Ambitious Markup Script converter from  MD scripts to HTML.
+# MD scripts can thus be placed in PerlCNF properties for further processing by this plugin.
+# Processing of these is placed in the data parsers data.
+# Programed by  : Will Budic
+# Notice - This source file is copied and usually placed in a local directory, outside of its project.
+# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+# Please leave source of origin in this file for future references.
+# Source of Origin : https://github.com/wbudic/PerlCNF.git
+# Documentation : Specifications_For_CNF_ReadMe.md
+# Open Source Code License -> https://choosealicense.com/licenses/isc/
+#
 package MarkdownPlugin;
 
 use strict;
@@ -61,7 +73,13 @@ try{
         MarkdownPluginException->throw(error=>$e ,show_trace=>1);
 }}
 
-
+###
+# Helper package to resolve the output of HTML lists in order of apperance in some MD script.
+# It is a very complex part of the parsing algorithm routine.
+# This mentioned, here look as the last place to correct any possible translation errors.
+# @CREATED 20230709
+# @TODO possible to be extended ot account for CSS specified bullet types then the HTML default.
+###
 package HTMLListItem {    
     sub new{
         my $class = shift;
@@ -82,22 +100,31 @@ package HTMLListItem {
     sub toString($self){        
         my $t = $self->{type};
         my $isRootItem = $self -> {spc} == 0 ? 1 : 0;
-        my $hasItems   = $self->hasItems()   ? 1 : 0;
-        my $ret;
-        if($hasItems&&!$isRootItem){
-           $ret = "<li>".$self -> {item}."<$t>\n"
+        my $hasItems   = $self->hasItems();
+        my $hasParent  = exists($self->{parent});
+        my $ret = "";
+        if ($hasItems) {            
+            if($isRootItem){
+                $ret = "<$t>\n"
+            }
+            if($self->{item}){
+                $ret = "<li>".$self -> {item}."\n<$t>\n"
+            }
         }else{
-           $ret = "<li>".$self -> {item}."</li>\n"
+            return  "<li>".$self -> {item}."</li>\n"
         }
         foreach my $item(@{$self->{list}}){
             if($item->hasItems()){
-                $ret .= $item->toString()."\n"
+               $ret .= $item->toString(); 
             }else{
-                $ret .= '<li>'.$item->{item}."</li>\n"
+               my $it = $item->{type};
+               $it = 'li' if $it eq 'ol' || $it eq 'ul';
+               $ret .= "<$it>".$item->{item}."</$it>\n";               
             }
         }
-        if($hasItems){
-           $ret .= "</$t></li>\n";
+        if($hasItems){             
+             $ret .= "</$t>\n";
+             $ret .= "</li>\n" if !$isRootItem;
         }
         return $ret
     }
@@ -125,7 +152,7 @@ sub setCodeTag($tag, $class){
 sub parse ($self, $script){
 try{
     my ($buffer, $para, $ol, $lnc); 
-    my @list; my $ltype=0;  my $nix=0; my $nplen=0; my $list_item;
+    my $list_end; my $ltype=0;  my $nix=0; my $nplen=0; my $list_item; my $list_root;
     my @titels;my $code = 0; my ($tag, $class);  my $pml_val = 0;  my ($bqte, $bqte_nested,$bqte_tag);
     $script =~ s/^\s*|\s*$//;
     foreach my $ln(split(/\n/,$script)){        
@@ -147,11 +174,11 @@ try{
                if($para){ 
                   $bfCode .= "$para\n"
                }
-               $bfCode .= "</$tag><br>"; undef $para;
+               $bfCode .= "</$tag>"; undef $para;
                $code = 0; undef $tag;
-               if($list_item){
-                  $bfCode  = $list_item -> {item} . $bfCode;
-                  $list_item -> {item} = "$bfCode</dt>\n";
+               if($list_item){                  
+                  $list_item -> {item} = $list_item -> {item} . $bfCode.'<br>';
+                  $list_item =  $list_item -> parent();
                   next;
                }
             }else{
@@ -166,9 +193,11 @@ try{
                   $code = 1
                 }
             }
-            if($list_item){            
-                $list_item -> {item} = $list_item -> {item}.'<dt><br>'.$bfCode;
-
+            if($list_item){   
+                my $new = HTMLListItem->new('dt', "<br>$bfCode", $list_item ->{spc});
+                $list_item -> add($new);
+                $list_item =  $new;
+                $list_end=0;
             }else{
                 $buffer .= "$bfCode\n";
             }
@@ -182,27 +211,24 @@ try{
             
             my $spc = length($1);
             my $val = $3 ? ${style($3)} : "";
-            my $new = HTMLListItem->new((/[-+*]/?'ul':'ol'), $val, $spc);
-
-            if(!$list_item){                
-                $list_item = $new;
-                $list[@list] = $list_item;
-                $nplen = $spc;
-                
-            }elsif($spc>$nplen){                
+            my $new = HTMLListItem->new(($2=~/[-+*]/?'ul':'ol'), $val, $spc);
+            if(!$list_root){
+                $list_root = HTMLListItem->new($new->{type});
+                $list_root -> add($new);
+                $list_item = $list_root
+            }elsif($spc>$nplen){
                 $list_item -> add($new);                
                 $list_item = $new;
                 $nplen = $spc;
-                
+                $list_end = 1;             
             }else{                
                while($list_item->{spc}>=$spc && $list_item -> parent()){
                      $list_item = $list_item -> parent();
                }                
-               if ( !$list_item ){$list_item = $new}else{
-                     $list_item -> add($new);
-                     $list_item = $new;                
-               }
-            }
+               $list_item = $list_root if  !$list_item;                
+               $list_item -> add($new);
+               $list_item = $new;               
+            }            
         }elsif(!$code && $ln =~ /(^|\\G)[ ]{0,3}(>+) ?/){
             my $nested = length($2);
              $ln =~ s/^\s*\>+//;
@@ -348,13 +374,9 @@ try{
             }
         }else{            
             
-            if(@list){
-                $buffer .= "<".$list[0]->{type}.">\n"; #This is the root list type, it can only be one per item entry.
-                foreach (@list){
-                $buffer .= $_->toString()."\n";    
-                }
-                $buffer .= "</".$list[0]->{type}.">\n";
-                undef @list; undef $list_item;
+            if($list_root && ++$list_end>1){
+               $buffer .= $list_root-> toString();
+               undef $list_root;
             }
             elsif($para){
                if($code){
@@ -366,18 +388,12 @@ try{
             }
         }
     }
-
     if($bqte){
-        while($bqte_nested-->0){$bqte .="\n</$bqte_tag></blockquote>\n"}
-        $buffer .= $bqte;        
-    }
-    
-    if(@list){
-        $buffer .= "<".$list[0]->{type}.">\n"; #This is the root list type, it can only be one per item entry.
-        foreach my$item(@list){
-        $buffer .= $item->toString()."\n";    
-        }
-        $buffer .= "</".$list[0]->{type}.">\n";
+       while($bqte_nested-->0){$bqte .="\n</$bqte_tag></blockquote>\n"}
+       $buffer .= $bqte;        
+    }    
+    if($list_root){
+       $buffer .= $list_root-> toString();        
     }
     $buffer .= qq(<p>$para</p>\n) if $para;    
 
@@ -469,18 +485,15 @@ sub inlineCNF($v){
                 }
                 $prop = $v
             }else{
+                $prop = propValCNF($i);
+                $i =~ s/\{/\\\}/;
+                $v =~ s/\s$i$/$prop/;
                 if($PARSER->isReservedWord($var)){
-                        $prop = propValCNF($i);
-                        $v =~ s/\s$i$/$prop/;
                         $v =~ s/^\w+/<span class='pi'>$var<\/span>/;
-                        $prop = $v;
                 }else{
-                        $prop = propValCNF($i);
-                        $v =~ s/\s$i$/$prop/;
                         $v =~ s/^\w+/<span class='pn'>$var<\/span>/;
-                        $prop = $v;
                 }
-                
+                $prop = $v;                
             }
         }
 
@@ -515,16 +528,11 @@ sub style ($script){
     MarkdownPluginException->throw(error=>"Invalid argument passed as script!",show_trace=>1) if !$script;
     #Links <https://duckduckgo.com>
     $script =~ s/<(http[:\/\w.]*)>/<a href=\"$1\">$1<\/a>/g;
-    
-    my @result = map {
-        s/\*\*(.*)\*\*/\<em\>$1<\/em\>/;
-        s/\*(.*)\*/\<strong\>$1<\/strong\>/;
-        s/__(.*)__/\<del\>$1<\/del\>/;
-        s/~~(.*)~~/\<strike\>$1<\/strike\>/;        
-        $_
-    } split(/\s/,$script);
-    my $ret = join(' ',@result);
-
+    $script =~ s/(\*\*([^\*]*)\*\*)/\<em\>$2<\/em\>/gs;
+    $script =~ s/(\*([^\*]*)\*)/\<strong\>$2<\/strong\>/gs;
+    $script =~ s/__(.*)__/\<del\>$1<\/del\>/gs;
+    $script =~ s/~~(.*)~~/\<strike\>$1<\/strike\>/gs;
+    my $ret = $script;
     #Inline code
     $ret =~ m/```(.*)```/g;
     if($1){

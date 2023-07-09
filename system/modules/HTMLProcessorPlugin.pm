@@ -1,3 +1,14 @@
+###
+# HTML converter Plugin from PerlCNF to HTML from TREE instucted properties.
+# Processing of these is placed in the data parsers data.
+# Programed by  : Will Budic
+# Notice - This source file is copied and usually placed in a local directory, outside of its project.
+# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+# Please leave source of origin in this file for future references.
+# Source of Origin : https://github.com/wbudic/PerlCNF.git
+# Documentation : Specifications_For_CNF_ReadMe.md
+# Open Source Code License -> https://choosealicense.com/licenses/isc/
+#
 package HTMLProcessorPlugin;
 
 use strict;
