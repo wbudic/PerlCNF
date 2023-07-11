@@ -65,8 +65,8 @@ sub val {
     if(!$ret && $self->{'@$'}){ #return from subproperties.
         my $buf;
         my @arr = @{$self->{'@$'}};
-        foreach my $node(@arr){           
-           $buf .= qq($node->val()\n);
+        foreach my $node(@arr){               
+           $buf .= $node -> val() ."\n";
         }
         return $buf;
     }
