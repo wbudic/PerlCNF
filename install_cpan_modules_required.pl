@@ -39,9 +39,9 @@ local $. = 0; foreach(@INC){
 }
 print BLUE ">>\n", RESET;
 if($> > 0){
-  print "You are NOT installing system wide, this is ok and recommended.\n"
+  print "You are NOT installing system wide, which is required for webservers CGI.\nAre you sure about this?\n"
 }else{
-  print "You are not INSTALLING modules SYSTEM WIDE, are you sure about this?\n"
+  print "You are INSTALLING modules SYSTEM WIDE, are you sure about this?\n"
 }
 if(@ARGV==0){
   print qq(\nThis program will try to figure out now all the modules 

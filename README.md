@@ -37,11 +37,12 @@ This is all available in the ./test directory and is not a Perl module.
 ```
 
 * To install required modules locally to home, do not run following with sudo in front.
-    * cd ~/dev/PerlCNF; #Perl tests and project directory is required to be the starting location.
-```sh
-    ./install_cpan_modules_required.pl    
-```
+  * For CGI based programs, you will need this run on system Perl level.
+  * cd ~/dev/PerlCNF; #Perl tests and project directory is required to be the starting location.
 
+```sh
+   sudo  ./install_cpan_modules_required.pl    
+```
 
 ## Usage
 
