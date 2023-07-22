@@ -39,7 +39,7 @@ try{
 
     my ($test_pass, $test_fail, $test_cases, @OUT, %WARN);
     
-    foreach my $file(@files) {        
+    foreach my $file(sort @files) {        
         
         $file = "./tests/$file";            
         my ($in,$output, $warnings);
@@ -62,7 +62,8 @@ try{
         }else{
             $test_fail++;
             my $failed = BOLD. RED. "Failed Test File -> ". WHITE. $file."\n". RESET;
-            print $failed;
+            print $failed; 
+            print RED, "\t", $warnings, RESET;
             $failed[@failed] = $failed;
         }
         

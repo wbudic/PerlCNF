@@ -23,7 +23,7 @@ if($@){
   use Term::ANSIColor qw(:constants);
 }
 
-use constant PERL_FILES_GLOB => "*.pl *.pm *.cgi local/*.pl local/*.pm tests/*.pm system/modules/*.pm";
+use constant PERL_FILES_GLOB => "*.pl *.pm *.cgi local/*.pl local/*.pm tests/*.pm system/modules/*.pm tests/*.pl";
 
 my $project = `pwd`."/".$0; $project =~ s/\/.*.pl$//g;  $project =~ s/\s$//g;
 my @user_glob;
