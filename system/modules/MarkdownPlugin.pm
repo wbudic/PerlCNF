@@ -21,6 +21,8 @@ use feature qw(signatures);
 use Date::Manip;
 ##no critic ControlStructures::ProhibitMutatingListFunctions
 
+use constant VERSION => '1.0';
+
 our $TAB = ' 'x4;
 our $PARSER;
 ###
@@ -216,6 +218,10 @@ try{
             my $h = 'h'.length($1);
             my $title = $2; 
             $titels[@titels] = {$lnc,$title};
+            if($list_root){ # Has been previously gathered and hasn't been buffered yet.
+               $buff .= $list_root -> toString();
+               undef $list_root;
+            }
             $buff .= qq(<$h>$title</$h><a name=").scalar(@titels)."\"></a>\n"
         }
         elsif(!$code &&  ($ln =~ /^(\s*)(\d+)\.\s(.*)/ || $ln =~ /^(\s*)([-+*])\s(.*)/)){
@@ -384,13 +390,17 @@ try{
                 }
                 $para .= ${style($2)}."\n"         
             }
-        }else{
+        }else{            
             if($list_root && ++$list_end>1){
                $buff .= $list_root -> toString();
                undef $list_root;
             }
             elsif($para){
-               if($code){
+                if($list_item){
+                   $list_item->{item} = $list_item->{item} .  $para;
+                   $list_end=0;
+               }
+               elsif($code){
                     $buff .= $para;
                }else{
                     $buff .= qq(<p>$para</p><br>\n);
@@ -417,10 +427,11 @@ sub code2HTML($val){
     my $v=$val;
     my @strs = ($v =~ m/(['"].*?['"])/g);
     foreach(0..$#strs){
-        my $r = $strs[$_];
+        my $r = $strs[$_]; $r =~ s/\[/\\[/;
+        $PARSER->log($r);
         my $w = "\f$_\f";
         $v =~ s/$r/$w/ge;
-    }       
+    } 
     
     $v =~ s/([,;=\-\+]+)/<span class='opr'>$1<\/span>/gx;
     $v =~ s/(my|our|local|do|use|lib|require|new|while|for|foreach|while|if|else|elsif|eval)/<span class='kw'>$1<\/span>/g;        
@@ -570,17 +581,21 @@ sub style ($script){
     #Links <https://duckduckgo.com>
     $script =~ s/<(http[:\/\w.]*)>/<a href=\"$1\">$1<\/a>/g;
     $script =~ s/(\*\*([^\*]*)\*\*)/\<em\>$2<\/em\>/gs;
+    if($script =~m/[<\[]\*[<\[](.*)[\]>]\*[\]>]/){#It is a CNF link not part of standard Markup.
+       my $link = $1; 
+       my $find = $PARSER->obtainLink($link);       
+       $find = $link  if(!$find);
+       $script =~ s/[<\[]\*[<\[](.*)[\]>]\*[\]>]/$find/gs; 
+    }
     $script =~ s/(\*([^\*]*)\*)/\<strong\>$2<\/strong\>/gs;
     $script =~ s/__(.*)__/\<del\>$1<\/del\>/gs;
     $script =~ s/~~(.*)~~/\<strike\>$1<\/strike\>/gs;
     my $ret = $script;
-    #Inline code
-    $ret =~ m/```(.*)```/g;
-    if($1){
+    # Inline CNF code handle.
+    if($ret =~ m/`{3}(.*)`{3}/){
         my $v = inlineCNF($1,"");
         $ret =~ s/```(.*)```/\<span\>$v<\/span\>/;         
-    }
-    
+    }    
     #Images
     $ret =~ s/!\[(.*)\]\((.*)\)/\<div class="div_img"><img class="md_img" src=\"$2\"\ alt=\"$1\"\/><\/div>/;
     #Links [Duck Duck Go](https://duckduckgo.com)

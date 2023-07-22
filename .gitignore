@@ -2,6 +2,8 @@
 .vscode
 .history
 .pls_cache
+nytprof
+nytprof.*
 test.html
 tests/world_cities.cnf
 BitcoinCurrentLast30Days.png

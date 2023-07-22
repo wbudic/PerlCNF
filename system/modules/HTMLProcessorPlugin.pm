@@ -19,6 +19,8 @@ use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Date::Manip;
 
+use constant VERSION => '1.0';
+
 sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){      
 
     if(ref($fields) eq 'REF'){

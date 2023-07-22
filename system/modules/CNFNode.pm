@@ -272,8 +272,7 @@ sub process {
                    if($tag =~ /^([#\*\@]+)[\[<](.*)[\]>]\/*[#\*\@]+$/){#<- The \/ can sneak in as included in closing tag.
                         if($1 eq '*'){
                             my $link = $2;
-                            my $rval = $self  -> obtainLink($parser, $link);                                                             
-                               $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
+                            my $rval = $self  -> obtainLink($parser, $link);                               
                             if($rval){                 
                                 if($opening){
                                    $body .= qq($ln\n);                                   
@@ -443,8 +442,7 @@ sub process {
                             else{$val = $4}                           
                         }elsif($2 eq '*'){
                                 my $link = $4;
-                                my $rval = $self  -> obtainLink($parser, $link);                                                             
-                                   $rval = $parser->{$link} if !$rval; #Anon is passed as an unknown constance (immutable).
+                                my $rval = $self  -> obtainLink($parser, $link);                                   
                                 if($rval){
                                         #Is this a child node?
                                         if(exists $self->{'@'}){
@@ -461,8 +459,7 @@ sub process {
                                         else{
                                             #Links scripted in main tree parent are copied main tree attributes.
                                             $self->{$link} = $rval
-                                        }                                 
-                                    
+                                        }
                                 }else{ 
                                     warn "Anon link $link not located with '$ln' for node ".$self->{'_'} if !$opening;
                                 }
@@ -540,12 +537,9 @@ sub obtainLink {
         use Module::Loaded qw(is_loaded);
         if(is_loaded($1)){
            $ret = \&{+$link}($self);                                        
-        }else{
-            cluck qq(Package  constance link -> $link is not available (try to place in main:: package with -> 'use $1;')")
         }
-    }else{
-        $ret = $parser->anon($link);
     }    
+    $ret = $parser->obtainLink($link) if !$ret;        
     return $ret;
 }
 

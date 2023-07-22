@@ -12,6 +12,8 @@ use Date::Manip;
 use CGI;
 use CGI::Session '-ip_match';
 
+use constant VERSION => '1.0';
+
 our $TAB = ' 'x4;
 
 sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){      

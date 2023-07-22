@@ -1009,6 +1009,33 @@ sub doPlugin {
 }
 
 ###
+# Generic CNF Link utility on this repository.
+##
+sub obtainLink {
+    my ($self,$link, $ret) = @_;
+    my $meths;
+    ## no critic BuiltinFunctions::ProhibitStringyEval
+    no strict 'refs';
+    if($link =~/(\w*)::\w+$/){        
+        use Module::Loaded qw(is_loaded);
+        if(is_loaded($1)){
+           $ret = \&{+$link}($self);                                        
+        }else{
+           eval require "$1.pm";
+           $ret = &{+$link};           
+           if(!$ret){
+            $self->error( qq(Package  constance link -> $link is not available (try to place in main:: package with -> 'use $1;')));
+            $ret = $link
+           }
+        }
+    }else{
+        $ret = $self->anon($link);
+        $ret = $self-> {$link} if !$ret;
+    }    
+    return $ret;
+}
+
+###
 # Writes out to a handle an CNF property or this parsers constance's as default property.
 # i.e. new CNFParser()->writeOut(*STDOUT);
 sub writeOut { my ($self, $handle, $property) = @_;      
