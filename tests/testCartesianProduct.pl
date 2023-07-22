@@ -17,10 +17,12 @@ try{
     
     
     $test->case("Test Cartesian Product lib.");
-    my @colors  = ["red","blue","green"];
-    my @sizes   = ["small","medium","large"];
+    my @colors      = ["red","blue","green"];
+    my @sizes       = ["small","medium","large"];
     my @materials   = ["cotton","wool","silk"];
     my @res = cartesian {$test->isDefined("Product: [@_] ",@_)} @colors, @sizes, @materials;
+
+    $test->evaluate("Result has ".(3*3*3)." combinations?",27,scalar @res);
 
     #  
     $test-> nextCase();
