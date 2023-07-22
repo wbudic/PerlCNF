@@ -1,7 +1,7 @@
 use warnings; use strict;
 use 5.36.0;
 use lib "tests";
-use lib "system/modules/";
+use lib "/home/will/dev/PerlCNF/system/modules/";
 
 require TestManager;
 require CNFParser;
@@ -68,21 +68,25 @@ use Syntax::Keyword::Try; try {
     $test->case("Test CNF inlined properties.");
     my @cases = (
 
-        ['<<<instruction var="value">>>',   q(<span class='B'>&#60;&#60;&#60;</span><span class='pn'>instruction</span>&nbsp;<span class='pi'>var</span><span class='O'>=</span><span class='pv'>"value"</span></span><span class='B'>&#62;&#62;&#62;</span>)],
-        ['<<<anon value>>>',    q(<span class='B'>&#60;&#60;&#60;</span><span class='pn'>anon</span>&nbsp;<span class='pv'>value</span></span><span class='B'>&#62;&#62;&#62;</span>)],        
-        ['<<anon<value>>',  q(<span class='B'>&#60;&#60;</span><span class='pn'>anon</span><span class='B'>&#60;</span><span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
-        ['<<anon>value>>',  q(<span class='B'>&#60;&#60;</span><span class='pn'>anon</span><span class='B'>&#62;</span><span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
-        ['<<anon<instruction>value>>',  q(<span class='B'>&#60;&#60;</span><span class='pn'>anon</span><span class='B'>&#60;</span><span class='pi'>instruction</span><span class='B'>&#62</span><span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
-        ['<<CONST value>>', q(<span class='B'>&#60;&#60;</span><span class='pi'>CONST</span>&nbsp;<span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
+        ['<<<instruction var="value">>>',   q(<span class='B'>&#60;&#60;&#60;</span><span class='pa'>instruction</span></span>&nbsp;<span class='pn'>var</span><span class='O'>=</span><span class='pv'>"value"</span><span class='B'>&#62;&#62;&#62;</span>)],
+        ['<<<anon value>>>',    q(<span class='B'>&#60;&#60;&#60;</span><span class='pa'>anon</span></span>&nbsp;<span class='pv'>value</span><span class='B'>&#62;&#62;&#62;</span>)],
+        ['<<anon<value>>',  q(<span class='B'>&#60;&#60;</span><span class='pa'>anon</span></span><span class='B'>&#60;</span><span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
+        ['<<anon>value>>',  q(<span class='B'>&#60;&#60;</span><span class='pa'>anon</span></span><span class='B'>&#62;</span><span class='pv'>value</span></span><span class='B'>&#62;&#62;</span>)],
+        ['<<anon<instruction>value>>',  q(<span class='B'>&#60;&#60;</span><span class='pa'>anon</span></span><span class='B'>&#60;</span><span class='pv'>instruction&#62;value</span></span><span class='B'>&#62;&#62;</span>)],
+        ['<<CONST value>>', q(<span class='B'>&#60;&#60;</span><span class='pi'>CONST</span></span>&nbsp;<span class='pv'>value</span><span class='B'>&#62;&#62;</span>)],
         
         
     );
+
+#$a-><span class='B'>&#60;&#60;&#60;</span><span class='pa'>instruction</span></span>&nbsp;<span class='pn'>var</span><span class='O'>=</span><span class='pv'>"value"</span><span class='B'>&#62;&#62;&#62;</span>, 
+#$b-><span class='B'>&#60;&#60;&#60;</span><span class='pn'>instruction</span>&nbsp;<span class='pi'>var</span><span class='O'>=</span><span class='pv'>"value"</span></span><span class='B'>&#62;&#62;&#62;</span>    
+
 #$a-><span class='B'>&#60;&#60;&#60;</span><span class='pn'>instruction</span>&nbsp;<span class='pi'>var</span><span class='O'>=</span><span class='pv'>"value"</span></span><span class='B'>&#62;&#62;</span>
 #$b-><span class='B'>&#60;&#60;&#60;</span><span class='pn'>instruction</span>&nbsp;<span class='pi'>var</span><span class='O'>=</span><span class='pv'>"value"</span></span><span class='B'>&#62;&#62;&#62;</span>
     foreach (@cases){
         my @case = @$_;
         $test->subcase($case[0]);
-        $html = MarkdownPlugin::inlineCNF($case[0]);
+        $html = MarkdownPlugin::inlineCNF($case[0],"");
         $test->isDefined($case[0],$html);
         say $test->failed("$case[0] CNF format has not properly converted!") if $html !~ /^<span class/;
         $test->evaluate($case[0],$html,$case[1]);
