@@ -27,7 +27,21 @@ try{
     #  
     $test-> nextCase();
     #
-    
+
+    $test->case("Test via map removal.");
+    my $links = [
+        "www.ibm.com",
+        "     www.x.com     ",
+        "www.google.me   "
+    ];
+    ##no critic ControlStructures::ProhibitMutatingListFunctions
+    my @copy = @$links;
+    map {s/^\s+|\s+$//g;s/^www\.//i;$_} @copy;
+
+    $test->evaluate("Copy has 3 links?",scalar @copy,3);
+    $test->evaluate("Copy item 1 is trmmed?","ibm.com",$copy[0]);
+    $test->evaluate("Copy item 2 is trmmed?","x.com",$copy[1]);
+
     #   
     $test->done();    
     #
