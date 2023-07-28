@@ -44,6 +44,11 @@ try{
     my @mydt = @{$data[0]};
     $test->evaluate(\@mydt);    
     $test->evaluate('01',$mydt[0]);
+    #  
+    $test-> nextCase();
+    # 
+    $test->case("Is DATA reserved word.");
+    $test->isDefined("isReservedWord('DATA')",1,$cnf->isReservedWord("DATA"));
     ###
     #   
     $test->done();    

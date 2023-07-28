@@ -44,7 +44,7 @@ our %ANONS;
 # You probably don't want to use these as your own possible instruction implementation.
 ###
 
-our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT VARIABLE VAR 
+our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT DATA VARIABLE VAR 
                                         FILE TABLE TREE INDEX 
                                         VIEW SQL MIGRATE DO LIB
                                         PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
@@ -1130,12 +1130,12 @@ sub writeOut { my ($self, $handle, $property) = @_;
 sub log {
     my $self    = shift;
 	my $message = shift;
-    my $type    = shift;
+    my $type    = shift; $type = "" if !$type;
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');    
     my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
     $message = "$type $message" if 'WARNG';
-    if($message =~ /^ERROR/ || defined($type eq 'WARNG')){
+    if($message =~ /^ERROR/ || $type eq 'WARNG'){
         warn  $time . " " .$message;
     }
     elsif(%log && $log{console}){
