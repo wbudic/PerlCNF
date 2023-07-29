@@ -175,11 +175,17 @@ try{
             my $pret = ""; $pret = $1 if $1;
             my $post = ""; $post = $4 if $4;
             $tag = 'code'; $tag =$2 if $2;
-            my $inline = $3;  $inline = inlineCNF($inline,"");
+            my $inline = $3; 
+            $inline = inlineCNF($inline,"");
             my @code_tag = @{ setCodeTag($tag, "") };
             $ln = qq($pret<$code_tag[1] class='$code_tag[0]'>$inline</$code_tag[1]>$post\n);
+            undef $tag;
             if(!$pret && !$post){
                 $buff .= $ln; next;
+            }elsif($list_item){
+                my $new = HTMLListItem->new('dt', $ln, $list_item->{spc});
+                $list_item ->add($new);
+                next;
             }
         }
         elsif($ln =~ /^\s*```(\w*)(.*)/){
@@ -189,7 +195,7 @@ try{
                 $class = $code_tag[0];
                 $tag = $code_tag[1] if !$tag;
             }
-            if($code){
+            if($code>0){
                if($para){
                   $bfCode .= "$para\n"
                }
@@ -477,7 +483,13 @@ sub inlineCNF($v,$spc){
  if(!$body){
     $oo=$cc="";  $body=$v;$v=~/^(<+)/;$oo=$1 if$1;
     if($v=~m/\[\#\[/){
-        return "$spc<span ".C_PV.">[#[</span>"
+        my $r = "<span ".C_PV.">[#[</span>";
+           $v =~ s/\[\#\[/$r/g;
+        if($v =~ m/\]\#\]/){
+           $r = "<span ".C_PV.">]#]</span>"; 
+           $v =~ s/\]\#\]/$r/g;
+        }
+        return "$spc$v"
     }
     elsif($v=~m/\]\#\]/){
         return "$spc<span ".C_PV.">]#]</span>"
@@ -502,9 +514,10 @@ sub inlineCNF($v,$spc){
     elsif($v eq '>>'){
         return  "$spc<span ".C_B.">&#62;&#62;</span>\n"  }
     else{
-        $v=~/(>+\s*)$/;if($1){
-        $v = $1; $v =~ s/>/&#62;/g;
-        return "$spc<span ".C_B.">$v</span>"
+        $v=~/(.*)(>+\s*)$/;
+        if(!$1 && $2){
+            $v = $2; $v =~ s/>/&#62;/g;
+            return "$spc<span ".C_B.">$v</span>"           
         }else{
             $oo =~ s/</&#60;/g;
             if($v=~m/>>>/){
@@ -512,15 +525,19 @@ sub inlineCNF($v,$spc){
             }elsif($v=~m/<<<(.*)/){
               return "$spc<span ".C_B.">$oo</span><span ".C_PI.">$1</span>"
             }elsif($v=~m/^(<{2,3})(.*?)([><])(.*)/){
-                if($4){
-                    if($PARSER -> isReservedWord($4)){
-                        $v = "<span ".C_PI.">$4</span>"
+                my $t = "$1$2$3";
+                my $var = $2;
+                my $im = $3;
+                my $r = $4;
+                my $end =$4;
+                if($end){
+                    my $changed = ($end =~ s/(>|<)$//g);
+                    if($PARSER -> isReservedWord($end)){
+                        $v  = "<span ".C_PI.">$end</span>";  $v .= "<span ".C_B.">".($1 eq '<'?"&#60":"&#62")."</span>" if $changed
                     }else{
-                        if (!$2){$v = "<span ".C_PA.">$4</span>"}else{$v=""}
+                        if (!$var){$v = "<span ".C_PA.">$r</span>"}else{$v=""}
                     }
-                    my $t = "$1$2$3";
-                    my $r = $4;
-                    if($2 =~ /[@%]/){
+                    if($var =~ /[@%]/){
                         if($r =~ /(.*)([><])(.*)/){
                             $v  = "$spc<span ".C_B.">$t</span><span ".C_PA.">$1</span>";
                             $v .= "<span ".C_B.">$2</span>";
@@ -528,7 +545,7 @@ sub inlineCNF($v,$spc){
                             return $v;
                         }
                     }else{
-                        $v = "$spc<span ".C_B.">$oo</span><span ".C_PN.">$2</span><span ".C_B.">$3</span>$v";
+                        $v = "$spc<span ".C_B.">$oo</span><span ".C_PN.">$var</span><span ".C_B.">$im</span>$v";
                         if($r =~ /(\w*)\s(.*)/){
                            return "$v<span ".C_PI.">$1</span> <span ".C_PV.">$2</span>$cc"
                         }else{
@@ -545,7 +562,8 @@ sub inlineCNF($v,$spc){
         }
     }
 }
-elsif(!$oo && !$cc){
+
+if(!$oo && !$cc){
 
     $body =~ m/ ^([\[<\#\*\[<]+)  (.*?) ([\]>\#\*\]>]+)$  /gmx;
     if($1&&$2&&$3){
@@ -565,7 +583,7 @@ elsif(!$oo && !$cc){
     $oo =~ s/</&#60;/g;
     $cc =~ s/>/&#62;/g;
 }
-    $body =~ m/ ([@%<])  ([\$@%]?\w+)? ([<>]) (.*) |
+    $body =~ m/ ([@%<]+)  ([\$@%]?\w+)? ([<>]) (.*) |
                 ([^<>]+) ([><])? (.*)
             /gmx;
 
@@ -634,24 +652,25 @@ elsif(!$oo && !$cc){
         $oo =~ s/</&#60;/g;
         $body =~ /(.*)([><])(.*)/;
         if($1 && $2 && $3){
-            $v = "<span ".C_B.">$oo</span><span ".C_PI.">$1</span><span ".C_B.">$2</span><span ".C_PV.">$3</span><span ".C_B.">$cc</span>"
+           $v = "<span ".C_B.">$oo</span><span ".C_PI.">$1</span><span ".C_B.">$2</span><span ".C_PV.">$3</span><span ".C_B.">$cc</span>"
         }else{
-            $v = "<span ".C_B.">$oo</span><span ".C_PI.">$body</span><span ".C_B.">$cc</span>"
+           $v = "<span ".C_B.">$oo</span><span ".C_PI.">$body</span><span ".C_B.">$cc</span>"
         }
-    }
+    }elsif($2){$v = "<span ".C_B.">$v</span>"}
     return $spc.$v.$restIfAny
 }
 
 
 sub propValCNF($v){
-    my @match = ($v =~ m/(.*)([=:])(.*)/gs);
+    my @match = ($v =~ m/([^:]+)([=:]+)(.*)/gs);
     if(@match){
+      return "&nbsp;<span ".C_PI.">$1</span><span ".C_B.">$2</span><span ".C_PI.">$3</span>" if $2 eq '::';
       return "&nbsp;<span ".C_PN.">$1</span><span class='O'>$2</span><span ".C_PV.">$3</span>"
     }
     elsif($v =~ /[><]/){
        return  "<span ".C_B.">$v</span>"
     }else{
-       return "<span ".C_PV.">$v</span>"
+       return "<code ".C_PV.">$v</code>"
     }
     return $v;
 }
@@ -659,9 +678,9 @@ sub propValCNF($v){
 sub style ($script){
     MarkdownPluginException->throw(error=>"Invalid argument passed as script!",show_trace=>1) if !$script;
     #Links <https://duckduckgo.com>
-    $script =~ s/<(http[:\/\w.]*)>/<a href=\"$1\">$1<\/a>/g;
-    $script =~ s/(\*\*([^\*]*)\*\*)/\<em\>$2<\/em\>/gs;
-    if($script =~m/[<\[]\*[<\[](.*)[\]>]\*[\]>]/){#It is a CNF link not part of standard Markup.
+    $script =~    s/<(http[:\/\w.]*)>/<a href=\"$1\">$1<\/a>/g;
+    $script =~    s/(\*\*([^\*]*)\*\*)/\<em\>$2<\/em\>/gs;
+    if($script =~ m/[<\[]\*[<\[](.*)[\]>]\*[\]>]/){#It is a CNF link not part of standard Markup.
        my $link = $1;
        my $find = $PARSER->obtainLink($link);
        $find = $link  if(!$find);
