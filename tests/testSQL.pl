@@ -33,6 +33,16 @@ try{
       ));
       $sql->addStatement('selAll','select * from MyTable;');
 
+   #
+   $test->nextCase();
+   #
+
+   ###
+   $test->case("Test local MySQL Database Setup.");
+   #
+   die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1});
+   $sql = $cnf->SQL(); 
+
 
     #
     #   

@@ -153,7 +153,7 @@ package InstructedDataItem {
 
     sub new { my ($class, $ele, $ins, $val) = @_;
         my $priority = ($val =~ s/$meta_has_priority/""/sexi)?2:3; $val =~ s/$meta_priority/""/sexi;
-           $priority = $2 if $2;
+           $priority = $2 if $2;           
         bless {
                 ele => $ele,
                 aid => $dataItemCounter++,
@@ -185,6 +185,7 @@ package PropertyValueStyle {
                     if(!$p){
                         $p = $itm;
                     }else{
+                        $itm =~ s/^\s*|\s*$//g if $itm;
                         $self->{$p}=$itm;
                         undef $p;
                     }
@@ -573,8 +574,8 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }elsif($t eq 'LIB'){
         if($DO_ENABLED){
             if (!$v){                
-                        $v = $e;
-                        $e = 'LAST_LIB';
+                 $v = $e;
+                 $e = 'LAST_LIB';
             }          
             try{
                 use Module::Load;
@@ -934,6 +935,7 @@ sub instructPlugin {
         }
     }
 }
+#
 
 ###
 # Register Instructor on tag and value for to be externally processed.
@@ -986,6 +988,7 @@ sub registerInstructor {
      }
      return \$obj;
 }
+#
 
 ###
 # Setup and pass to pluging CNF functionality.
@@ -1002,12 +1005,17 @@ sub doPlugin {
         ## no critic (RequireBarewordIncludes)
         require "$pck.pm";
         my $obj;
-        my $settings = $properties{'%Settings'};#Properties are global.
-        if($settings){
-           $obj = $pck->new(\%$settings);
-        }else{
-           $obj = $pck->new();
-        }        
+        #Properties are global, all plugins share a %Settings property if specifed, otherwise the default will be set from here only.
+        my $settings = $properties{'%Settings'};
+        if(!$settings){
+           $settings = {Language=>'English',DateFormat=>'US'}
+        }
+        foreach(keys %$settings){              
+              #We allow for now, the plugin have settings set by its property, do not overwrite is exists as set.
+              $plugin->{$_} =  $settings->{$_} unless exists $plugin->{$_} 
+        }
+        $obj = $pck->new($plugin);
+                
         my $res = $obj-> $sub($self, $prp);
         if($res){            
             $plugin->setPlugin($obj);
