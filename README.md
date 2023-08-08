@@ -14,7 +14,8 @@ It is at current v.2.9, and specification implemented.
 ---
 
 ## Status
-(2023-14-6) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
+(2023-8-8)  - v.2.9, new DATE instruction has been implemented.
+(2023-6-14) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
               Node processing on demand and JSON translation on demand of CNFNode's (TREE instruction) is now available.  
               Online demo made available.
 (2023-5-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.

@@ -99,6 +99,9 @@ sub stop {
 ###
 sub evaluate { 
     my ($self, $aa, $bb, $cc)=@_;
+    if(!$cc && defined($cc)){
+        $cc = ref(\$cc); 
+    }
     if ($aa&&$bb&&$cc) {
         my $swp = $aa; $aa = $bb; $bb = $cc; $cc = $swp}
     else{

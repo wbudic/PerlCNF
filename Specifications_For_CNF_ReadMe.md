@@ -518,6 +518,13 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
     3. The Perl snipped to be evaluated can use the scalar '''$self''' to access the CNF parser for functionality, within the snipped itself.
         1. To load modules or packages to use within the snipped, the LIB instruction can be used in precedence of issuing a DO.
     4. DO_ENABLED is required to be activated for this instruction.
+7. DATE (NEW FEATURE - 20230808)
+    1. This instruction if successful will setup an anon with a DateTime object.
+    2. On empty property value or empty string it will obtain the current date and time (DateTime) object.
+    3. Date format is in strict format of: **YYYY-MM-DD**...hh:mm:ss for PerlCNF.
+    4. It is recommended to setup a 'TZ' constant or the default system locale will be used for timezone if available on your system. ```<<TZ<CONST>{country}/{city}>>```
+        1. Timezone string is in form of {country}/{city}, note that these are not available for every possible city or town in the world.
+        2. It is not possible or recommended of having date times in config from different time zones, so this TZ value is constant once set.
 
 ## Sample Perl Language Usage
 

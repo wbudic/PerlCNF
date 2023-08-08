@@ -81,13 +81,14 @@ try{
         BOLD WHITE, "Finished with test Suit ->$0\n", RESET;
 
     }elsif($test_pass){
-        print BOLD BLUE "Test files ($test_pass of them), having $test_cases cases. Have all ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
-                    " (".(scalar localtime).")".BOLD.BLUE."\nFor Test Suit:", RESET WHITE, " $0 [\n";
-            foreach (@files) {
-                 print WHITE, "\t\t\t$_\n",;
-            }
-            print "\t\t]\n",RESET;
-                   
+        print BOLD.BLUE."Test Suit:", RESET WHITE, " $0 [\n";
+        foreach (@files) {
+                print WHITE, "\t\t\t$_\n",;
+        }
+        print "\t\t]\n",RESET;
+
+        print BOLD BLUE "Test files ($test_pass of them), are having $test_cases cases. They all havel ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
+                    " (".(scalar localtime).")\n", RESET;
     }else{
         print BOLD BRIGHT_RED, "No tests have been run or found!", RESET WHITE, " $0\n", RESET;
     }

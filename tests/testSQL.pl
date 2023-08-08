@@ -21,9 +21,9 @@ try{
    die $test->failed() if not $cnf = CNFParser->new();
        $test->case("Passed new instance CNFParser.");
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);  
-       my $sql = $cnf->SQL(); 
-      $test->isDefined("\$sql",$sql);
-      $test->case("Passed new instance CNFSQL");
+   my  $sql = $cnf->SQL(); 
+       $test->isDefined("\$sql",$sql);
+       $test->case("Passed new instance CNFSQL");
 
       $test->case("Parse CNF into SQL.");
       $cnf->parse(undef,q(
@@ -32,8 +32,6 @@ try{
          >>
       ));
       $sql->addStatement('selAll','select * from MyTable;');
-
-
 
 
     #

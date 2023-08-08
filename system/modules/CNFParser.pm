@@ -15,6 +15,7 @@ use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
 use Time::HiRes qw(time);
 use DateTime;
+use DateTime::Format::DateParse;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
@@ -44,7 +45,7 @@ our %ANONS;
 # You probably don't want to use these as your own possible instruction implementation.
 ###
 
-our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT DATA VARIABLE VAR 
+our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT DATA DATE VARIABLE VAR 
                                         FILE TABLE TREE INDEX 
                                         VIEW SQL MIGRATE DO LIB
                                         PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
@@ -438,6 +439,19 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             }
         }           
         
+    }elsif($t eq 'DATE'){
+        if($v){
+           $v =~ s/^\s//;
+           if($v!~/^\d\d\d\d-\d\d-\d\d/){
+              $self-> error("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
+           }else{
+              $v = DateTime::Format::DateParse->parse_datetime($v,$self->{'TZ'});
+           }
+        }else{
+           $v = DateTime->now();
+           $v->set_time_zone($self->{'TZ'}) if $self->{'TZ'};
+        }           
+       $anons->{$e} = $v;
     }elsif($t eq 'FILE'){#@TODO Test case this
         my ($i,$path,$cnf_file) = (0,"",$self->{CNF_CONTENT});
         $v=~s/\s+//g;
@@ -519,8 +533,8 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             $tree = CNFNode->new({'_'=>$e,'~'=>$v,'^'=>$priority}); 
             $tree->{DEBUG} = 1 if $self->{DEBUG};
             $instructs{$e} = $tree;
-    }elsif($t eq 'TABLE'){         # This has now be late bound and send to the CNFSQL package. since v.2.6
-        SQL()->createTable($e,$v) }  # It is hardly been used. But in future itt might change.
+    }elsif($t eq 'TABLE'){           # This has now be late bound and send to the CNFSQL package. since v.2.6
+        SQL()->createTable($e,$v) }  # It is hardly been used. But in future this might change.
         elsif($t eq 'INDEX'){ SQL()->createIndex($v)}  
             elsif($t eq 'VIEW'){ SQL()->createView($e,$v)}
                 elsif($t eq 'SQL'){ SQL($e,$v)}
@@ -1130,12 +1144,13 @@ sub writeOut { my ($self, $handle, $property) = @_;
 sub log {
     my $self    = shift;
 	my $message = shift;
-    my $type    = shift; $type = "" if !$type;
+    my $type    = shift; $type = "" if !$type; 
+    my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');    
     my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
-    $message = "$type $message" if 'WARNG';
-    if($message =~ /^ERROR/ || $type eq 'WARNG'){
+    $message = "$type $message" if $isWarning;
+    if($message =~ /^ERROR/ || $isWarning){
         warn  $time . " " .$message;
     }
     elsif(%log && $log{console}){
@@ -1223,7 +1238,8 @@ __END__
    3. Current Reserved words list is.
        - CONST    - Concentrated list of constances, or individaly tagged name and its value.
        - VARIABLE - Concentrated list of anons, or individaly tagged name and its value.
-       - DATA     - CNF scripted delimited data property, having uniform table data rows.       
+       - DATA     - CNF scripted delimited data property, having uniform table data rows.  
+       - DATE     - Translate PerlCNF date representation to DateTime object. Returns now() on empty property value.
        - FILE     - CNF scripted delimited data property is in a separate file.
        - %LOG     - Log settings property, i.e. enabled=1, console=1.
        - TABLE    - SQL related.
