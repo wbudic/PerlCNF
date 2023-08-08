@@ -14,16 +14,16 @@ It is at current v.2.9, and specification implemented.
 ---
 
 ## Status
-(2023-8-8)  - v.2.9, new DATE instruction has been implemented.
-(2023-6-14) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
-              Node processing on demand and JSON translation on demand of CNFNode's (TREE instruction) is now available.  
-              Online demo made available.
-(2023-5-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.
-Has better tag mauling algorithm. PLUGIN code has been improved, particularly the synchronizing and the linking of properties.
 
-(2022-11-18) - PerlCNF now provides custom test manager and test cases. 
-That will in future be used for all projects as an copy from this project.
-This is all available in the ./test directory and is not a Perl module.
+* (2023-8-8) - v.2.9, new DATE instruction has been implemented.
+* (2023-6-14) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
+    - Node processing on demand and JSON translation on demand of CNFNode's (TREE instruction) is now available.  
+     Online demo made available.
+* (2023-5-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.
+    Has better tag mauling algorithm. PLUGIN code has been improved, particularly the synchronizing and the linking of properties.
+* (2022-11-18) - PerlCNF now provides custom test manager and test cases. 
+    - That will in future be used for all projects as an copy from this project.
+      This is all available in the ./test directory and is not a Perl module.
 
 ---
 
