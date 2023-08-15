@@ -54,7 +54,7 @@ use Syntax::Keyword::Try; try {
 ]row]
 >>));
 
-    my $plugin = HTMLProcessorPlugin -> new() -> convert($parser, 'test1');
+    my $plugin = HTMLProcessorPlugin -> new({Language=>'English',DateFormat=>'AU'}) -> convert($parser, 'test1');
     my $html = $parser->data()->{'test1'};
     my $tree = $parser->anon('test1');
     die 'Not defined $tree' if !$tree;

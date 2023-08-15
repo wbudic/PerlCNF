@@ -19,6 +19,7 @@ use Syntax::Keyword::Try;
 use Exception::Class ('MarkdownPluginException');
 use feature qw(signatures);
 use Date::Manip;
+use Clone qw(clone);
 ##no critic ControlStructures::ProhibitMutatingListFunctions
 
 use constant VERSION => '1.0';
@@ -37,17 +38,16 @@ use constant {
 };
 
 
-sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){
-
-    if(ref($fields) eq 'REF'){
-       warn "Hash reference required as argument for fields!"
+sub new ($class, $plugin){
+    my $settings;
+    if($plugin){        
+       $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
+    }else{
+       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    my $lang =   $fields->{'Language'};
-    my $frmt =   $fields->{'DateFormat'};
-    Date_Init("Language=$lang","DateFormat=$frmt");
-    $fields->{'disk_load'} = 0 if not exists $fields->{'disk_load'};
-
-    return bless $fields, $class
+    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.
+    $settings->{'disk_load'} = 0 if not exists $settings->{'disk_load'};
+    return bless $settings, $class
 }
 
 ###

@@ -12,7 +12,7 @@ require ExtensionSamplePlugin;
 my $test = TestManager -> new($0);
 my $cnf;
 
-my $plugin = ExtensionSamplePlugin->new();
+my $plugin = ExtensionSamplePlugin->new({Language=>'English',DateFormat=>'US'});
 
 try{
     ###

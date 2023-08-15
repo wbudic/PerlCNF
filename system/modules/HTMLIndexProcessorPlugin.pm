@@ -8,7 +8,7 @@ use Exception::Class ('HTMLIndexProcessorPluginException');
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Date::Manip;
-
+use Clone qw(clone);
 use CGI;
 use CGI::Session '-ip_match';
 
@@ -16,16 +16,15 @@ use constant VERSION => '1.0';
 
 our $TAB = ' 'x4;
 
-sub new ($class, $fields={Language=>'English',DateFormat=>'US'}){      
-
-    if(ref($fields) eq 'REF'){
-       warn "Hash reference required as argument for fields!"
+sub new ($class, $plugin}){
+    my $settings;
+    if($plugin){        
+       $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
+    }else{
+       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    my $lang =   $fields->{'Language'};
-    my $frmt =   $fields->{'DateFormat'};
-    Date_Init("Language=$lang","DateFormat=$frmt");    
-   
-    return bless $fields, $class
+    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.    
+    return bless $settings, $class
 }
 
 ###

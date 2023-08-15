@@ -1003,23 +1003,20 @@ sub doPlugin {
     my $sub = $plugin->{subroutine};
     if($pck && $prp && $sub){        
         ## no critic (RequireBarewordIncludes)
-        require "$pck.pm";
-        my $obj;
+        require "$pck.pm";        
         #Properties are global, all plugins share a %Settings property if specifed, otherwise the default will be set from here only.
         my $settings = $properties{'%Settings'};
-        if(!$settings){
-           $settings = {Language=>'English',DateFormat=>'US'}
+        if($settings){         
+           foreach(keys %$settings){              
+                #We allow for now, the plugin have settings set by its property, do not overwrite if exists as set.
+                $plugin->{$_} =  $settings->{$_} unless exists $plugin->{$_} 
+           } ;
         }
-        foreach(keys %$settings){              
-              #We allow for now, the plugin have settings set by its property, do not overwrite is exists as set.
-              $plugin->{$_} =  $settings->{$_} unless exists $plugin->{$_} 
-        }
-        $obj = $pck->new($plugin);
-                
+        my $obj = $pck->new($plugin);
         my $res = $obj-> $sub($self, $prp);
         if($res){            
-            $plugin->setPlugin($obj);
-            return $plugin;
+           $plugin->setPlugin($obj);
+           return $plugin;
         }else{
             die "Sorry, the PLUGIN feature has not been Implemented Yet!"
         }

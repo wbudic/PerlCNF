@@ -3,12 +3,24 @@ package ExtensionSamplePlugin;
 use strict;
 use warnings;
 use feature qw(signatures);
+use Date::Manip;
 
+use Clone qw(clone);
 
+use constant VERSION => '1.0';
 
-    sub new ($class){    
-    return bless {}, $class
+sub new ($class, $plugin){
+    my $settings;
+    if($plugin){        
+       $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
+       $settings->{Language}='English' if not exists $settings->{Language};
+       $settings->{DateFormat}='US'    if not exists $settings->{DateFormat}
+    }else{
+       $settings = {Language=>'English',DateFormat=>'US'}
     }
+    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.    
+    return bless $settings, $class
+}
 
 sub process ($self, $parser, $property) {
     my @list = $parser->list($property);

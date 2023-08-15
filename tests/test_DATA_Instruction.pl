@@ -37,7 +37,7 @@ try{
     #
 
     ###
-    $test->case("Check DATA instruction dnamically");
+    $test->case("Check DATA instruction dynamically");
     $cnf->parse(undef,qq(<<my\$\$<DATA>01`This comes from Cabramatta~\n>>));
     $test->subcase("Contain 'my\$\$' as 'my' data property?");
     my @data = @{%{$cnf->data()}{'my'}};
