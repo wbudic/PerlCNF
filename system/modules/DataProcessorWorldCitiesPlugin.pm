@@ -7,7 +7,7 @@ use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 
 
-sub new ($class){    
+sub new ($class,$plugin){    
     return bless {}, $class
 }
 

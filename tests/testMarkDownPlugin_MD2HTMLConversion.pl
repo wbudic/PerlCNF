@@ -41,7 +41,7 @@ use Syntax::Keyword::Try; try {
         }
     }
     
-    my $plugin = MarkdownPlugin -> new();
+    my $plugin = MarkdownPlugin -> new({Language=>'English',DateFormat=>'US'});
        $plugin->convert($parser,'test');
 
     my $html = $parser->data()->{'test'};
