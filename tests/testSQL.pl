@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use warnings; use strict; 
 use Syntax::Keyword::Try;
+use Clone qw(clone);
 
 use lib "tests";
 use lib "system/modules";
@@ -39,6 +40,7 @@ try{
 
    ###
    $test->case("Test local MySQL Database Setup.");
+   `rm -f test_db_central.db`;
    #
    die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1});
    $sql = $cnf->SQL(); 
