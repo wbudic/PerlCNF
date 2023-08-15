@@ -87,7 +87,7 @@ try{
         }
         print "\t\t]\n",RESET;
 
-        print BOLD BLUE "Test files ($test_pass of them), are having $test_cases cases. They all havel ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
+        print BOLD BLUE "Test files ($test_pass of them), are having $test_cases cases. Have all ", BRIGHT_GREEN ,"SUCCESSFULLY PASSED!", RESET, WHITE,
                     " (".(scalar localtime).")\n", RESET;
     }else{
         print BOLD BRIGHT_RED, "No tests have been run or found!", RESET WHITE, " $0\n", RESET;
