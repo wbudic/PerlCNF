@@ -16,7 +16,7 @@ use constant VERSION => '1.0';
 
 our $TAB = ' 'x4;
 
-sub new ($class, $plugin}){
+sub new ($class, $plugin){
     my $settings;
     if($plugin){        
        $settings = clone $plugin; #clone otherwise will get hijacked with blessings.

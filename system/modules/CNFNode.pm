@@ -98,27 +98,29 @@ sub val {
 
 ###
 # Search select nodes based on from a path statement.
-# It will always return an array for even a single subproperty.
-# The reason is several subproperties of the same name can be contained by the parent property.
+# It will always return an array for even a single subproperty with a passed path ending with (/*).
+# The reason is several subproperties of the same name can be contained as elements of this node.
 # It will return an array of list values with (@@).
 # Or will return an array of its shallow list of child nodes with (@$).
 # Or will return an scalar value of an attribute or an property with (#).
 # NOTICE - 20221222 Future versions might provide also for more complex path statements with regular expressions enabled.
 ###
 sub find {
-    my ($self, $path, $ret, $prev, $seekArray,$ref)=@_;
+    my ($self, $path, $ret, $prev, $seekArray,$ref)=@_;  my @arr;
     foreach my $name(split(/\//, $path)){
-        if(ref($self) eq "ARRAY"){
+        if( $name eq "*" && @arr){
+            return  \@arr # The path instructs to return an array, which is set but return is set to single only found element.
+        }
+        elsif(ref($self) eq "ARRAY"){
                 if($name eq '#'){
                     if(ref($ret) eq "ARRAY"){
                         next
                     }else{
                         return $prev->val()
                     }
-                }elsif($name =~ /\[(\d+)\]/){
-                    $self = $ret = @$ret[$1];
+                }elsif($name =~ /\[(\d+)\]/){              
+                    $self = $ret = @$ret[$1];              
                     next
-
                 }else{
                     $ret = $prev->{'@$'};
                 }
@@ -146,13 +148,16 @@ sub find {
                     $ret = $ret->{$name};
                     next
                 }else{
-                    $ret = $self->{'@$'} if ! $seekArray; # This will initiate further search in subproperties names.
+                    if (!$seekArray){
+                         # This will initiate further search in subproperties names.
+                          $ret = $self->{'@$'};
+                          @arr = ();
+                    }
                 }
         }
            $ref =  ref($ret);
         if($ret && $ref eq 'ARRAY'){
-            my $found = 0;
-            my @arr;
+            my $found = 0;           
             undef $prev;
             foreach my $ele(@$ret){
                 if($seekArray && exists $ele->{'@$'}){
@@ -201,7 +206,7 @@ sub find {
               $ret  =  $ret -> {$name}
         }
     }
-    return $ret;
+    return !$ret?\@arr:$ret;
 }
 ###
 # Similar to find, put simpler node by path routine.

@@ -62,10 +62,15 @@ try{
                 my $v = $_->val();
                 $bfHDR .= qq(\t<script src="$v"></script>\n);
             } 
-            my $ps = $link  -> find('STYLE');
-            $style = "\n<style>\n".  $ps -> val()."</style>" if($ps); 
-            $ps = $link  -> find('JAVASCRIPT');
-            $jscript = "\n<script>\n".  $ps -> val()."</script>" if($ps);
+            # Glob find '/*'  now has guaranteed array cast derefence return. Even if nothing found. Some folks will cringe on that. Ahahaha!
+            $arr = $link  -> find('STYLE/*'); 
+            foreach (@$arr){
+                $style = "\n<style>\n".  $_ -> val()."</style>"
+            }
+            $arr = $link  -> find('JAVASCRIPT/*');
+            foreach (@$arr){
+                $jscript = "\n<script>\n".  $_ -> val()."</script>"
+            }            
        }
        
        delete $tree -> {'HEADER'};       

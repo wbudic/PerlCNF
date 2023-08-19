@@ -73,7 +73,7 @@ my $nested = $prp->find('div/div/div/[0]/#');
 $test->evaluate("div/div/div/{0}/#",$nested,"This sample is more HTML look alike type of scheme.");
 
 my $nada = $prp->find('nada');
-$test->isNotDefined("\$nada",$nada);
+$test->isNotDefined("\$nada",@$nada);
 $nada = $prp->find('@$');
 $test->isDefined("TEST/@\$ properties subroperties",$nada);
 $nada = $prp->find('test/#');

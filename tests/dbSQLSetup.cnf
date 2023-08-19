@@ -1,7 +1,12 @@
 !CNF2.9
+
+##
+# Plugins have be enabled with Date manipulation routines, even if not currently required by PerlCNF.
+# This settings properties can be ommited, placed here only as reminder.
+##
 <<@<%Settings<
-Language    = 'English'
-DateFormat  = 'AU'
+Language    = English
+DateFormat  = AU
 >>>
 ###
 # Schema structure for tables and views.
@@ -31,6 +36,17 @@ DateFormat  = 'AU'
             <@@<postcode varchar(6)>@@>
             <@@<country  varchar(20)>@@>            
         ]cols]
+    ]table]    
+    [table[
+        name = "HOME_DIR_CONFIG_FILES"
+        property:   CONFIG_FILES
+        [cols[
+            <@@<    ID        auto             >@@>
+            <@@<    path      varchar(1024)    >@@>
+            <@@<    size      numeric          >@@>
+            <@@<    lines     numeric          >@@>
+            <@@<    modified  datetime         >@@>
+        ]cols]
     ]table]
 >>
 
@@ -43,18 +59,45 @@ DateFormat  = 'AU'
     property    : DB_SCHEMA
 >>
 
+
+
 ## Sample initial data here, if not of importance can be removed.
 ## Otherwise if updated here in script or if missing in the db, will be reinserted into it again.
 ## This behaviour is a feature. As the data or tables can be application specific
 ## and is part of script to data sychronisation after software upgrades.
-
+## It is recommended if have a large set of data, to put this in a separate script data file, and wire that here instead.
 <<USERS_DATA<DATA>
-ID`name`email`ID_ADDR~
-#`Julia Smith`sjulia@smiths.fake.com`01~
-#`Peter Smith`speter@smiths.fake.com`01~
+ID`email`name`ID_ADDR~
+#`sjulia@smiths.fake.com`Julia Smith`01~
+#`speter@smiths.fake.com`Peter Smith`01~
 >>
 
 <<ADDRESS_BOOK<DATA>
 ID`address`state`city`postcode`country~
 #`Office Suit 2, Level 3, James Brown St`KM`Funnygrain`12345`Serbia~
+>>
+
+##
+# We shamelessly reuse same plugin package to nest another subrotine. 
+# With perl you use actually the same plugin code. Rewired into a new object, all for you by PerlCNF.
+# Here we meta mark it HAS_PROCESSING_PRIORITY, as it builds data entries for new table being created.
+# For the other plugin instruction, that creates tables and populates them if missing in the database.
+##
+<<  CONFIG_FILES  <PLUGIN>    ___HAS_PROCESSING_PRIORITY___
+    package     : DatabaseCentralPlugin
+    subroutine  : getConfigFiles
+    property    : @directories
+>>
+## List of local directories to search for config files to stat and put into the db.
+## Array defined propery like this is placed as an collection obtained method.
+## The plugin currently using it, has been programed and expecting it like that.
+## This flat config approuch is very useful, in the long run.
+## As other application might be using and accessing as well, and we want to avoid props repetition and redundancey.
+## Don't we?
+##
+<<@<@directories>
+~/.config 
+~/.local
+~/.vimrc
+~/.bashrc
 >>

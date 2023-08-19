@@ -6,10 +6,12 @@ use warnings;
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Date::Manip;
+use Time::Piece;
 use DBI;
 use Exception::Class ('PluginException');
 use Syntax::Keyword::Try;
 use Clone qw(clone);
+
 
 my  ($isSQLite,%tables)=(0,());
 
@@ -25,7 +27,27 @@ sub new ($class, $plugin){
     Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.
     return bless $settings, $class
 }
+sub getConfigFiles($self, $parser, $property){
+    my @dirs = $parser->collection($property);
+    my @files = ['ID','path','size','lines','modified']; my $cnt=0; #We have to mimic CNF<DATA> type entries.
+    foreach(@dirs){
+        my @list = glob("$_/*.cnf $_/*.config");
+        foreach my$fl(@list){
+            my @stat = stat($fl);
+            my $epoch_timestamp = $stat[9];
+            my $size =  $stat[7];
+            my $timestamp  = localtime($epoch_timestamp);
+            my $CNFDate = $timestamp->strftime('%Y-%m-%d %H:%M:%S %Z');
+            my $num_lines = do { 
+                open my $fh, '<', $fl or die "Can't open $fl: $!";
+                grep { not /^$|^\s*#/ } <$fh>; 
+            };
+            push @files, [++$cnt,$fl,$size,$num_lines,$CNFDate] if @list
+        }
+    }
+    $parser->data()->{$self->{element}} = \@files;
 
+}
 sub main ($self, $parser, $property) {
     my $item =  $parser->anon($property);
     die "Property not found [$property]!" if !$item;
@@ -40,7 +62,7 @@ sub main ($self, $parser, $property) {
         $isSQLite =  $datasource =~ /DBI:SQLite/i;
         $dbname .= '.db' if $isSQLite;
         $dsn = $datasource .'dbname='.$dbname;
-        $db =  DBI->connect($dsn, $u, $p, {AutoCommit => 1, RaiseError => 1, PrintError => 0, show_trace=>1});
+        $db  = DBI->connect($dsn, $u, $p, {AutoCommit => 1, RaiseError => 1, PrintError => 0, show_trace=>1});
         if($isSQLite){
             my $pst	= $db->prepare("SELECT name FROM sqlite_master WHERE type='table' or type='view';");
             die if !$pst;
@@ -51,7 +73,7 @@ sub main ($self, $parser, $property) {
         }else{
             my @tbls = $db->tables(undef, 'public');
             foreach (@tbls){
-                my $t = uc substr($_,7); #We check for tables in uc.
+                my $t = uc substr($_,7); # We check for tables in uc.
                 $tables{$t} = 1;
             }
         }
@@ -61,7 +83,8 @@ sub main ($self, $parser, $property) {
 
     my $ref = ref($item);
     if($ref eq 'CNFNode'){
-       my @tables = @{$item -> find('table')};
+       my @tables = @{$item -> find('table/*')};
+       warn "Not found any 'table/*' path elements for CNF property :". $item->name() if not @tables;
        foreach my $tbl(@tables){
          if(processTable($db,$tbl)){
             if($tbl -> {property}){
@@ -115,19 +138,29 @@ sub processTable ($db, $node) {
         my $sqlCreateTable  = "CREATE TABLE ".$node->{name}."(";
         my $sqlInsert  = "INSERT INTO ".$node->{name}." ("; my $sqlVals;
            my @columns = @{$node->find('cols/@@')};
+           warn "Not found any 'cols/@@' path elements for CNF node :". $node->name() if not @columns;
            my $primary_key;
            for(my $i=0;$i<@columns;$i++){
              my $col = $columns[$i];
-             my ($n,$v) = ($col->val() =~ /(.*?)\s(.*)/);
-             if($v eq 'auto'){
+             my ($n,$v) = ($col->val() =~ /\s*(.*?)\s+(.*)/);
+             if($v =~ /^auto/){
                 if( $isSQLite ){
-                    $v = "integer primary key autoincrement"
+                    $v = "integer primary key autoincrement"                
                 }else{
                     $v = "INT UNIQUE GENERATED ALWAYS AS IDENTITY";
                     $primary_key = $n;
                 }
                 splice(@columns,$i--,1);
              }else{
+                if($v =~ /^datetime/){
+                    if( $isSQLite ){
+                        $v = "TEXT"
+                    }else{
+                        $v = "TIMESTAMP";                    
+                    }
+                }else{
+                    $v =~ s/\s*$//;
+                }
                 $sqlInsert .= "$n,"; $sqlVals .= "?,";
                 $columns[$i] = [$n,$v];
              }
@@ -169,10 +202,10 @@ sub processData ($parser, $property) {
             my @row = @$_;
             $ID_Spec_Size = scalar @row;
             for my $i (0..$ID_Spec_Size-1){
-                if($row[$i] =~ /^#/){ # Number
+                if($row[$i] =~ /^#/){ # Numberic
                     $SPEC[$i] = 1;
                 }
-                elsif($row[$i] =~ /^@/){ # Date
+                elsif($row[$i] =~ /^@/){ # DateTime
                     $SPEC[$i] = 2;
                 }
                 else{
@@ -200,7 +233,7 @@ sub processData ($parser, $property) {
                 }else{
                     for my $i (1..$ID_Spec_Size-1){
                         if(not matchType($SPEC[$i], $row[$i])){
-                            warn "Row in row[$i]='$row[$i]' doesn't match expect data type, contents: @row";
+                           warn "Row in row[$i]='$row[$i]' doesn't match expect data type, contents: @row";
                         }
                         elsif($SPEC[$i]==2){
                                my $dts = $row[$i];
