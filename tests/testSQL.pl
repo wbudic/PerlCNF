@@ -24,13 +24,13 @@ try{
        $test->isDefined("\$sql",$sql);
        $test->case("Passed new instance CNFSQL");
 
-      $test->case("Parse CNF into SQL.");
-      $cnf->parse(undef,q(
+       $test->case("Parse CNF into SQL.");
+       $cnf->parse(undef,q(
          <<MyTable<TABLE>
             name  varchar(20) NOTNULL
          >>
-      ));
-      $sql->addStatement('selAll','select * from MyTable;');
+        ));
+        $sql->addStatement('selAll','select * from MyTable;');
 
    #
    $test->nextCase();
@@ -42,7 +42,6 @@ try{
    #
    die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1});
    $sql = $cnf->SQL(); 
-
 
     #
     #   

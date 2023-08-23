@@ -35,25 +35,28 @@ sub process ($self, $parser, $property) {
         }
         $data[$idx]=\@col;
     }
-    $parser->data()->{$property} =\@data
+    $parser->addPostParseProcessor($self,'collectFeeds');
+    $parser->data()->{$property} =\@data;    
 }
-sub zero_prefix ($times, $val) {
-    if($times>0){
-        return '0'x$times.$val;
-    }else{
-        return $val;
-    }
+
+sub collectFeeds($self,$parser) {
+  my  $property = $self->{property};
+  my %hdr;
+  my @data = @{$parser->data()->{$property}};  
+  for my $idx (0 .. $#data){
+      my @col = @{$data[$idx]};
+      if($idx==0){
+        for my $i(0..$#col){
+         $hdr{$col[$i]}=$i
+        }
+      }else{
+          fetchFeed($col[$hdr{name}],$col[$hdr{url}],$col[$hdr{description}]);        
+      }
+  }
 }
-sub matchType($type, $val, @rows) {
-    if   ($type==1 && looks_like_number($val)){return 1}
-    elsif($type==2){
-          if($val=~/\d*\/\d*\/\d*/){return 1}
-          else{
-               return 1;
-          }
-    }
-    elsif($type==3){return 1}
-    return 0;
+
+sub fetchFeed($name,$url,$description){
+print "\n$name -> $url\n$description\n"
 }
 
 1;

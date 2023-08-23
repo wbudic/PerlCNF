@@ -37,7 +37,7 @@ our %ANONS;
 #private -> Instance fields:
                 my  $anons;
                 my %includes;
-                my %instructs;    
+                my %instructs;                
 ###
 # CNF Instruction tag covered reserved words. 
 # You probably don't want to use these as your own possible instruction implementation.
@@ -45,7 +45,7 @@ our %ANONS;
 
 our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT DATA DATE VARIABLE VAR 
                                         FILE TABLE TREE INDEX 
-                                        VIEW SQL MIGRATE DO LIB
+                                        VIEW SQL MIGRATE DO LIB PROCESSOR
                                         PLUGIN MACRO %LOG INCLUDE INSTRUCTOR };
 
 sub isReservedWord    { my ($self, $word)=@_; return $word ? $RESERVED_WORDS{$word} : undef }
@@ -72,7 +72,8 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
                   STRICT          => 1,  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
                   HAS_EXTENSIONS  => 0,  # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
                   DEBUG           => 0,  # Not internally used by the parser, but possible a convience bypass setting for code using it.
-                  CNF_CONTENT     => "", # Origin of the script, this wull be set by the parser, usually the path of a script file or is direct content.                 
+                  CNF_CONTENT     => "", # Origin of the script, this wull be set by the parser, usually the path of a script file or is direct content.
+                  RUN_PROCESSORS  => 1,  # When enabled post parse processors are run, are these outside of the scope of the parsers executions.
         }; 
     }    
     $CONSTREQ = $self->{CONSTANT_REQUIRED};
@@ -90,6 +91,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     $self->{STRICT}          = 1 if not exists $self->{STRICT}; #make strict by default if missing. 
     $self->{ENABLE_WARNINGS} = 1 if not exists $self->{ENABLE_WARNINGS};
     $self->{HAS_EXTENSIONS}  = 0 if not exists $self->{HAS_EXTENSIONS};
+    $self->{RUN_PROCESSORS}  = 1 if not exists $self->{RUN_PROCESSORS}; #Bby default enabled, disable during script dev.
     $self->{CNF_VERSION}     = VERSION;
     $self->{__DATA__}        = {};
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
@@ -435,11 +437,11 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             }else{
                 my @rows; push @rows, [@a];            
                 $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;   
-            }
+            } 
         }           
         
     }elsif($t eq 'DATE'){
-        if($v){
+        if($v && $v !~ /now|today/i){
            $v =~ s/^\s//;
            if($self->{STRICT}&&$v!~/^\d\d\d\d-\d\d-\d\d/){
               $self-> error("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
@@ -915,9 +917,42 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     foreach my $k(@$del_keys){        
         delete $self->{$k} if exists $self->{$k}
     }
+    my $runProcessors = $self->{RUN_PROCESSORS} ? 1: 0;   
+       
     lock_hash(%$self);#Make repository finally immutable.
+
+    #  if $runProcessors;
+
+    # foreach(@POSTParseProcessors){
+    #     my @objdts = @$_;
+    #     my $prc  = $objdts[0];
+    #     my $func = $objdts[1];
+    #     $prc -> $func($self); 
+    # }
+
+    runPostParseProcessors($self) if $runProcessors;
 }
 #
+
+sub addPostParseProcessor {
+    my $self = shift;
+    my $processor = shift;
+    my $func = shift;
+    my @arr = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
+    $arr[@arr] =  [$processor, $func];
+    $self->{POSTParseProcessors} = \@arr;
+}
+
+sub runPostParseProcessors {
+    my $self = shift;
+    my $arr = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
+    if($arr){foreach(@$arr){
+        my @objdts = @$_;
+        my $prc  = $objdts[0];
+        my $func = $objdts[1];
+        $prc -> $func($self); 
+    }}
+}
 
 sub instructPlugin {
      my ($self, $struct, $anons) = @_;
@@ -1218,14 +1253,13 @@ sub  JSON {
     my $self    = shift;
     if(!$JSON){
         require CNFJSON; 
-        $JSON = CNFJSON-> new( {CNF_VERSION=>$self->{CNF_VERSION},
+        $JSON = CNFJSON-> new({ CNF_VERSION=>$self->{CNF_VERSION},
                                 CNF_CONTENT=>$self->{CNF_CONTENT},
-                                DO_ENABLED=>$self->{DO_ENABLED}
-                                } );
+                                DO_ENABLED =>$self->{DO_ENABLED}
+                              });
     }    
     return $JSON;
 }
-
 
 sub END {
 undef %ANONS;
@@ -1244,7 +1278,7 @@ __END__
        - DATA     - CNF scripted delimited data property, having uniform table data rows.  
        - DATE     - Translate PerlCNF date representation to DateTime object. Returns now() on empty property value.
        - FILE     - CNF scripted delimited data property is in a separate file.
-       - %LOG     - Log settings property, i.e. enabled=1, console=1.
+       - %LOG     - Log settings property, i.e. enabled=>1, console=>1.
        - TABLE    - SQL related.
        - TREE     - Property is a CNFNode tree containing multiple debth nested children nodes.
        - INCLUDE  - Include properties from another file to this repository.
@@ -1252,6 +1286,7 @@ __END__
        - INSTRUCT - Provides custom new anonymous instruction.
        - VIEW     - SQL related.
        - PLUGIN   - Provides property type extension for the PerlCNF repository.
+       - PROCESSOR- Registered processor to be called once all parsing is done and repository secured.
        - SQL      - SQL related.
        - MIGRATE  - SQL related.
        - MACRO

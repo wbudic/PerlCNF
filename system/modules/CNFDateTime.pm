@@ -18,9 +18,7 @@ sub new {
 
 sub datetime() {
     my $self = shift;    
-    if(exists $self->{datetime}){
-        return $self->{datetime};
-    }
+       return $self->{datetime} if exists $self->{datetime};
     my $dt = DateTime->from_epoch($self->{epoch});
     $dt->set_timezone($self->{TZ}) if $self->{TZ};
     $self->{datetime} = $dt

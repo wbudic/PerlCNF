@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
@@ -27,24 +27,31 @@ try{
     $test->evaluate("relasedate year is 2018?",$reldat->datetime()->year(),2018);
     $test->evaluate("relasedate month is 11?",$reldat->datetime()->month(),11);
     $test->evaluate("relasedate year is 28?",$reldat->datetime()->day(),28);
-    $test->passed("Assigned date properly->$reldat");
+    $test->passed("Assigned date properly \$reldat:".$reldat->toTimestamp());
+
     $test->case("Invalid date format, but could be parsable.");
     $cnf->parse(undef,q(<<date_and_time<DATE>01/12/2000 5:30 am>>));#<-DateTime sees as us format, all the en_* locale even, which is wrong.
     my $DandT = $cnf->anon('date_and_time');
-    $test->isDefined('$DandT',$DandT);    
+    $test->isDefined('$DandT',$DandT);
     $test->evaluate("Is CNFDateTime object?",'CNFDateTime',ref($DandT));
     $test->evaluate("Is in us format parsed date?",'2000-01-12 05:30:00.000',$DandT->toTimestamp());
 
-    #  
-    $test-> nextCase();
-    #   
-
-    #   
-    $test->done();    
+    $test->case("Test now and today!");
+    $cnf->parse(undef,q(
+        <<date_now<DATE<now>>>
+        <<date_today<DATE>Today>>
+    ));
+    my $dtNow = $cnf->anon('date_now');
+    my $dtToday = $cnf->anon('date_today');
+    $test->isDefined('$dtNow',$dtNow);
+    $test->isDefined('$dtToday',$dtToday);
+    $test->passed("Today assignment test run @:".$dtToday->toTimestamp());
+    #
+    $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test -> doneFailed();
 }
 
