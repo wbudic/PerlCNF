@@ -120,11 +120,11 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
     4. Reserve anon if present is usually a placeholder, lookup setting, that in contrast if not found there, might rise exceptions from the application using CNF.
 
     ```CNF Example 2:
-                Notice to Admin, following please don't modify in any way! 
-                Start --> { 
+                Notice to Admin, following please don't modify in any way!
+                Start --> {
                 <<^RELEASE>2.3>>
                 <<^REVISION>5>>
-                <<META><DATA>^INIT=1`^RUN=1`^STAGES_EXPECTED=5>> } <-- End 
+                <<META><DATA>^INIT=1`^RUN=1`^STAGES_EXPECTED=5>> } <-- End
     ```
 
 
@@ -150,7 +150,7 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
         {value\n...valuen\n}>>>
    ```
 
-### Full Tag 
+### Full Tag
 
 ```CNF
     <<{$sig}{name}<{INSTRUCTION}>
@@ -196,19 +196,19 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
 
     ```perl
        <<APP_HELP_TXT<CONST
-       This is your applications help text in format of an constance. 
+       This is your applications help text in format of an constance.
        All you see here can't be dynamically changed.
-       You might be able to change it in the script though. 
+       You might be able to change it in the script though.
        And re-run your app.
-       >>        
+       >>
     ```
 
 4. Example. Tag name mauled:
 
     ```perl
        <<<CONST
-       $APP_HELP_TXT='This is your applications help text in format of an constance.'       
-       >>        
+       $APP_HELP_TXT='This is your applications help text in format of an constance.'
+       >>
     ```
 
 5. Example. Instruction mauled or being disabled for now:
@@ -216,7 +216,7 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
     2. Introduced with CNF release v.2.5.
 
     ```perl
-       <<PWD<>path/to/something>>        
+       <<PWD<>path/to/something>>
     ```
 
 
@@ -253,7 +253,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
         AppName = "UDP Server"
         port    = 3820
         buffer_size = 1024
-        pool_capacity = 1000    
+        pool_capacity = 1000
     >>
    ```
 
@@ -279,6 +279,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
        - INSTRUCT - Provides custom new anonymous instruction.
        - VIEW     - SQL related.
        - PLUGIN   - Provides property type extension for the PerlCNF repository.
+       - PROCESSOR- Registered processor to be called once all parsing is done and repository secured.
        - SQL      - SQL related.
        - MIGRATE  - SQL related.
        - MACRO
@@ -297,7 +298,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
 2. Meta tag declared in a value begins and ends with an underscore **_** character.
 3. The name is by convention all uppercase [A-Z] and must not contain any others but the underscore.
     1. The meta flag is expected to be removed by the instruction from the value if is expecting it.
-    2. The CONST instruction thus ignores and skips such tags. 
+    2. The CONST instruction thus ignores and skips such tags.
         - Other instructions not using meta might preserve in value, particularly of anon type property.
 4. Sample list of meta tags:
       META TAG                   | Instruction| Description
@@ -399,6 +400,9 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
     5. Data is to be updated in storage if any column other than the UID, has its contents changed in the file.
        1. This behavior can be controlled by disabling something like an auto file storage update. i.e. during application upgrades. To prevent user set settings to reset to factory defaults.
        2. The result would then be that database already stored data remains, and only new ones are added. This exercise is out of scope of this specification.
+    6. First row labels the columns and is prefixed to PerlCNF datatype.
+       1. Generic data rows, do not require, but processors and plugins would definitely need it.
+       2. Current known types are, **@**{label} as CNFDateTime, **#** for number or if in row autonumbering to be applied. Teext is defalut without signifier.
 
     ```CNF
         <<MyAliasTable<DATA
@@ -419,7 +423,7 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
     ```
 
 3. PLUGIN
-    1. Plugin instruction is specific outside program that can be run for various configuration task, on post loading of all properties.
+    1. Plugin instruction is a specific outside program that can be run for various configuration task, on post loading of all properties.
         This can be special further.
         1. Further, processing of data collections.
         2. Issuing actions, revalues.
@@ -444,7 +448,17 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
         >>
     ```
 
-4. TREE (NEW FEATURE - 20221128)
+4. PROCESSOR (NEW FEATURE - 20230828)
+    1. Post parse processed instruction, typical on another method of and declared plugin.
+    2. A plugin itself can register with parser on such event wanting to be run.
+    3. Parsers method ```$parser->addPostParseProcessor($processor, $functionName)``` if for registration.
+    4. Parsers method ```$parser->runPostParseProcessors()``` to run it manually when RUN_PROCESSORS is set to 0.
+    5. Processor specific package or plugin must have a method taking into a **$parser** argument this to work.
+    6. Usually processor are used to perform further to perform unknown operations using the parser in a conventional way. As would use regardless once having all configuration and instructions have done their job.
+       1. For example providing calculation or changing or adding anons based on the configuration so far scripted or how was intended.
+       2. Other good example is to provide functionality and properties that is standard and shared but out of the scope of CNF.
+
+5. TREE (NEW FEATURE - 20221128)
    1. Will create an CNF property having a CNF Node object, that contains further child nodes or attributes in a tree structure.
         1. This is a hash of anons for attributes and a list of further nodes, all having their own one text value.
         2. Property can have its value, contain attributes, and also other properties within.
@@ -455,7 +469,7 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
                     So deeply nesting a large property body is not recommended and also not suitable for encapsulating in there data.
                 3. An opening tag is opened being surrounded with the same signifier into the direction of the property body.
                 4. The closing tag is in the opposite direction same signifiers.
-                    - **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]** 
+                    - **[sesame[** I am an open and closed value now, nothing you can do about it (X|H)TML! **]sesame]**
         3. The node characteristic is that each sub property is linked to its parent property
            1. This is contained in the ' **@** ' attribute.
            2. Node characteristic is also the tree can be searched via path.
@@ -505,20 +519,20 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
         >>
         ```
 
-5. LIB (NEW FEATURE - 20230710)
+6. LIB (NEW FEATURE - 20230710)
     1. Dynamically loads a module or a library for internal use and processing with the scope of the parser.
     2. It can be a standard module name that is in the paths of some Perl's applications @INC array of paths.
     3. It can be a file path containing the package (.pm extension) or some ordinary Perl file, which contains methods or variables of interest (.pl extension).
         1. Relative path to the library is ok to specify.
         2. The evaluation is not guarantied to be success or easy to debug. And shouldn't be done without tests and if is fainthearted.
     4. DO_ENABLED is required to be activated for this instruction.
-6. DO
+7. DO
     1. Execute's a shell system command or evaluates an embedded Perl script snippet.
     2. The system commands is captured and requires to be ticked. i.e. ```<<<SYS_DATE_STRING<DO> `data` ```.
     3. The Perl snipped to be evaluated can use the scalar '''$self''' to access the CNF parser for functionality, within the snipped itself.
         1. To load modules or packages to use within the snipped, the LIB instruction can be used in precedence of issuing a DO.
     4. DO_ENABLED is required to be activated for this instruction.
-7. DATE (NEW FEATURE - 20230808)
+8. DATE (NEW FEATURE - 20230808)
     1. This instruction if successful will setup an anon with a DateTime object.
     2. On empty property value or empty string it will obtain the current date and time (DateTime) object.
     3. Date format is in strict format of: **YYYY-MM-DD**...hh:mm:ss for PerlCNF.
