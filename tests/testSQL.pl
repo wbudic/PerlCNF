@@ -6,8 +6,6 @@ use Clone qw(clone);
 use lib "tests";
 use lib "system/modules";
 
-
-
 require TestManager;
 require CNFParser;
 

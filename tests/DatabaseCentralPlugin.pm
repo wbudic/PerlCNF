@@ -5,7 +5,6 @@ use warnings;
 
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
-use Date::Manip;
 use Time::Piece;
 use DBI;
 use Exception::Class ('PluginException');
@@ -19,12 +18,7 @@ sub new ($class, $plugin){
     my $settings;
     if($plugin){
        $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
-       $settings->{Language}='English' if not exists $settings->{Language};
-       $settings->{DateFormat}='US'    if not exists $settings->{DateFormat}
-    }else{
-       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.
     return bless $settings, $class
 }
 sub getConfigFiles($self, $parser, $property){
@@ -105,15 +99,17 @@ sub main ($self, $parser, $property) {
                 if(@hdr){
                     for(my $i=0; $i<@hdr; $i++){
                         my $label = $hdr[$i];
-                        my $j=0;
+                        my $j=0; my $found =0;
                         foreach (@map){
                             my @set  = @$_;
-                            if($set[0] eq $label && $set[1] ne 'auto'){
-                               $idx[$j] = $i;
+                            if($set[0] eq $label){
+                               $idx[$j] = $i if $set[1] ne 'auto'; 
+                               $found=1;
                                last
                             }
                             $j++
                         }
+                        warn "Not found data header mapped label-> $label for table -> ".$tbl -> {name} if ($found==0 && $label ne 'ID');
                     }
                 }
                 foreach (@data){
@@ -213,9 +209,9 @@ sub processData ($parser, $property) {
                 }
             }
             if($row[0]){
-                @HDR = shift @entry;
-                $DATA[$did]=\@entry;
-                last
+               @HDR = shift @entry;
+               $DATA[$did]=\@entry;
+               last
             }
         }
         for my $eid (0 .. $#entry){

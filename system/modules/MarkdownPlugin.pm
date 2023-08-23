@@ -18,7 +18,6 @@ no warnings qw(experimental::signatures);
 use Syntax::Keyword::Try;
 use Exception::Class ('MarkdownPluginException');
 use feature qw(signatures);
-use Date::Manip;
 use Clone qw(clone);
 ##no critic ControlStructures::ProhibitMutatingListFunctions
 
@@ -40,12 +39,9 @@ use constant {
 
 sub new ($class, $plugin){
     my $settings;
-    if($plugin){        
+    if($plugin){
        $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
-    }else{
-       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.
     $settings->{'disk_load'} = 0 if not exists $settings->{'disk_load'};
     return bless $settings, $class
 }

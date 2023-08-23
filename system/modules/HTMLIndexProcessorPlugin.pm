@@ -7,7 +7,6 @@ use Syntax::Keyword::Try;
 use Exception::Class ('HTMLIndexProcessorPluginException');
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
-use Date::Manip;
 use Clone qw(clone);
 use CGI;
 use CGI::Session '-ip_match';
@@ -18,12 +17,9 @@ our $TAB = ' 'x4;
 
 sub new ($class, $plugin){
     my $settings;
-    if($plugin){        
+    if($plugin){
        $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
-    }else{
-       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.    
     return bless $settings, $class
 }
 

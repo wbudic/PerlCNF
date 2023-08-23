@@ -17,21 +17,15 @@ use Syntax::Keyword::Try;
 use Exception::Class ('HTMLProcessorPluginException');
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
-use Date::Manip;
 use Clone qw(clone);
 
 use constant VERSION => '1.0';
 
 sub new ($class, $plugin){
     my $settings;
-    if($plugin){        
+    if($plugin){
        $settings = clone $plugin; #clone otherwise will get hijacked with blessings.
-       $settings->{Language}='English' if not exists $settings->{Language};
-       $settings->{DateFormat}='US'    if not exists $settings->{DateFormat}
-    }else{
-       $settings = {Language=>'English',DateFormat=>'US'}
     }
-    Date_Init("Language=".$settings->{Language},"DateFormat=".$settings->{DateFormat}); #<-- Hey! It is not mine fault, how Date::Manip handles parameters.    
     return bless $settings, $class
 }
 

@@ -13,12 +13,10 @@ use strict;use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException'); 
 use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
-use Time::HiRes qw(time);
-use DateTime;
-use DateTime::Format::DateParse;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
+require CNFDateTime;
 
 
 # Do not remove the following no critic, no security or object issues possible. 
@@ -307,7 +305,7 @@ sub collection { my($self, $name) = @_;
     }
     return %properties{$name}
 }
-sub data {shift->{'__DATA__'}}
+sub data {return shift->{'__DATA__'}}
 
 sub listDelimit {                 
     my ($this, $d , $t)=@_;                 
@@ -443,14 +441,13 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }elsif($t eq 'DATE'){
         if($v){
            $v =~ s/^\s//;
-           if($v!~/^\d\d\d\d-\d\d-\d\d/){
+           if($self->{STRICT}&&$v!~/^\d\d\d\d-\d\d-\d\d/){
               $self-> error("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
-           }else{
-              $v = DateTime::Format::DateParse->parse_datetime($v,$self->{'TZ'});
            }
+           $v = CNFDateTime::_toCNFDate($v,$self->{'TZ'});
+           
         }else{
-           $v = DateTime->now();
-           $v->set_time_zone($self->{'TZ'}) if $self->{'TZ'};
+           $v = CNFDateTime->new({TZ=>$self->{'TZ'}});
         }           
        $anons->{$e} = $v;
     }elsif($t eq 'FILE'){#@TODO Test case this
@@ -1153,7 +1150,7 @@ sub log {
     my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');    
-    my $time = DateTime->from_epoch( epoch => time )->strftime('%Y-%m-%d %H:%M:%S.%3N');   
+    my $time = CNFDateTime->new()->toTimestamp();   
     $message = "$type $message" if $isWarning;
     if($message =~ /^ERROR/ || $isWarning){
         warn  $time . " " .$message;
@@ -1202,6 +1199,7 @@ sub trace {
         cluck $message
     }
 }
+
 
 sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
