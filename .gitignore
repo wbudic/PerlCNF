@@ -9,3 +9,6 @@ tests/world_cities.cnf
 BitcoinCurrentLast30Days.png
 vscode_local_extensions/richterger.perl-2.6.1/*
 *.db
+*.swp
+AAA*
+rss_*

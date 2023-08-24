@@ -117,19 +117,11 @@ ID`address`state`city`postcode`country~
 
 <<RSS_FEEDS<DATA>
 ID`name`url`description~
-#`Perl.org Blog`https://blogs.perl.org/atom.xml`blogs.perl.org is a common blogging platform for the Perl community. 
-Written in Perl and offering the modern features you've come to expect in blog platforms, 
-the site is hosted by Dave Cross and Aaron Crane, with a design donated by Six Apart, Ltd.~
-
-#`Perl Weekly`https://feeds.feedburner.com?PerlWeekly`A free, once a week e-mail round-up of hand-picked news and articles about Perl. 
+#`Perl Weekly`https://perlweekly.com/perlweekly.rss`A free, once a week e-mail round-up of hand-picked news and articles about Perl. 
 The Perl Weekly ( http://perlweekly.com/ ) is a newsletter including links to blog posts and other news items
- related to the Perl programming language. 
-It is curated by Gabor Szabo who also includes short commentary with each item.
- The newsletter is distributed once a week on Monday. Usually between 8-10 am GMT. 
-~
-
-#`The Perl Foundation RSS Feed`https://news.perlfoundation.org?rss.xml`The Perl Foundation is dedicated to the advancement 
+ related to the Perl programming language.~
+#`The Perl Foundation RSS Feed`https://news.perlfoundation.org/rss.xml`The Perl Foundation is dedicated to the advancement 
 of the Perl programming language through open discussion, collaboration, design, and code.
- The Perl Foundation is a non-profit organization* based in Holland, Michigan
-~
+ The Perl Foundation is a non-profit organization* based in Holland, Michigan~
+ #`CPAN`http://search.cpan.org/uploads.rdf`CPAN modules news and agenda.~
 >>

@@ -14,9 +14,6 @@ my $cnf;
 
 try{
 
-   ###
-   # Test instance creation.
-   ###
    die $test->failed() if not $cnf = CNFParser->new();
        $test->case("Passed new instance CNFParser.");
        $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);  
