@@ -40,7 +40,7 @@ our %ANONS;
                 my %instructs;
 ###
 # CNF Instruction tag covered reserved words.
-# You probably don't want to use these as your own possible instruction implementation.
+# You can't use any of these as your own possible instruction implementation, unless in lower case.
 ###
 
 our %RESERVED_WORDS = map +($_, 1), qw{ CONST CONSTANT DATA DATE VARIABLE VAR
@@ -71,7 +71,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
                   ENABLE_WARNINGS => 1,  # Disable this one, and you will stare into the void, about errors or operations skipped.
                   STRICT          => 1,  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
                   HAS_EXTENSIONS  => 0,  # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
-                  DEBUG           => 0,  # Not internally used by the parser, but possible a convience bypass setting for code using it.
+                  DEBUG           => 0,  # Not internally used by the parser, but possible a convienince bypass setting for code using it.
                   CNF_CONTENT     => "", # Origin of the script, this wull be set by the parser, usually the path of a script file or is direct content.
                   RUN_PROCESSORS  => 1,  # When enabled post parse processors are run, are these outside of the scope of the parsers executions.
         };
@@ -597,19 +597,25 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             $self->warn("DO_ENABLED is set to false to process following plugin: $e\n")
         }
     }
+    elsif($t eq 'PROCESSOR'){
+        if(not $self->registerProcessor($e, $v)){
+            CNFParserException->throw("PostParseProcessor Registration Failed for '<<$e<$t>$v>>'!\t");
+        }
+    }
     elsif($t eq 'INSTRUCTOR'){
         if(not $self->registerInstructor($e, $v) && $self->{STRICT}){
             CNFParserException->throw("Instruction Registration Failed for '<<$e<$t>$v>>'!\t");
         }
+    }
+    elsif($t eq 'MACRO'){
+        $instructs{$e}=$v;
     }
     elsif(exists $instructors{$t}){
         if(not $instructors{$t}->instruct($e, $v) && $self->{STRICT}){
             CNFParserException->throw("Instruction processing failed for '<<$e<$t>>'!\t");
         }
     }
-    elsif($t eq 'MACRO'){
-          $instructs{$e}=$v;
-    }else{
+    else{
         #Register application statement as either an anonymous one. Or since v.1.2 a listing type tag.
         if($e !~ /\$\$$/){ #<- It is not matching {name}$$ here.
             if($self->{'HAS_EXTENSIONS'}){
@@ -920,28 +926,9 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     my $runProcessors = $self->{RUN_PROCESSORS} ? 1: 0;
     lock_hash(%$self);#Make repository finally immutable.
     runPostParseProcessors($self) if $runProcessors;
+    return $self
 }
 #
-
-sub addPostParseProcessor {
-    my $self = shift;
-    my $processor = shift;
-    my $func = shift;
-    my @arr = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
-    $arr[@arr] =  [$processor, $func];
-    $self->{POSTParseProcessors} = \@arr;
-}
-
-sub runPostParseProcessors {
-    my $self = shift;
-    my $arr = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
-    if($arr){foreach(@$arr){
-        my @objdts = @$_;
-        my $prc  = $objdts[0];
-        my $func = $objdts[1];
-        $prc -> $func($self);
-    }}
-}
 
 sub instructPlugin {
      my ($self, $struct, $anons) = @_;
@@ -965,50 +952,121 @@ sub instructPlugin {
 # @TODO Current Under development.
 ###
 sub registerInstructor {
-     my ($self, $package, $body) = @_;
-     $body =~ s/^\s*|\s*$//g;
-     my ($obj, %args, $ins);
-     foreach my $ln(split(/\n/,$body)){
-             my @pair = $ln =~ /\s*(\w+)[:=](.*)\s*/;
-             my $ins  = $1; $ins = $ln if !$ins;
-             my $mth  = $2;
-             if($ins =~ /[a-z]/){
-                $args{$ins} = $mth;
-                next
-             }
-             if(exists $instructors{$ins}){
-                $self -> error("$package<$ins> <- Instruction has been previously registered by: ".ref(${$instructors{$ins}}));
+    my ($self, $package, $body) = @_;
+    $body =~ s/^\s*|\s*$//g;
+    my ($obj, %args, $ins, $mth);
+    foreach my $ln(split(/\n/,$body)){
+            my @pair = $ln =~ /\s*(\w+)[:=](.*)\s*/;
+            $ins  = $1; $ins = $ln if !$ins;
+            $mth  = $2;
+            if($ins =~ /[a-z]/i){
+               $args{$ins} = $mth;
+            }
+    }
+    if(exists $instructors{$ins}){
+       $self -> error("$package<$ins> <- Instruction has been previously registered by: ".ref(${$instructors{$ins}}));
+       return;
+    }else{
+
+        foreach(values %instructors){
+            if(ref($$_) eq $package){
+                $obj = $_; last
+            }
+        }
+
+        if(!$obj){
+            ## no critic (RequireBarewordIncludes)
+            require $package.'.pm';
+            my $methods =   Class::Inspector->methods($package, 'full', 'public');
+            my ($has_new,$has_instruct);
+            foreach(@$methods){
+                $has_new      = 1 if $_ eq "$package\::new";
+                $has_instruct = 1 if $_ eq "$package\::instruct";
+            }
+            if(!$has_new){
+                $self -> log("ERR $package<$ins> -> new() method not found for package.");
                 return;
-             }else{
-                foreach(values %instructors){
-                    if(ref($$_) eq $package){
-                       $obj = $_; last
-                    }
-                }
-                if(!$obj){
-                    ## no critic (RequireBarewordIncludes)
-                    require $package.'.pm';
-                    my $methods =   Class::Inspector->methods($package, 'full', 'public');
-                    my ($has_new,$has_instruct);
-                    foreach(@$methods){
-                        $has_new      = 1 if $_ eq "$package\::new";
-                        $has_instruct = 1 if $_ eq "$package\::instruct";
-                    }
-                    if(!$has_new){
-                        $self -> log("ERR $package<$ins> -> new() method not found for package.");
-                        return;
-                    }
-                    if(!$has_instruct){
-                        $self -> log("ERR $package<$ins> -> instruct() required method not found for package.");
-                        return;
-                    }
-                    $obj = $package -> new(\%args);
-                }
-                $instructors{$ins} = \$obj;
-             }
-     }
-     return \$obj;
+            }
+            if(!$has_instruct){
+                $self -> log("ERR $package<$ins> -> instruct() required method not found for package.");
+                return;
+            }
+            $obj = $package -> new(\%args);
+        }
+        $instructors{$ins} = \$obj
+    }
+    return \$obj;
 }
+#
+
+###
+# Register PostParseProcessor for further externally processing.
+# $package  - Is the anonymouse package name.
+# $body     - Contains attribute(s) where function is the most required one.
+###
+sub registerProcessor {
+    my ($self, $package, $body) = @_;
+        $body =~ s/^\s*|\s*$//g if $body;
+    my ($obj, %args, $ins, $mth, $func);
+    foreach my $ln(split(/\n/,$body)){
+            my @pair = $ln =~ /\s*(\w+)[:=](.*)\s*/;
+            $ins  = $1; $ins = $ln if !$ins;
+            $mth  = $2;
+            if($ins =~ /^func\w*/){
+               $func = $mth
+            }
+            elsif($ins =~ /[a-z]/i){
+               $args{$ins} = $mth
+            }
+    }
+    $func = $ins if !$func;
+    if(!$func){
+         $self -> log("ERR <<$package<$body>> function attribute not found set.");
+        return;
+    }
+    ## no critic (RequireBarewordIncludes)
+    require $package.'.pm';
+    my $methods =   Class::Inspector->methods($package, 'full', 'public');
+    my ($has_new,$has_func);
+    foreach(@$methods){
+        $has_new  = 1 if $_ eq "$package\::new";
+        $has_func = 1 if $_ eq "$package\::$func";
+    }
+    if(!$has_new){
+        $self -> log("ERR In package $package -> new() method not found for package.");
+        return;
+    }
+    if(!$has_func){
+        $self -> log("ERR In package $package -> $func(\$parser) required method not found for package.");
+        return;
+    }
+    $obj = $package -> new(\%args);
+    $self->addPostParseProcessor($obj,$func);
+    return 1;
+}
+
+sub addPostParseProcessor {
+    my $self = shift;
+    my $processor = shift;
+    my $func = shift;
+    my @arr;
+    my $arf = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
+    @arr = @$arf if $arf;
+    $arr[@arr] =  [$processor, $func];
+    $self->{POSTParseProcessors} = \@arr;
+}
+
+sub runPostParseProcessors {
+    my $self = shift;
+    my $arr = $self->{POSTParseProcessors} if exists $self->{POSTParseProcessors};
+    foreach(@$arr){
+        my @objdts =@$_;
+        my $prc  = $objdts[0];
+        my $func = $objdts[1];
+        $prc -> $func($self);
+    }
+}
+
 #
 
 ###
@@ -1224,6 +1282,7 @@ sub trace {
     }
 }
 
+sub now { return CNFDateTime->new()->toTimestamp() }
 
 sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}

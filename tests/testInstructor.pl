@@ -26,10 +26,10 @@ try{
         $cnf->parse(undef,q(
             <<TestInstructor<INSTRUCTOR>TEST2>>
         ));
-    $test -> nextCase();        
+     $test -> nextCase();        
         
         try{
-            #New instance doesn't mask it for being global, it is still there!
+            # New instance doesn't mask it for being global, it is still there!
             CNFParser->new(undef,{STRICT=>1})->parse(undef,q(
                 <<TestInstructor<INSTRUCTOR>TEST>>
                 

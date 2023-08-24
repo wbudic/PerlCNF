@@ -22,8 +22,7 @@ sub new ($class, $plugin){
 ###
 sub process ($self, $parser, $property) {    
 
-    my $timestamp  = Time::Piece->new();
-    my $CNFDateTime = $timestamp->strftime('%Y-%m-%d %H:%M:%S %Z');    
+    my $CNFDateTime = $parser->now();
     my @data = @{$parser->data()->{$property}};
     for my $idx (0 .. $#data){
         my @col = @{$data[$idx]};

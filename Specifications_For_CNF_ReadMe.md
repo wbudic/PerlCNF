@@ -264,30 +264,30 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
    2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
    3. Current Reserved words list is.
-       - CONST    - Concentrated list of constances, or individually tagged name and its value.
-       - VARIABLE - Concentrated list of anons, or individually tagged name and its value.
-       - DATA     - CNF scripted delimited data property, having uniform table data rows.
-       - FILE     - CNF scripted delimited data property is in a separate file.
-       - %LOG     - Log settings property, i.e. enabled=1, console=1.
-       - TABLE    - SQL related.
-       - TREE     - Property is a CNFNode tree containing multiple depth nested children nodes.
-       - INCLUDE  - Include properties from another file to this repository.
-                    - Included files constances are ignored if are in parent file assigned.
-                    - Includes are processed last and not on the spot, so their anons encountered take over precedence.
-                    - Include instruction use is not recommended and is as same to as calling the parse method of the parser.
-       - INDEX    - SQL related.
-       - INSTRUCT - Provides custom new anonymous instruction.
-       - VIEW     - SQL related.
-       - PLUGIN   - Provides property type extension for the PerlCNF repository.
-       - PROCESSOR- Registered processor to be called once all parsing is done and repository secured.
-       - SQL      - SQL related.
-       - MIGRATE  - SQL related.
+       - CONST      - Concentrated list of constances, or individually tagged name and its value.
+       - VARIABLE   - Concentrated list of anons, or individually tagged name and its value.
+       - DATA       - CNF scripted delimited data property, having uniform table data rows.
+       - FILE       - CNF scripted delimited data property is in a separate file.
+       - %LOG       - Log settings property, i.e. enabled=1, console=1.
+       - TABLE      - SQL related.
+       - TREE       - Property is a CNFNode tree containing multiple depth nested children nodes.
+       - INCLUDE    - Include properties from another file to this repository.
+                      - Included files constances are ignored if are in parent file assigned.
+                      - Includes are processed last and not on the spot, so their anons encountered take over precedence.
+                      - Include instruction use is not recommended and is as same to as calling the parse method of the parser.
+       - INDEX      - SQL related.
+       - INSTRUCTOR - Provides custom new anonymous instruction to the repository.
+       - VIEW       - SQL related.
+       - PLUGIN     - Provides property type extension for the PerlCNF repository.
+       - PROCESSOR  - Registered processor to be called once all parsing is done and repository secured.
+       - SQL        - SQL related.
+       - MIGRATE    - SQL related.
        - MACRO
           1. Value is searched and replaced by a property value, outside the property scripted.
           2. Parsing abruptly stops if this abstract property specified is not found.
           3. Macro format specifications, have been aforementioned in this document. However, make sure that your macro a constant also including the *$* signifier if desired.
-       - LIB      - Loads dynamically an external Perl package via either path or as a standard module. This is ghosting normal 'use' and 'require' statements.
-       - DO       - Performs a controlled out scope evaluation of an embedded Perl script or execution of a shell system command. This requires the DO_ENABLED constance to be set for the parser. Otherwise, is not enabled by default.
+       - LIB        - Loads dynamically an external Perl package via either path or as a standard module. This is ghosting normal 'use' and 'require' statements.
+       - DO         - Performs a controlled out scope evaluation of an embedded Perl script or execution of a shell system command. This requires the DO_ENABLED constance to be set for the parser. Otherwise, is not enabled by default.
 
 ## CNF META Instructions
 
@@ -449,14 +449,18 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
     ```
 
 4. PROCESSOR (NEW FEATURE - 20230828)
-    1. Post parse processed instruction, typical on another method of and declared plugin.
-    2. A plugin itself can register with parser on such event wanting to be run.
-    3. Parsers method ```$parser->addPostParseProcessor($processor, $functionName)``` if for registration.
-    4. Parsers method ```$parser->runPostParseProcessors()``` to run it manually when RUN_PROCESSORS is set to 0.
-    5. Processor specific package or plugin must have a method taking into a **$parser** argument this to work.
-    6. Usually processor are used to perform further to perform unknown operations using the parser in a conventional way. As would use regardless once having all configuration and instructions have done their job.
+    1. Post parse processed instruction, for an external out of scope of the parser; further processing of the repository.
+        1. Typically, on another method of an already declared plugin.
+        2. A plugin itself can register with parser on such event wanting to be run.
+        3. Processors could be useful out of sight implementation of some repeating generic operations, so the actual application code using PerlCNF is not cluttered.
+    2. Parsers method ```$parser->addPostParseProcessor($processor, $functionName)``` is used for registration.
+    3. Parsers method ```$parser->runPostParseProcessors()``` can be used to run it manually when RUN_PROCESSORS attribute flag is set to 0.
+    4. Processor specific package or plugin must have a method taking into a **$parser** argument this to work.
+    5. Usually processor are used to perform further unknown operations using the parser in a conventional way. As would be used regardless; once all configuration and instructions have already done their job.
        1. For example providing calculation or changing or adding anons based on the configuration so far scripted or how was intended.
        2. Other good example is to provide functionality and properties that is standard and shared but out of the scope of CNF.
+    6. Any amount of processors can be registered as they are not registered as actual PerlCNF instructions.
+        1. This is unlike the INSTRUCTOR instruction. Described here further on in the specifications.
 
 5. TREE (NEW FEATURE - 20221128)
    1. Will create an CNF property having a CNF Node object, that contains further child nodes or attributes in a tree structure.
@@ -532,7 +536,14 @@ CNF Instructions are parallel with the reserved words. Which means, you can't us
     3. The Perl snipped to be evaluated can use the scalar '''$self''' to access the CNF parser for functionality, within the snipped itself.
         1. To load modules or packages to use within the snipped, the LIB instruction can be used in precedence of issuing a DO.
     4. DO_ENABLED is required to be activated for this instruction.
-8. DATE (NEW FEATURE - 20230808)
+8. INSTRUCTOR
+    1. Provides an external instruction processor to be registered, for 'custom' application provided instructions.
+        1. Declared usually at the begging of the script file. So new instructions can be used further on.
+        2. This is not similar to the PROCESSOR instruction, as it is non reserved word registering to deal with an anon property value.
+    2. Obviously it isn't possible to register a reserved PerlCNF word as these have processing precedence.
+    3. Only one instructor can be assigned to one instruction, first registered therefore only serving.
+    4. Instructor package is expected to have a instruct() method.
+9. DATE (NEW FEATURE - 20230808)
     1. This instruction if successful will setup an anon with a DateTime object.
     2. On empty property value or empty string it will obtain the current date and time (DateTime) object.
     3. Date format is in strict format of: **YYYY-MM-DD**...hh:mm:ss for PerlCNF.

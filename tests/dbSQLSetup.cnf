@@ -61,9 +61,6 @@
     subroutine  : main
     property    : DB_SCHEMA
 >>
-
-
-
 ## Sample initial data here, if not of importance can be removed.
 ## Otherwise if updated here in script or if missing in the db, will be reinserted into it again.
 ## This behaviour is a feature. As the data or tables can be application specific
