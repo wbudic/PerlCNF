@@ -1,6 +1,6 @@
 ###
-# CNFDateTime objects provide conversions from script to inbuild Perls localtime function using high precision.
-# They are lightly initilized, compared to using DateTime directly.
+# CNFDateTime objects provide conversions from script to high precision time function not inbuild into perl interpreter.
+# They are lightly initilized, compared to using DateTime directly, so this is not merely a wrapper around DateTime.
 #
 package CNFDateTime;
 use strict;
@@ -27,8 +27,14 @@ sub datetime() {
 sub toTimestamp{
     my $self = shift;
     return $self->{timestamp} if exists $self->{timestamp};
-    $self->{datetime} = DateTime->from_epoch($self->{epoch}) if not exists $self->{datetime};
+    $self->{datetime} = datetime() if not exists $self->{datetime};
     $self->{timestamp} = $self->{datetime} -> strftime('%Y-%m-%d %H:%M:%S.%3N')
+}
+sub toSchlong{
+    my $self = shift;
+    return $self->{long} if exists $self->{long};
+    $self->{datetime} = datetime() if not exists $self->{datetime};
+    $self->{long} = $self->{datetime} -> strftime('%A, %d %B %Y %H:%M:%S %Z')
 }
 sub _toCNFDate{
     my ($formated,$timezone) = @_;
@@ -39,11 +45,13 @@ sub _toCNFDate{
 
 
 1;
-
-# Programed by  : Will Budic
-# Notice - This source file is copied and usually placed in a local directory, outside of its project.
-# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
-# Please leave source of origin in this file for future references.
-# Source of Origin : https://github.com/wbudic/PerlCNF.git
-# Documentation : Specifications_For_CNF_ReadMe.md
-# Open Source Code License -> https://choosealicense.com/licenses/isc/
+=begin copyright
+Programed by  : Will Budic
+EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
+Source        : https://github.com/wbudic/PerlCNF.git
+Documentation : Specifications_For_CNF_ReadMe.md
+    This source file is copied and usually placed in a local directory, outside of its repository project.
+    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+    Please leave source of origin in this file for future references.
+Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
+=cut copyright

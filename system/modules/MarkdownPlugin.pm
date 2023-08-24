@@ -2,14 +2,7 @@
 # This is an Ambitious Markup Script converter from  MD scripts to HTML. Every programers nightmare.
 # MD scripts can thus be placed in PerlCNF properties for further processing by this plugin.
 # Processing of these is placed in the data parsers data.
-# Programed by  : Will Budic
-# Notice - About this source file, it has been copied and usually placed in a local directory, outside of its project.
-# So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
-# Please leave source of origin in this file for future references.
-# Source of Origin : https://github.com/wbudic/PerlCNF.git
-# Documentation : Specifications_For_CNF_ReadMe.md
-# Open Source Code License -> https://choosealicense.com/licenses/isc/
-#
+###
 package MarkdownPlugin;
 
 use strict;
@@ -772,3 +765,14 @@ div .cnf {
 
 
 1;
+
+=begin copyright
+Programed by  : Will Budic
+EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
+Source        : https://github.com/wbudic/PerlCNF.git
+Documentation : Specifications_For_CNF_ReadMe.md
+    This source file is copied and usually placed in a local directory, outside of its repository project.
+    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+    Please leave source of origin in this file for future references.
+Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
+=cut copyright

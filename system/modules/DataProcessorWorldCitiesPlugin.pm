@@ -75,3 +75,14 @@ sub loadAndProcess ($self, $parser, $property) {
 }
 
 1;
+
+=begin copyright
+Programed by  : Will Budic
+EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
+Source        : https://github.com/wbudic/PerlCNF.git
+Documentation : Specifications_For_CNF_ReadMe.md
+    This source file is copied and usually placed in a local directory, outside of its repository project.
+    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+    Please leave source of origin in this file for future references.
+Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
+=cut copyright
