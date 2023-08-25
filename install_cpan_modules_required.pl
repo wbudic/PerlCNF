@@ -68,12 +68,14 @@ print "\nGlobing for perl modules in project $project";
 my @perl_files = glob(PERL_FILES_GLOB); 
 print " ... found ".@perl_files." files.\n";
 push @perl_files, @user_glob;
-my %modules; 
+my %modules; my %localPackages;
 foreach my $file(@perl_files){
    next if $0 =~ /$file$/;
-   print "\nExamining:$file\n";
-   my $res  = `perl -ne '/\\s*(use\\s([\\w:]+)\\s)/ and \$2 !~ /constant/ and print "\$2;"' $file`;
-   #my $res  =  `perl -ne '/\\s*(use\\s(.*))/ and print "\$2;"' $file`;
+   if($file =~ /(\w*)\.pm$/){
+      $localPackages{$1}=$file;
+   }
+   print "\nExamining:$file\n";      
+   my $res  =  `perl -ne '/\\s*(^use\\s([a-zA-Z:]*))\\W/ and print "\$2;"' $file`;
    my @list = split(/;+/,$res);
    foreach(@list){
      if($_=~ /^\w\d\.\d+.*/){
@@ -96,45 +98,60 @@ foreach my $file(@perl_files){
    foreach(@list){    
     $_ =~ s/^\s*|\s*use\s*//g;
     $_ =~ s/[\'\"].*[\'\"]$//g;    
-    next if !$_ or $_ =~ /^[a-z]|\d*\.\d*$|^\W/;    
+    next if !$_ or $_ =~ /^[a-z]|\d*\.\d*$|^\W/;
     $_ =~ s/\(\)|\(.*\)|qw\(.*\)//g;
     $modules{$_}=$file if $_;
     print "$_\n";
    }
    if($file=~/\.pm$/){# it is presumed local package module.  
-      $locals[@locals] = `perl -ne '/\\s*(package\\s(\\w+))/ and print "\$2" and exit' $file`;
+      $locals[@locals] = `perl -ne '/\\s*(^package\\s(\\w+))/ and print "\$2" and exit' $file`;
    }
 }
 
+print WHITE "\nList of Modules required for thie project:\n";
 my @missing=(); 
 foreach my $mod (sort keys %modules){
     my $missing;
     eval "use $mod";
     if ($@){
-      $missing[@missing] = $mod ;
-      print MAGENTA "$mod\n" 
+      $missing[@missing] = $mod;
+      print MAGENTA "\t$mod \t in ", $modules{$mod}," is suspicious?\n";
     }else{
-      print BLUE "$mod\n" 
+      print BLUE "\t$mod\n" 
     }
 }foreach(@missing){
-  print BRIGHT_RED $_, MAGENTA, " is missing!\n"
+  if(exists $localPackages{$_}){
+      delete $modules{$_}
+  }else{
+      print BRIGHT_RED $_, MAGENTA, " is missing!\n"
+  }
 }
-my @skip_candidates;
+my %skip_candidates;
 my $missing_count = @missing;
 if($missing_count>0){
   foreach my $candidate(@missing){
     foreach(@locals){
-      if($_ eq $candidate){
+      if($_ eq $candidate && not exists $skip_candidates{$_}){
         $missing_count--;        
-        $skip_candidates[@skip_candidates] = $_;
+        $skip_candidates{$_} = 1;
         print GREEN, "Found the missing $candidate module in locals.\n"
       }
     }
   }
 }
+my $perls = `whereis perl`;
+print GREEN, "Following is all of ",$perls;
+print YELLOW, "Reminder -> Make sure you switched to the right brew release.\n" if $perls =~ /perlbrew/; 
 print RESET, "Number of local modules:",scalar(@locals),"\n";
-print RESET, "Number of modules about to be tried to install:",$missing_count,"\n";
-print GREEN, "Do you still want to continue installing/testing missing (press either the 'Y'es or 'N'o key)?", RESET;
+print RESET, "Number of external modules:",scalar(keys %modules),"\n";
+print RESET, "Number of cpan modules about to be tried to install:",$missing_count,"\n";
+
+print GREEN, qq(
+Do you still want to continue to compile/test/install or check further modules?
+Only the first run is the depest and can take a long time, i.e. if you have to install over 5 modules.
+At other times this will only check further your current status.
+
+Now (press either the 'Y'es or 'N'o key) please?), RESET;
 do{
 ReadMode('cbreak');  
 $key = ReadKey(0); print "\n";
@@ -145,10 +162,14 @@ ReadMode('normal');
 }while(uc $key ne 'Y');
 
 my ($mcnt,$mins) = (0,0);
+my @kangaroos = sort keys %skip_candidates;
+#Some modules if found to be forcefeed. can be hardcoded here.
+$modules{'Syntax::Keyword::Try'}=1;
+
 MODULES_LOOP: 
 foreach my $mod (sort keys %modules){
 
-  foreach(@skip_candidates){
+  foreach(@kangaroos){
       if($_ eq $mod){
         next MODULES_LOOP
       }

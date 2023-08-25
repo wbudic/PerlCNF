@@ -5,21 +5,22 @@
 package CNFDateTime;
 use strict;
 use warnings;
-use Time::HiRes qw(time);
+use Time::HiRes qw(gettimeofday);
 use DateTime;
 use DateTime::Format::DateParse;
 
 sub new {
     my ($class,$settings)=@_;
     $settings = {} if not defined $settings;
-    $settings-> {epoch} = time if not exists $settings->{epoch};
+    $settings-> {epoch} = gettimeofday if not exists $settings->{epoch};
     return bless bless $settings, $class
 }
 
 sub datetime() {
     my $self = shift;    
        return $self->{datetime} if exists $self->{datetime};
-    my $dt = DateTime->from_epoch($self->{epoch});
+       $self->{epoch} = time if not defined $self->{epoch};
+    my $dt = DateTime->from_epoch(int($self->{epoch}));
     $dt->set_timezone($self->{TZ}) if $self->{TZ};
     $self->{datetime} = $dt
 }
