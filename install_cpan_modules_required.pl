@@ -1,33 +1,22 @@
 #!/usr/bin/env perl
+##
 # Module installer for projects.
 # Run this script from any Project directory containing perl modules or scripts.
-#
-# This source file is copied and usually placed in a local directory, outside of its project.
-# So not the actual or current version, might vary or be modiefied for what ever purpose in other projects.
-# Programed by  : Will Budic
-# Source Origin : https://github.com/wbudic/PerlCNF.git
-# Open Source License -> https://choosealicense.com/licenses/isc/
-#
-use warnings; 
-use strict;
+##
+use warnings; use strict;
 ###
-# Prerequisites for this script. 
+# Prerequisites for this script itself. Run first:
+# cpan Term::ReadKey;
+# cpan Term::ANSIColor;
 ## no critic (ProhibitStringyEval)  
-eval "use Term::ReadKey";
-eval "use Term::ANSIColor qw(:constants)";
-if($@){
- system(qq(perl -MCPAN -e 'install Term::ReadKey'));
- system(qq(perl -MCPAN -e 'install Term::ANSIColor'));
-}else{
-  use Term::ReadKey;
-  use Term::ANSIColor qw(:constants);
-}
+use Term::ReadKey;
+use Term::ANSIColor qw(:constants);
 
-use constant PERL_FILES_GLOB => "*.pl *.pm *.cgi local/*.pl local/*.pm tests/*.pm system/modules/*.pm tests/*.pl";
+use constant PERL_FILES_GLOB => "*local/*.pl local/*.pm system/modules/*.pm tests/*.pm tests/*.pl .pl *.pm *.cgi";
 
 my $project = `pwd`."/".$0; $project =~ s/\/.*.pl$//g;  $project =~ s/\s$//g;
 my @user_glob;
-our $PERL_VERSION = $^V->{'original'}; my $ERR = 0;
+our $PERL_VERSION = $^V->{'original'}; my $ERR = 0; my $key;
 
 print WHITE "\n *** Project Perl Module Installer coded by ",BRIGHT_RED, "https://github.com/wbudic", WHITE,"***", qq(
          \nRunning scan on project path:$project 
@@ -50,13 +39,13 @@ if(@ARGV==0){
   ); 
   print RED "Do you want to proceed (press either the 'Y'es or 'N'o key)?", RESET;
 
-  my $key; do{
+do{
   ReadMode('cbreak');  
   $key = ReadKey(0); print "\n";
   ReadMode('normal');
     exit 1 if(uc $key eq 'N');
     $key = "[ENTER]" if $key =~ /\n/;
-    print "You have pressed the '$key' key, that is nice, but why?\nOnly the CTRL+C/Y/N keys do something normal." if $key ne 'Y';
+    print "You have pressed the '$key' key, that is nice, but why?\nOnly the CTRL+C/Y/N keys do something normal." if uc $key ne 'Y';
   }while(uc $key ne 'Y');
 }
 else{
@@ -74,7 +63,7 @@ else{
   }
 }
 
-
+my @locals=(); 
 print "\nGlobing for perl modules in project $project";
 my @perl_files = glob(PERL_FILES_GLOB); 
 print " ... found ".@perl_files." files.\n";
@@ -83,18 +72,19 @@ my %modules;
 foreach my $file(@perl_files){
    next if $0 =~ /$file$/;
    print "\nExamining:$file\n";
-   my $res  =  `perl -ne '/\\s*(use\\s(.*))/ and print "\$2;"' $file`;
+   my $res  = `perl -ne '/\\s*(use\\s([\\w:]+)\\s)/ and \$2 !~ /constant/ and print "\$2;"' $file`;
+   #my $res  =  `perl -ne '/\\s*(use\\s(.*))/ and print "\$2;"' $file`;
    my @list = split(/;+/,$res);
    foreach(@list){
      if($_=~ /^\w\d\.\d+.*/){
-      print "\tA specified 'use $_' found in ->$file";
+      print "\tA specified 'use $_' found in ->$file\n";
       if($PERL_VERSION ne $_){         
          $_ =~s/^v//g;
          my @fv = split(/\./, $_);
          $PERL_VERSION =~s/^v//g;
          my @pv = split(/\./, $PERL_VERSION);
          push @fv, 0 if @fv < 3;
-         for my$i(0..3){
+         for my$i(0..$#fv){
            if( $pv[$i] < $fv[$i] ){
               $ERR++; print "\n\t\033[31mERROR -> Perl required version has been found not matching.\033[0m\n";
               last
@@ -105,16 +95,64 @@ foreach my $file(@perl_files){
    }
    foreach(@list){    
     $_ =~ s/^\s*|\s*use\s*//g;
-    $_ =~ s/[\'\"].*[\'\"]$//g;
-    next if !$_ or $_ =~ /^[a-z]|\d*\.\d*$|^\W/;
+    $_ =~ s/[\'\"].*[\'\"]$//g;    
+    next if !$_ or $_ =~ /^[a-z]|\d*\.\d*$|^\W/;    
     $_ =~ s/\(\)|\(.*\)|qw\(.*\)//g;
     $modules{$_}=$file if $_;
     print "$_\n";
    }
+   if($file=~/\.pm$/){# it is presumed local package module.  
+      $locals[@locals] = `perl -ne '/\\s*(package\\s(\\w+))/ and print "\$2" and exit' $file`;
+   }
 }
 
+my @missing=(); 
+foreach my $mod (sort keys %modules){
+    my $missing;
+    eval "use $mod";
+    if ($@){
+      $missing[@missing] = $mod ;
+      print MAGENTA "$mod\n" 
+    }else{
+      print BLUE "$mod\n" 
+    }
+}foreach(@missing){
+  print BRIGHT_RED $_, MAGENTA, " is missing!\n"
+}
+my @skip_candidates;
+my $missing_count = @missing;
+if($missing_count>0){
+  foreach my $candidate(@missing){
+    foreach(@locals){
+      if($_ eq $candidate){
+        $missing_count--;        
+        $skip_candidates[@skip_candidates] = $_;
+        print GREEN, "Found the missing $candidate module in locals.\n"
+      }
+    }
+  }
+}
+print RESET, "Number of local modules:",scalar(@locals),"\n";
+print RESET, "Number of modules about to be tried to install:",$missing_count,"\n";
+print GREEN, "Do you still want to continue installing/testing missing (press either the 'Y'es or 'N'o key)?", RESET;
+do{
+ReadMode('cbreak');  
+$key = ReadKey(0); print "\n";
+ReadMode('normal');
+  exit 1 if(uc $key eq 'N');
+  $key = "[ENTER]" if $key =~ /\n/;
+  print "You have pressed the '$key' key, that is nice, but why?\nOnly the CTRL+C/Y/N keys do something normal.\n" if uc $key ne 'Y';
+}while(uc $key ne 'Y');
+
 my ($mcnt,$mins) = (0,0);
-foreach my $mod (sort keys %modules){   
+MODULES_LOOP: 
+foreach my $mod (sort keys %modules){
+
+  foreach(@skip_candidates){
+      if($_ eq $mod){
+        next MODULES_LOOP
+      }
+  }
   $mcnt++;
   ## no critic (ProhibitStringyEval)
   eval "use $mod";
@@ -136,4 +174,17 @@ foreach my $mod (sort keys %modules){
   }
 }
 print "\nProject $project\nRequires $mcnt modules.\nInstalled New: $mins\n";
-print "WARNING! - This project requires in ($ERR) parts code that might not be compatible yet with your installed/running version of perl (v$PERL_VERSION).\n" if $ERR;
+print "WARNING! - This project requires in ($ERR) parts code that might not be compatible yet with your installed/running version of perl (v$PERL_VERSION).\n" 
+if $ERR;
+
+
+=begin copyright
+Programed by  : Will Budic
+EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
+Source        : https://github.com/wbudic/PerlCNF.git
+Documentation : Specifications_For_CNF_ReadMe.md
+    This source file is copied and usually placed in a local directory, outside of its repository project.
+    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+    Please leave source of origin in this file for future references.
+Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
+=cut copyright
