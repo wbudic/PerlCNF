@@ -200,9 +200,29 @@ sub doneFailed {
 sub dumpTermination {
     my ($failed, $comment, $past, $message, $ErrAt, $cterminated) = @_;
       my ($file,$lnErr, $trace);
-    if(ref($comment) =~ /Exception/){
+      my $refT = ref($comment);
+    if($refT eq 'Specio::Exception'){
+         my $trace = "";
+         my $i = 3; 
+         foreach my $st($comment->stack_trace()->frames()){
+            if($trace){
+                $trace .= ' 'x$i .RED.$st->as_string()."\n";
+                $i+=3;
+            }else{
+                $trace = RED.$st->as_string()."\n";                
+                $trace =~ s/called at/\n   thrown from \-\>/gs;
+                #($file,$lnErr) =($st->filename(),$st->line())
+            }
+        }
+           $comment = $message = $comment->{'message'}.$trace;
+        $comment =~ s/eval \{.+\} at/cought at/gs;
+        #Old die methods could be present, caught by an Exception, manually having Error@{lno.} set.
+        if($message =~ /^Error\@(\d+)/){ 
+           $ErrAt = "\\\@$1";
+        }           
+    }elsif($refT =~ /Exception/){
         my $trace = "";
-        my $i = 3;
+        my $i = 3;        
         foreach my $st($comment->trace()->frames()){
             if($trace){
                 $trace .= ' 'x$i .RED.$st->as_string()."\n";
