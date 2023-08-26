@@ -18,7 +18,7 @@ require CNFDateTime;
 ##no critic qw(Subroutines::RequireFinalReturn)
 ##no critic Perl::Critic::Policy::ControlStructures::ProhibitMutatingListFunctions
 
-use constant VERSION => '2.9';
+use constant VERSION => '3.0';
 our @files;
 our %lists;
 our %properties;

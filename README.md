@@ -7,7 +7,7 @@ Has own textual data tag format. Therefore can also be useful for database data 
 
 This project also contains custom build TestManager module for general and all test driven development.
 
-It is at current v.2.9, and specification implemented.
+It is at current v.3.0 version, project is specification implemented, and test driven development produced.
 
 ### [You can find the specification here](./Specifications_For_CNF_ReadMe.md).
 
@@ -15,11 +15,23 @@ It is at current v.2.9, and specification implemented.
 
 ## Status
 
-* (2023-8-8) - v.2.9, new DATE instruction has been implemented.
-* (2023-6-14) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
+* (2023-08-23) - v.2.9, Final Release has been published.
+  * Has new TestManager
+  * CNFDateTime and DATE instruction.
+  * CNFParser has post parsing processing beside normal plugins capabilities.
+  * Sophisticated DATA plugins and processing basics implemented.
+  * Webpage tree skeleton PerlCNF to HTML conversion.
+    * Useful for inline testing and developing features for a given webpage, from one place.
+    * Plugin reads the skeleton to react and produce HTML via automation, serious stuff.
+  * Initial RSS Feeds development started, working with CNFNode translates based on setup.
+    * These are a nightmare as arrive from the XML world. But are a good and old way to stream public news clips or content.
+  * And once you got CNDNodes as data from one source, idea is you transfer it to another source, and like some relational database.
+  * SQLite and Postgress Database functionality has been revisited.
+* (2023-08-08) - v.2.9, new DATE instruction has been implemented.
+* (2023-06-14) - v.2.9, new meta flags and priority can be set via these pre-evaluation settings for instructions.
     - Node processing on demand and JSON translation on demand of CNFNode's (TREE instruction) is now available.  
      Online demo made available.
-* (2023-5-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.
+* (2023-05-13) - v.2.8, has new instructions VARIABLE, to streamline under one tag like CONST, but for anons.
     Has better tag mauling algorithm. PLUGIN code has been improved, particularly the synchronizing and the linking of properties.
 * (2022-11-18) - PerlCNF now provides custom test manager and test cases. 
     - That will in future be used for all projects as an copy from this project.
