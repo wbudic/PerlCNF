@@ -5,47 +5,51 @@
 package CNFDateTime;
 use strict;
 use warnings;
-use Time::HiRes qw(gettimeofday);
 use DateTime;
 use DateTime::Format::DateParse;
+use Time::HiRes qw(time usleep);
+use feature 'signatures';
 
-sub new {
-    my ($class,$settings)=@_;
-    $settings = {} if not defined $settings;
-    $settings-> {epoch} = gettimeofday if not exists $settings->{epoch};
-    return bless bless $settings, $class
+sub new($class){
+    return newSet($class,{});
 }
-
-sub datetime() {
-    my $self = shift;    
-       return $self->{datetime} if exists $self->{datetime};
-       $self->{epoch} = time if not defined $self->{epoch};
-    my $dt = DateTime->from_epoch(int($self->{epoch}));
-    $dt->set_timezone($self->{TZ}) if $self->{TZ};
-    $self->{datetime} = $dt
+sub newSet($class, $settings){    
+    $settings->{epoch} = time if not exists $settings->{epoch};
+    return bless $settings, $class
 }
-
-sub toTimestamp{
-    my $self = shift;
+sub datetime($self) {
+    return $self->{datetime} if exists $self->{datetime};
+    #   $self->{epoch} = time if not defined $self->{epoch};
+    my $dt = DateTime->from_epoch($self->{epoch});
+       $dt->set_time_zone($self->{TZ}) if $self->{TZ};
+    $self->{datetime} = $dt;
+    return $dt
+}
+sub toTimestamp($self) {    
     return $self->{timestamp} if exists $self->{timestamp};
-    $self->{datetime} = datetime() if not exists $self->{datetime};
-    $self->{timestamp} = $self->{datetime} -> strftime('%Y-%m-%d %H:%M:%S.%3N')
+    usleep(1_000_000);
+    $self->{timestamp} = $self->datetime() -> strftime('%Y-%m-%d %H:%M:%S.%3N')
 }
-sub toSchlong{
-    my $self = shift;
-    return $self->{long} if exists $self->{long};
-    $self->{datetime} = datetime() if not exists $self->{datetime};
-    $self->{long} = $self->{datetime} -> strftime('%A, %d %B %Y %H:%M:%S %Z')
+sub toSchlong($self){
+    return $self->{long} if exists $self->{long};    
+    $self->{long} = $self->datetime() -> strftime('%A, %d %B %Y %H:%M:%S %Z')
 }
-sub _toCNFDate{
-    my ($formated,$timezone) = @_;
+sub _toCNFDate ($formated, $timezone) {
     my $dt = DateTime::Format::DateParse->parse_datetime($formated, $timezone);
-    return CNFDateTime->new({epoch => $dt->epoch, datetime=>$dt, TZ=>$timezone});    
+    return newSet('CNFDateTime',{epoch => $dt->epoch, datetime=>$dt, TZ=>$timezone});    
 }
-
+sub _listAvailableCountryCodes(){
+     require DateTime::TimeZone;
+     return DateTime::TimeZone->countries();
+}
+sub _listAvailableTZ($country){
+     require DateTime::TimeZone;
+     return  length($country)==2?DateTime::TimeZone->names_in_country( $country ):DateTime::TimeZone->names_in_category( $country );
+}
 
 
 1;
+
 =begin copyright
 Programed by  : Will Budic
 EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
@@ -56,3 +60,7 @@ Documentation : Specifications_For_CNF_ReadMe.md
     Please leave source of origin in this file for future references.
 Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
 =cut copyright
+
+=begin history
+
+=cut history

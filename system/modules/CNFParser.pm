@@ -438,12 +438,12 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         if($v && $v !~ /now|today/i){
            $v =~ s/^\s//;
            if($self->{STRICT}&&$v!~/^\d\d\d\d-\d\d-\d\d/){
-              $self-> error("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
+              $self-> warn("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
            }
            $v = CNFDateTime::_toCNFDate($v,$self->{'TZ'});
 
         }else{
-           $v = CNFDateTime->new({TZ=>$self->{'TZ'}});
+           $v = CNFDateTime->newSet({TZ=>$self->{'TZ'}});
         }
        $anons->{$e} = $v;
     }elsif($t eq 'FILE'){#@TODO Test case this
@@ -1226,8 +1226,10 @@ sub log {
     my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> collection('%LOG');
-    my $time = CNFDateTime->new()->toTimestamp();
-    $message = "$type $message" if $isWarning;
+    my $time = exists $self->{'TZ'} ? CNFDateTime->newSet({TZ=>$self->{'TZ'}}) -> toTimestamp() :
+                                      CNFDateTime->new()-> toTimestamp();
+    $message = "$type $message" if $isWarning;   
+
     if($message =~ /^ERROR/ || $isWarning){
         warn  $time . " " .$message;
     }
@@ -1251,6 +1253,7 @@ sub log {
         print $fh $time . " - " . $message ."\n";
         close $fh;
     }
+    return $time . " " .$message;  
 }
 sub error {
     my $self    = shift;
