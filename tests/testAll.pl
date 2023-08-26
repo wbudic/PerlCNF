@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+##
+# Part of Test Manager running all your test files and collecting stats.
+# Nothing quite other than it, yet does exists.
+##
 use v5.30;
 #use warnings; use strict; 
 use Syntax::Keyword::Try;
@@ -43,7 +47,8 @@ try{
         
         $file = "./tests/$file";            
         my ($in,$output, $warnings);
-        my @perl = ('/usr/bin/env','perl',$file);    
+        my @perl = ('/usr/bin/env','perl',$file);
+        print "Running->$file\n";
         ###
         run  (\@perl, \$in, \$output, '2>>', \$warnings);
         ###
@@ -110,3 +115,14 @@ try{
 catch{ 
    $manager -> dumpTermination($@)
 }
+
+=begin copyright
+Programed by  : Will Budic
+EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
+Source        : https://github.com/wbudic/PerlCNF.git
+Documentation : Specifications_For_CNF_ReadMe.md
+    This source file is copied and usually placed in a local directory, outside of its repository project.
+    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
+    Please leave source of origin in this file for future references.
+Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
+=cut copyright
