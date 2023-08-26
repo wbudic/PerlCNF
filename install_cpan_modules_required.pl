@@ -163,8 +163,14 @@ ReadMode('normal');
 
 my ($mcnt,$mins) = (0,0);
 my @kangaroos = sort keys %skip_candidates;
-#Some modules if found to be forcefeed. can be hardcoded here.
+
+##
+# Some modules if found to be forcefeed. can be hardcoded here my friends, why not?
+# You got plenty of space on you disc, these days.
+##
 $modules{'Syntax::Keyword::Try'}=1;
+$modules{'DBD::SQLite'}=1;
+$modules{'DBD::Pg'}=1;
 
 MODULES_LOOP: 
 foreach my $mod (sort keys %modules){
