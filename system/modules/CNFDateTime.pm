@@ -27,7 +27,7 @@ sub datetime($self) {
 }
 sub toTimestamp($self) {    
     return $self->{timestamp} if exists $self->{timestamp};
-    usleep(1_000_000);
+    usleep(1_028_69);
     $self->{timestamp} = $self->datetime() -> strftime('%Y-%m-%d %H:%M:%S.%3N')
 }
 sub toSchlong($self){
