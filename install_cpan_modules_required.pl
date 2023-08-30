@@ -166,11 +166,18 @@ my @kangaroos = sort keys %skip_candidates;
 
 ##
 # Some modules if found to be forcefeed. can be hardcoded here my friends, why not?
-# You got plenty of space on you disc, these days.
+# You got plenty of space on your disc, these days, don't you?
 ##
-$modules{'Syntax::Keyword::Try'}=1;
-$modules{'DBD::SQLite'}=1;
-$modules{'DBD::Pg'}=1;
+foreach ((
+                'Syntax::Keyword::Try',
+                'DBD::SQLite',
+                'DBD::Pg',
+                'LWP::Simple',
+                'LWP::Protocol::https',
+                'XML::LibXML::SAX'
+)){
+  $modules{$_}=1; print "Forcefeed: $_\n"
+}
 
 MODULES_LOOP: 
 foreach my $mod (sort keys %modules){

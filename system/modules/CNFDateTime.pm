@@ -10,6 +10,13 @@ use DateTime::Format::DateParse;
 use Time::HiRes qw(time usleep);
 use feature 'signatures';
 
+use constant{
+                
+                FORMAT         => '%Y-%m-%d %H:%M:%S',
+                FORMAT_NANO    => '%Y-%m-%d %H:%M:%S.%3N %Z',
+                FORMAT_SCHLONG => '%A, %d %B %Y %H:%M:%S %Z'
+};
+
 sub new($class){
     return newSet($class,{});
 }
@@ -28,11 +35,16 @@ sub datetime($self) {
 sub toTimestamp($self) {    
     return $self->{timestamp} if exists $self->{timestamp};
     usleep(1_028_69);
-    $self->{timestamp} = $self->datetime() -> strftime('%Y-%m-%d %H:%M:%S.%3N')
+    $self->{timestamp} = $self->datetime() -> strftime(FORMAT_NANO)
+}
+sub toTimestampShort($self) {    
+    return $self->{timestamp} if exists $self->{timestamp};
+    usleep(1_028_69);
+    $self->{timestamp} = $self->datetime() -> strftime(FORMAT)
 }
 sub toSchlong($self){
     return $self->{long} if exists $self->{long};    
-    $self->{long} = $self->datetime() -> strftime('%A, %d %B %Y %H:%M:%S %Z')
+    $self->{long} = $self->datetime() -> strftime(FORMAT_SCHLONG)
 }
 sub _toCNFDate ($formated, $timezone) {
     my $dt = DateTime::Format::DateParse->parse_datetime($formated, $timezone);
@@ -40,7 +52,7 @@ sub _toCNFDate ($formated, $timezone) {
 }
 sub _listAvailableCountryCodes(){
      require DateTime::TimeZone;
-     return DateTime::TimeZone->countries();
+     return  DateTime::TimeZone->countries();
 }
 sub _listAvailableTZ($country){
      require DateTime::TimeZone;

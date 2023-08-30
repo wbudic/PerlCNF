@@ -8,11 +8,18 @@ use Scalar::Util qw(looks_like_number);
 use Syntax::Keyword::Try;
 use Clone qw(clone);
 use Capture::Tiny 'capture_stdout';
-use XML::RSS::Parser;
 use FileHandle;
+use XML::RSS::Parser;
+use Date::Manip::Date;
+use LWP::Protocol::https; #<-- 20230829  This  module some times, will not be auto installed for some reason.
 use LWP::Simple;
 
+use Benchmark;
+
 use constant VERSION => '1.0';
+
+# require CNFNode;
+# require CNFDateTime;
 
 sub new ($class, $plugin){
     my $settings;
@@ -53,95 +60,163 @@ sub collectFeeds($self,$parser) {
          $hdr{$col[$i]}=$i
         }
       }else{
-          fetchFeed($self,  $col[$hdr{name}],$col[$hdr{url}],$col[$hdr{description}]);
+        my $name = $col[$hdr{name}];
+         my $tree =  fetchFeed($self, $name,$col[$hdr{url}],$col[$hdr{description}]);
+         if(ref($$tree) eq 'CNFNode'){
+            my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "tree_feed_$fname.cnf";
+            my %rep = %{$parser -> data()};
+               $rep{$name} = $tree;
+                              
+         }
       }
   }
 }
 
 sub fetchFeed($self,$name,$url,$description){
 
-    my $fname = $name; $fname =~ s/[\W\s]/_/g; $fname = "rss_$name.rdf";
-    unless ( -e $fname ) {
-        try{
-            print "Fetching: $fname -> $url ...";
-            my  $res = getstore($url,$fname);
-            if ($res == 200){
-                print "done!\n"
-            }else{
-                print "error<$res>!\n"
+    my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "rss_$fname.rdf";
+    if(exists $self->{RUN_FEEDS} && CNFParser::_isTrue($self->{RUN_FEEDS})){
+        if(-e $fname) {
+            my $now   = new Date::Manip::Date -> new_date(); $now->parse("today");
+            my $fdate = new Date::Manip::Date;
+            my $fsepoch = (stat($fname))[9]; $fdate->parse("epoch $fsepoch"); $fdate->parse("3 business days");
+            my $delta = $fdate->calc($now);
+            if($now->cmp($fdate)>0){
+                unlink $fname;
             }
-        }catch{
-            print $@."\n";
-            return;
+
+        }
+        unless ( -e $fname ) {
+            try{
+                print "Fetching: $fname -> $url ...";
+                my  $res = getstore($url, $fname);
+                if ($res == 200){
+                    print "\e[2Adone!\n"
+                }else{
+                    print "\e[2AError<$res>!\n"
+                }
+            }catch{
+                print "Error: $@.\n";
+                return;
+            }
         }
     }
+
+    my ($MD, $tree, $brew,$bench);
+    my $console   = CNFParser::_isTrue($self->{OUTPUT_TO_CONSOLE});
+    my $convert   = CNFParser::_isTrue($self->{CONVERT_TO_CNF_NODES});
+    my $markup    = CNFParser::_isTrue($self->{OUTPUT_TO_MD});
+    my $benchmark = CNFParser::_isTrue($self->{BENCHMARK});
+
     my $parser = XML::RSS::Parser->new;
-    my $fh = FileHandle->new($fname);
+    my $fh = FileHandle->new($fname); 
+    my $t0 = Benchmark->new;
     my $feed = $parser->parse_file($fh);
+    my $t1 = Benchmark->new;
+    my $td = timediff($t1, $t0);
+    $bench = "The XML parser for $fname took:\t".timestr($td)."\n" if $benchmark;
+
+    print "Parsing: $fname\n";
 
     if(!$feed){
         print "Failed to parse RSS feed:$name file:$fname\n";
         return
     }
-    
-my $MD;
-my $console=$self->{output_console};
-my $buffer = capture_stdout{
-if($console){
-    print 'x'x60,"\n";
-    print $feed->query('/channel/title')->text_content, " [ Items: ",$feed->item_count, " ]\n";
-    print 'x'x60,"\n\n";
-}else{
-    $fname = ">rss_$name.md";
-    $MD = FileHandle->new($fname);
-    print $MD "# ",$feed->query('/channel/title')->text_content, "\n";
-    print $MD "\n   $description\n\n";
-    print $MD "* Feed: [$name]($url)\n";
-    print $MD "* Items: ",$feed->item_count, "\n";
-    print $MD "* Date: ", $self->{date} -> toSchlong(), "\n\n";
-}
-    foreach my $item 
-                  ( $feed->query('//item') ) {
-        my $title = $item->query('title')->text_content;
-        my $date  = $item->query('pubDate');
-        my $desc  = $item->query('description')->text_content;
-        my $link  = $item->query('link')->text_content;
-        if(!$date) {
-            $date  = $item->query('dc:date');
+
+my $buffer = capture_stdout {
+        if($console){
+            print 'x'x60,"\n";
+            print $feed->query('/channel/title')->text_content, " [ Items: ",$feed->item_count, " ]\n";
+            print 'x'x60,"\n\n";
+        }else{
+            if($markup){
+            $fname = ">rss_$name.md";
+            $MD = FileHandle->new($fname);
+            #binmode($MD, ":encoding(UTF-8)");
+            print $MD "# ",$feed->query('/channel/title')->text_content, "\n";
+            print $MD "\n   $description\n\n";
+            print $MD "* Feed: [$name]($url)\n";
+            print $MD "* Items: ",$feed->item_count, "\n";
+            print $MD "* Date: ", $self->{date} -> toSchlong(), "\n\n";
+            }
         }
-        $date = $date->text_content;
-if($console){        
-        print "Title : $title\n";
-        print "Link  : $link\n";
-        print "Date  : $date\n";
-}else{
-
-        print $MD "\n## $title\n\n";
-        print $MD "* Link : <$link>\n";
-        print $MD "* Date : $date\n\n";
-
-}
-        if (length($desc)>0){
-if($console){                    
-            print '-'x20,"\n";
-            print $desc;
-            print "\n" if $desc !~ /\s$/
-}else{
-            print $MD "   $desc\n";
-}
+        if($convert){
+        my $published = CNFDateTime->new()->toTimestamp();
+        my $expires   = new Date::Manip::Date -> new_date(); $expires->parse("7 business days");
+            $expires   =  $expires->printf(CNFDateTime::FORMAT());
+        my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires});
+        $tree =    CNFNode -> new({'_'=>'CNF_FEED',Version=>'1.0', Release=>'1'});
+        $brew =    CNFNode -> new({'_'=>'Brew'});
+        $tree -> add($feed)->add($brew);
         }
-if($console){ print '-'x40,"\n";
-}else{
-    print $MD "\n---\n";
-}
-    }
-if($console){            
-    print 'X'x20, " ", $feed->query('/channel/title')->text_content." Feed End ",'X'x20,"\n\n";
-}else{
-    close $MD;
-}
-}
+        $t0 = Benchmark->new;
+        my $items_cnt =0;
+        foreach my $item
+                    ( $feed->query('//item') ) {
+            my $title = $item->query('title')->text_content;
+            my $date  = $item->query('pubDate');
+            my $desc  = $item->query('description')->text_content;
+            my $link  = $item->query('link')->text_content;
+            my $CNFItm; $items_cnt++;
+            if(!$date) {
+                $date  = $item->query('dc:date');
+            }
+            $date = $date->text_content;
+            $date = CNFDateTime::_toCNFDate($date, $self->{TZ})->toTimestampShort();
+            if($console){
+                    print "Title : $title\n";
+                    print "Link  : $link\n";
+                    print "Date  : $date\n";
+            }else{
+                    if($markup){
+                    print $MD "\n## $title\n\n";
+                    print $MD "* Link : <$link>\n";
+                    print $MD "* Date : $date\n\n";
+                    }
 
+            }
+            if($convert){
+                $CNFItm =  CNFNode -> new({
+                                            '_'     => 'Item',
+                                            Title   => $title,
+                                            Link    => $link,
+                                            Date    => $date
+                                });
+                $brew->add($CNFItm);
+            }
+            if (length($desc)>0){
+                if($console){
+                            print '-'x20,"\n";
+                            print $desc;
+                            print "\n" if $desc !~ /\s$/
+                }else{
+                            print $MD "   $desc\n" if $markup;
+                }
+                if($convert){
+                $CNFItm->add(CNFNode -> new({'_'=>"Description",'#'=>\$desc}));
+                }
+            }
+            if($console){ print '-'x40,"\n";
+            }else{
+                print $MD "\n---\n" if $markup
+            }
+        }
+        $t1 = Benchmark->new;
+        $td = timediff($t1, $t0);
+        #TODO: XML query method is very slow, we will have to resort and test the CNFParser->find in comparance. 
+        #      Use XML RSS only to fetch, from foreing servers the feeds, and translate to CNFNodes.
+        $bench .= "The XML QUERY(//Item)  for $fname items($items_cnt) took:\t".timestr($td)."\n" if $benchmark;
+
+        if($console){
+            print 'X'x20, " ", $feed->query('/channel/title')->text_content." Feed End ",'X'x20,"\n\n";
+        }else{
+             $MD->close() if $markup
+        }
+    };
+    print $buffer if $console;
+    print $bench if $benchmark;
+    return \$tree if $convert;
+    return \$buffer;
 }
 
 1;
@@ -153,10 +228,10 @@ if($console){
     Version  = 1.0
     Release  = 1
     <Feed<
-        Published: 2023-12-15         
-        Expires: 2023-12-30    
+        Published: 2023-12-15
+        Expires: 2023-12-30
         URL: https://lalaland.com/feeds.cgi
-    >Feed>    
+    >Feed>
     [brew[
         [item[
             Title:

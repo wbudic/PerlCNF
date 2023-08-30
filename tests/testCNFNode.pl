@@ -122,7 +122,12 @@ use Syntax::Keyword::Try; try {
     $test -> nextCase();
     #
 
-    
+    $test -> case("CNFNode to script.");
+    print $node -> toScript(),"\n";
+
+    #
+    $test -> nextCase();
+    #
 
     #
     $test->done();

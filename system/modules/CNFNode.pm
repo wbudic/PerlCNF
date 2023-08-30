@@ -45,7 +45,23 @@ sub nodes {
     }
     return ();
 }
-
+###
+# Add another CNFNode to this one, to become a its parent.
+# Returns $self so you can perl them, if you want..
+##
+sub add {
+    my ($self, $node,@nodes)  = @_;
+    my $prev = $self->{'@$'};
+    if($prev) {
+        @nodes = @$prev;
+    }else{
+        @nodes = ();
+    }
+    $node->{'@'}    = \$self;
+    $nodes[@nodes]  = \$node;
+    $self -> {'@$'} = \@nodes;
+    return $self;
+}
 ###
 # Convenience method, returns string scalar value dereferenced (a copy) of the property value.
 ##
@@ -111,8 +127,8 @@ sub find {
                     }else{
                         return $prev->val()
                     }
-                }elsif($name =~ /\[(\d+)\]/){              
-                    $self = $ret = @$ret[$1];              
+                }elsif($name =~ /\[(\d+)\]/){
+                    $self = $ret = @$ret[$1];
                     next
                 }else{
                     $ret = $prev->{'@$'};
@@ -150,7 +166,7 @@ sub find {
         }
            $ref =  ref($ret);
         if($ret && $ref eq 'ARRAY'){
-            my $found = 0;           
+            my $found = 0;
             undef $prev;
             foreach my $ele(@$ret){
                 if($seekArray && exists $ele->{'@$'}){
@@ -231,13 +247,12 @@ sub node {
     }
     return $ret;
 }
-
 ###
 # Outreached subs list of collected node links found in a property.
 my  @linked_subs;
 
 ###
-# The parsing guts of the CNFNode, that from raw script, recursively creates and tree of nodes from it.
+# The parsing guts of the CNFNode, that from raw script, recursively creates a tree of nodes from it.
 ###
 sub process {
 
@@ -666,6 +681,72 @@ sub equals {
         }
     }
     return 0;
+}
+
+sub toScript {
+    my($self,$nested,$script)= @_;
+    my($isParent,$tag,$tab); $tab =3*$nested; $tab = ' 'x$tab;
+    if(exists $self->{'@'}){
+        $script .= "<<".$self->{_}."<TREE>\n";
+        $isParent = 1;
+    }else{
+        $tag = $self->{_};
+       if($nested){
+          $script  .= "$tab<$tag<\n"
+       }else{
+          $script  .= "$tab\[$tag\[\n"
+       }
+    }
+    my @attr = $self -> attributes();
+    foreach (@attr){
+        if($nested){
+            if(@$_[0] ne '#' && @$_[0] ne '_'){
+                if(@$_[1]){
+                    $script .= "$tab ".@$_[0].": ".@$_[1];
+                }else{
+                    $script .= "$tab ".@$_[0]." ";
+                }
+           }
+        }else{
+           if(@$_[0] ne '#' && @$_[0] ne '_'){
+                if(@$_[1]){
+                    $script .= "$tab ".@$_[0]."=\"".@$_[1]."\"";
+                }else{
+                    $script .= "$tab ".@$_[0]." ";
+                }
+           }
+        }
+        $script .= "\n;"
+    }
+    my $list = $self->{'@@'};
+    if($list){
+       foreach(@$list) {
+            $script .= "$tab  <@@<$_>@@>\n"
+       }
+    }
+
+    my $nodes = $self->{'@$'};
+    if($nodes){
+        foreach(@$nodes){
+            toScript($_,++$nested,$script);
+        }
+    }
+    my $val = $self->{'#'};
+    if($val){
+        $val =~ s/\n$/\n$tab/gs; $val = $tab.$val;
+        $script .= $tab."[#\[\n$val\n$tab]#]\n"
+    }
+
+    if ($isParent){
+        $script  .= ">>\n"
+    }else{
+        if($nested){
+          $script  .= "\n$tab>$tag>\n"
+       }else{
+          $script  .= "\n$tab]$tag]\n"
+       }
+    }
+    return $script;
 }
 
 1;

@@ -135,9 +135,15 @@ return <<__JSON
 {"$property"="$val"}
 __JSON
 }
-
-
-
+###
+# Check a value if it is CNFPerl boolean true.
+# For isFalse just negate check with not, as undef is concidered false or 0.
+##
+sub _isTrue{ 
+    my $value = shift;
+    return 0 if(not $value);
+    return ($value =~ /1|true|yes|on/i)
+}
 ###
 # Post parsing instructed special item objects. They have lower priority to Order of apperance and from CNFNodes.
 ##
