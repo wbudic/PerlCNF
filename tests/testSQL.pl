@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 use Syntax::Keyword::Try;
-use Clone qw(clone);
-
+use Benchmark;
 use lib "tests";
 use lib "system/modules";
 
@@ -16,8 +15,8 @@ try{
 
    die $test->failed() if not $cnf = CNFParser->new();
        $test->case("Passed new instance CNFParser.");
-       $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);  
-   my  $sql = $cnf->SQL(); 
+       $test->subcase('CNFParser->VERSION is '.CNFParser->VERSION);
+   my  $sql = $cnf->SQL();
        $test->isDefined("\$sql",$sql);
        $test->case("Passed new instance CNFSQL");
 
@@ -28,7 +27,6 @@ try{
          >>
         ));
         $sql->addStatement('selAll','select * from MyTable;');
-
    #
    $test->nextCase();
    #
@@ -37,19 +35,19 @@ try{
    $test->case("Test local MySQL Database Setup.");
    `rm -f test_db_central.db`;
    #
+   my $t0 = Benchmark->new;
    die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1});
-   $sql = $cnf->SQL(); 
+   my $t1 = Benchmark->new;
+    my $td = timediff($t1, $t0);
+    print "The CNF translation for tests/dbSQLSetup.cnf took:",timestr($td),"\n";
+   $sql = $cnf->SQL();
 
     #
-    #   
-    $test->done();    
+    #
+    $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test -> doneFailed();
 }
-
-#
-#  TESTING THE FOLLOWING IS FROM HERE  #
-#
