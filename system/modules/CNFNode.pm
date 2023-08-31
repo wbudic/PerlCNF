@@ -381,7 +381,8 @@ sub process {
                                                             $sub = $parent; next
                                                         }
                                                     }
-                                                    $sub = CNFNode->new({'_'=>$sel[0], '@' => $parent});
+                                                    $t = $sel[0]; $t=~s/[\s_]*$//g;
+                                                    $sub = CNFNode->new({'_' => $t, '@' => $parent});
                                                     my @elements = exists $parent -> {'@$'} ? $parent -> {'@$'} : ();
                                                     $elements[@elements] = $sub; $prev = $parent; $cnt_nl = 0;
                                                     $parent -> {'@$'} = \@elements;
@@ -685,10 +686,9 @@ sub equals {
 
 sub toScript {
     my($self,$nested,$script)= @_;
-    my($isParent,$tag,$tab); $tab =3*$nested; $tab = ' 'x$tab;
-    if(exists $self->{'@'}){
-        $script .= "<<".$self->{_}."<TREE>\n";
-        $isParent = 1;
+    my($isParent,$tag,$tab); $nested=1 if!$nested; $tab =3*$nested; $tab = ' 'x$tab;
+    if(not exists $self->{'@'}){
+        $script .= "<<".$self->{_}."<TREE>\n";  $isParent = 1;
     }else{
         $tag = $self->{_};
        if($nested){
@@ -716,7 +716,7 @@ sub toScript {
                 }
            }
         }
-        $script .= "\n;"
+        $script .= "\n"
     }
     my $list = $self->{'@@'};
     if($list){
@@ -728,22 +728,24 @@ sub toScript {
     my $nodes = $self->{'@$'};
     if($nodes){
         foreach(@$nodes){
-            toScript($_,++$nested,$script);
+            if (ref($_) eq 'CNFNode'){
+               $script .=  toScript($_,++$nested);
+            }
         }
     }
     my $val = $self->{'#'};
     if($val){
         $val =~ s/\n$/\n$tab/gs; $val = $tab.$val;
-        $script .= $tab."[#\[\n$val\n$tab]#]\n"
+        $script .= $tab."[#\[\n    $val\n$tab]#]\n"
     }
 
     if ($isParent){
         $script  .= ">>\n"
     }else{
         if($nested){
-          $script  .= "\n$tab>$tag>\n"
+          $script  .= "$tab>$tag>\n"
        }else{
-          $script  .= "\n$tab]$tag]\n"
+          $script  .= "$tab]$tag]\n"
        }
     }
     return $script;

@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 
-use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/tests";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 
 require TestManager;
@@ -21,7 +21,7 @@ use Syntax::Keyword::Try; try {
     $test->evaluate("val==1",$node->val(),1);
     $test->case("Passed new instance for CNFParser.");
     #
-    #  
+    #
     $test-> nextCase();
     #
 
@@ -40,21 +40,21 @@ use Syntax::Keyword::Try; try {
                         2:two
                     ]d]
                 ]d]
-            ]b]            
-            [row[        
-                    [cell[            
+            ]b]
+            [row[
+                    [cell[
                         [img[
                         ]img]
                         [div[
                             [A[
-                            >A> 
+                            >A>
                                 <- The above should be valid.
                         ]div]
                     ]cell]
             ]row]
         ]a]
     ));
-  
+
 
     $test->isZeroOrEqual("Evaluation \$error=$errors",$errors);
 
@@ -85,11 +85,11 @@ use Syntax::Keyword::Try; try {
             [b[
                 <e<
                 [#[some value]#]
-            ]b]            
+            ]b]
         ]a]
         ]c]
 
-    )); 
+    ));
 
     #
     $test -> nextCase();
@@ -114,8 +114,8 @@ use Syntax::Keyword::Try; try {
     $test -> isDefined("$node->node('Example')",$node->node('Example'));
     $test -> evaluate("Do we have the Example node?", 'Example', $node->node('Example')->name());
         $test -> subcase("Check for a node path.");
-            my $search = $node->find('Example/Paths/Attr1'); 
-            $test -> isDefined("\$search",$search);            
+            my $search = $node->find('Example/Paths/Attr1');
+            $test -> isDefined("\$search",$search);
             $test -> evaluate("\$search", 'Hey! Let\'s Test. Is it corrupt, in da west?', $search);
 
     #
@@ -133,8 +133,8 @@ use Syntax::Keyword::Try; try {
     $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test->doneFailed();
 }
 
