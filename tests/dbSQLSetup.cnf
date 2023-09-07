@@ -114,7 +114,7 @@ ID`address`state`city`postcode`country~
     OUTPUT_TO_MD = no
     BENCHMARK = no
     TZ=Australia/Sydney
-    OUTPUT_DIR = ./tests/output
+    OUTPUT_DIR = "./tests/output"
 
     package     : RSSFeedsPlugin
     subroutine  : process

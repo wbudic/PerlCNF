@@ -33,7 +33,7 @@ try{
         $test->passed("Picked random city in $random_country_code -> ".uc $random_city_in_picked);
 
 
-    #    
+    #
     $test->case("Test CNFDateTime Instance.");
     die $test->failed() if not my $loca = CNFDateTime -> new(); # <- TODO This will use the default locale as US not the system one, I don't know why yet<moth?
     die $test->failed() if not my $date = CNFDateTime -> newSet({TZ=>$random_city_in_picked});
@@ -41,7 +41,7 @@ try{
     $test->isDefined('$datetime',$datetime);
     $test->passed("For $random_city_in_picked time was set ->".$date -> toSchlong() );
     my $your_locale_date  = $loca->datetime();
-    my $locale = $your_locale_date->locale();    
+    my $locale = $your_locale_date->locale();
     $test->passed("For ".$locale->{code}." time was set ->".$loca -> toSchlong() );
 
 
@@ -63,11 +63,11 @@ try{
     $test->passed("Assigned date properly \$reldat:".$reldat->toTimestamp());
 
     $test->case("Invalid date format, long, but could be parsable and passable.");
-    $cnf ->parse(undef,q(<<date_and_time<DATE>01/12/2000 5:30 am>>));#-> Wrong--. Actually for any 
+    $cnf ->parse(undef,q(<<date_and_time<DATE>01/12/2000 5:30 am>>));#-> Wrong--. Actually for any
     my $DandT = $cnf->anon('date_and_time');                                  # | other country
-    $test->isDefined('$DandT',$DandT);                                        # | then the US. 
+    $test->isDefined('$DandT',$DandT);                                        # | then the US.
     $test->evaluate("Is CNFDateTime object?",'CNFDateTime',ref($DandT));      # |
-    $test->evaluate("Is in us format parsed date?",'2000-01-12 05:30:00.000',#<-.
+    $test->evaluate("Is in us format parsed date?",'2000-01-12 05:30:00.000 AEDT',#<-.
            $DandT->toTimestamp());
 
     $test->case("Test now and today!");
@@ -81,7 +81,7 @@ try{
     $test->isDefined('$dtToday',$dtToday);
     $test->passed("Today assignment test run \@:".$dtToday->toTimestamp());
 ####
-## Disable this test case (comment out) if your OS or Perl failed here. 
+## Disable this test case (comment out) if your OS or Perl failed here.
 ## Logging itself, is not crucial for Perl CNF, never was.
 ## Realtime logging in nanoseconds, yes this test is checking.
 ####
