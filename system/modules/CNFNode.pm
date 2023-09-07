@@ -727,16 +727,19 @@ sub toScript {
 
     my $nodes = $self->{'@$'};
     if($nodes){
-        foreach(@$nodes){
-            if (ref($_) eq 'CNFNode'){
-               $script .=  toScript($_,++$nested);
+        foreach my $nd (@$nodes) {
+            if (ref($$nd) eq 'CNFNode'){
+               $script .=  toScript($$nd,$nested+1);
             }
         }
     }
     my $val = $self->{'#'};
     if($val){
-        $val =~ s/\n$/\n$tab/gs; $val = $tab.$val;
-        $script .= $tab."[#\[\n    $val\n$tab]#]\n"
+        if(ref($val) eq 'SCALAR'){
+            $val = $$val;
+        }
+        $val =~ s/\n/\n$tab   /gs; $val =~ s/\s*$//;
+        $script .= $tab."[#\[\n$tab   $val\n$tab]#]\n"
     }
 
     if ($isParent){

@@ -60,22 +60,35 @@ sub collectFeeds($self,$parser) {
          $hdr{$col[$i]}=$i
         }
       }else{
-        my $name = $col[$hdr{name}];
+         my $name = $col[$hdr{name}];
          my $tree =  fetchFeed($self, $name,$col[$hdr{url}],$col[$hdr{description}]);
          if(ref($$tree) eq 'CNFNode'){
-            my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "tree_feed_$fname.cnf";
+            my $output_local = getOutputDir($self);
+            my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = ">$output_local"."tree_feed_$fname.cnf";
             my %rep = %{$parser -> data()};
                $rep{$name} = $tree;
-                              
+            my $FH = FileHandle->new($fname);
+            my $root = $$tree;
+            print $FH $root->toScript();
+            close $FH;
          }
       }
   }
 }
 
+sub getOutputDir($self){
+    my  $output_local = $self->{OUTPUT_DIR};
+    if ($output_local){
+        $output_local.= '/';
+        mkdir $output_local unless -d $output_local;
+    }
+    return $output_local
+}
+
 sub fetchFeed($self,$name,$url,$description){
 
     my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "rss_$fname.rdf";
-    if(exists $self->{RUN_FEEDS} && CNFParser::_isTrue($self->{RUN_FEEDS})){
+    if(CNFParser::_isTrue($self->{RUN_FEEDS})){
         if(-e $fname) {
             my $now   = new Date::Manip::Date -> new_date(); $now->parse("today");
             my $fdate = new Date::Manip::Date;
@@ -103,13 +116,14 @@ sub fetchFeed($self,$name,$url,$description){
     }
 
     my ($MD, $tree, $brew,$bench);
-    my $console   = CNFParser::_isTrue($self->{OUTPUT_TO_CONSOLE});
-    my $convert   = CNFParser::_isTrue($self->{CONVERT_TO_CNF_NODES});
-    my $markup    = CNFParser::_isTrue($self->{OUTPUT_TO_MD});
-    my $benchmark = CNFParser::_isTrue($self->{BENCHMARK});
+    my $console     = CNFParser::_isTrue($self->{OUTPUT_TO_CONSOLE});
+    my $convert     = CNFParser::_isTrue($self->{CONVERT_TO_CNF_NODES});
+    my $markup      = CNFParser::_isTrue($self->{OUTPUT_TO_MD});
+    my $benchmark   = CNFParser::_isTrue($self->{BENCHMARK});
+    my $output_local= getOutputDir($self);
 
     my $parser = XML::RSS::Parser->new;
-    my $fh = FileHandle->new($fname); 
+    my $fh = FileHandle->new($fname);
     my $t0 = Benchmark->new;
     my $feed = $parser->parse_file($fh);
     my $t1 = Benchmark->new;
@@ -130,7 +144,7 @@ my $buffer = capture_stdout {
             print 'x'x60,"\n\n";
         }else{
             if($markup){
-            $fname = ">rss_$name.md";
+            $fname = ">$output_local"."rss_$name.md";
             $MD = FileHandle->new($fname);
             #binmode($MD, ":encoding(UTF-8)");
             print $MD "# ",$feed->query('/channel/title')->text_content, "\n";
@@ -141,13 +155,14 @@ my $buffer = capture_stdout {
             }
         }
         if($convert){
-        my $published = CNFDateTime->new()->toTimestamp();
-        my $expires   = new Date::Manip::Date -> new_date(); $expires->parse("7 business days");
-            $expires   =  $expires->printf(CNFDateTime::FORMAT());
-        my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires});
-        $tree =    CNFNode -> new({'_'=>'CNF_FEED',Version=>'1.0', Release=>'1'});
-        $brew =    CNFNode -> new({'_'=>'Brew'});
-        $tree -> add($feed)->add($brew);
+                    my $published = CNFDateTime->new()->toTimestamp();
+                    my $expires   = new Date::Manip::Date -> new_date(); $expires->parse("7 business days");
+                       $expires   =  $expires->printf(CNFDateTime::FORMAT());
+                    my $fnm = $name; $fnm =~ s/[\s|\W]/_/g;
+                    my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires,File => $output_local."tree_feed_$fnm.cnf"});
+                    $tree =    CNFNode -> new({'_'=>'CNF_FEED',Version=>'1.0', Release=>'1'});
+                    $brew =    CNFNode -> new({'_'=>'Brew'});
+                    $tree -> add($feed)->add($brew);
         }
         $t0 = Benchmark->new;
         my $items_cnt =0;
@@ -203,7 +218,7 @@ my $buffer = capture_stdout {
         }
         $t1 = Benchmark->new;
         $td = timediff($t1, $t0);
-        #TODO: XML query method is very slow, we will have to resort and test the CNFParser->find in comparance. 
+        #TODO: XML query method is very slow, we will have to resort and test the CNFParser->find in comparance.
         #      Use XML RSS only to fetch, from foreing servers the feeds, and translate to CNFNodes.
         $bench .= "The XML QUERY(//Item)  for $fname items($items_cnt) took:\t".timestr($td)."\n" if $benchmark;
 

@@ -109,11 +109,12 @@ ID`address`state`city`postcode`country~
 <<PROCESS_RSS_FEEDS<PLUGIN>    ___HAS_PROCESSING_PRIORITY___
 
     RUN_FEEDS = yes
-    CONVERT_TO_CNF_NODES = no
+    CONVERT_TO_CNF_NODES = yes
     OUTPUT_TO_CONSOLE = false
     OUTPUT_TO_MD = no
-    BENCHMARK = yes
+    BENCHMARK = no
     TZ=Australia/Sydney
+    OUTPUT_DIR = ./tests/output
 
     package     : RSSFeedsPlugin
     subroutine  : process

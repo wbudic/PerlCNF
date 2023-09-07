@@ -32,7 +32,7 @@ try{
    #
 
    ###
-   $test->case("Test local MySQL Database Setup.");
+   $test->case("Test local SQL Database Setup.");
    `rm -f test_db_central.db`;
    #
    my $t0 = Benchmark->new;
