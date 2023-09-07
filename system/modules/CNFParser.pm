@@ -139,7 +139,7 @@ __JSON
 # Check a value if it is CNFPerl boolean true.
 # For isFalse just negate check with not, as undef is concidered false or 0.
 ##
-sub _isTrue{ 
+sub _isTrue{
     my $value = shift;
     return 0 if(not $value);
     return ($value =~ /1|true|yes|on/i)
@@ -185,7 +185,7 @@ package PropertyValueStyle {
                     if(!$p){
                         $p = $itm;
                     }else{
-                        $itm =~ s/^\s*|\s*$//g if $itm;
+                        $itm =~ s/^\s*(['"])(.*)\g{1}$/$2/g if $itm;
                         $self->{$p}=$itm;
                         undef $p;
                     }
@@ -385,10 +385,10 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     $t = "" if not defined $t;
 
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
-        $v =~ s/^\s//;
-        # Not allowed to overwrite constant. i.e. it could be DO_ENABLED which is restricted.
+        # It is NOT allowed to overwrite constant.
         if (not $self->{$e}){
-            $self->{$e} = $v if not $self->{$e};
+            $v =~ s/^\s//;
+            $self->{$e} = $v;
         }else{
             warn "Skipped constant detected assignment for '$e'.";
         }
@@ -694,19 +694,18 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                             $line =~ s/\s*>$//;
                             $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;
                             my $name = $1;
-                               $line = $3;
+                               $line = $3; $line =~ s/^\s*(['"])(.*)\g{1}$/$2/;#strip quotes
                             if(defined $name){
                                 if($isVar){
-                                    $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
                                     $anons ->{$name} = $line if $line
                                 }else{
-                                    if($line and not $self->{$name}){# Not allowed to overwrite constant.
-                                    $line =~ s/^\s*["']|['"]\s*$//g;#strip qoutes
+                                  if($line and not $self->{$name}){# Not allowed to overwrite constant.
+
                                     $self->{$name} = $line;
-                                    }else{
+                                  }else{
                                         warn "Skipping and keeping previously set constance -> [$name] the new value ".
                                         ($line eq $self->{$name})?"matches it":"dosean't match -> $line."
-                                    }
+                                  }
                                 }
                             }
                     }
@@ -1234,7 +1233,7 @@ sub log {
     my %log = $self -> collection('%LOG');
     my $time = exists $self->{'TZ'} ? CNFDateTime->newSet({TZ=>$self->{'TZ'}}) -> toTimestamp() :
                                       CNFDateTime->new()-> toTimestamp();
-    $message = "$type $message" if $isWarning;   
+    $message = "$type $message" if $isWarning;
 
     if($message =~ /^ERROR/ || $isWarning){
         warn  $time . " " .$message;
@@ -1259,7 +1258,7 @@ sub log {
         print $fh $time . " - " . $message ."\n";
         close $fh;
     }
-    return $time . " " .$message;  
+    return $time . " " .$message;
 }
 sub error {
     my $self    = shift;
