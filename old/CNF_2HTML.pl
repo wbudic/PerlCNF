@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use v5.34; #use diagnostics;
-use warnings; 
+use warnings;
 use Try::Tiny;
 use Exception::Class ('CNFParserException');
 
@@ -21,20 +21,20 @@ say $cnf->anon('page');
 package CNF2HTML {
   use CGI;
 
-  
-  sub new { my ($this) = shift;    
-    return bless {cgi=>CGI->new()}, $this;    
+
+  sub new { my ($this) = shift;
+    return bless {cgi=>CGI->new()}, $this;
   }
 
-  sub generate {  
+  sub generate {
       my ($this,$cnf) = @_;
       my $cgi = $this->{cgi};
       my $ret = $cgi->header( -charset => "UTF-8");
       my @sty = (); my @js = ();
-      foreach my $itm(@{$cnf->collection('@StyleSheets')}){
+      foreach my $itm(@{$cnf->property('@StyleSheets')}){
           push @sty, { -type => 'text/css', -src => $itm }
       }
-      foreach (@{$cnf->collection('@JavaScripts')}){
+      foreach (@{$cnf->property('@JavaScripts')}){
            push @js, {-type => 'text/javascript', -src => $_ }
       }
 

@@ -126,10 +126,12 @@ ID`name`url`description~
 #`Perl Weekly`https://perlweekly.com/perlweekly.rss`A free, once a week e-mail round-up of hand-picked news and articles about Perl.
 The Perl Weekly ( http://perlweekly.com/ ) is a newsletter including links to blog posts and other news items
  related to the Perl programming language.~
+>> <-- Disabled for now rest of data, to speed up tests ---
 
 #`The Perl Foundation RSS Feed`https://news.perlfoundation.org/rss.xml`The Perl Foundation is dedicated to the advancement
 of the Perl programming language through open discussion, collaboration, design, and code.
  The Perl Foundation is a non-profit organization* based in Holland, Michigan~
 
  #`CPAN`http://search.cpan.org/uploads.rdf`CPAN modules news and agenda.~
->>
+
+ --> Was here.

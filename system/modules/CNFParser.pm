@@ -170,7 +170,7 @@ package InstructedDataItem {
 #
 
 ###
-# PropertyValueStyle objects must have same rule of how an property body can be scripted for attributes.
+# PropertyValueStyle objects must have same rule of how a property body can be scripted for attributes.
 ##
 package PropertyValueStyle {
 
@@ -288,25 +288,36 @@ sub const { my ($self,$c)=@_;
 ###
 # Collections are global, Reason for this is that any number of subsequent files parsed,
 # might contain properties that overwrite previous existing ones.
-# Or require ones that don't includes, expecting thm to be there.
+# Or require ones that don't include, and expecting them to be there.
 # This overwritting can be erronous, but also is not expected to be very common to happen.
 # Following method, provides direct access to the properties, this method shouldn't be used in general.
 sub collections {\%properties}
 
-# Collection now returns the contained type dereferenced.
+#@Deprecated use property subroutine instead.
+sub collection {
+return property(@_);
+}
+###
+# Collection now returns the contained type dereferenced and is concidered a property.
 # Make sure you use the appropriate Perl type on the receiving end.
 # Note, if properties contain any scalar key entry, it sure hasn't been set by this parser.
-sub collection { my($self, $name) = @_;
+#
+sub property { my($self, $name) = @_;
     if(exists($properties{$name})){
        my $ret = $properties{$name};
-       if(ref($ret) eq 'ARRAY'){
+       my $ref = ref($ret);
+       if($ref eq 'ARRAY'){
           return  @{$ret}
-       }else{
+       }elsif($ref eq 'PropertyValueStyle'){
+          return $ret;
+       }
+       else{
           return  %{$ret}
        }
     }
     return %properties{$name}
 }
+
 sub data {return shift->{'__DATA__'}}
 
 sub listDelimit {
@@ -348,7 +359,9 @@ sub addENVList { my ($self, @vars) = @_;
     }return;
 }
 
-
+###
+# Perform a macro replacement on tagged strings in a property value.
+##
 sub template { my ($self, $property, %macros) = @_;
     my $val = $self->anon($property);
     if($val){
@@ -1230,7 +1243,7 @@ sub log {
     my $type    = shift; $type = "" if !$type;
     my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
-    my %log = $self -> collection('%LOG');
+    my %log = $self -> property('%LOG');
     my $time = exists $self->{'TZ'} ? CNFDateTime->newSet({TZ=>$self->{'TZ'}}) -> toTimestamp() :
                                       CNFDateTime->new()-> toTimestamp();
     $message = "$type $message" if $isWarning;
@@ -1276,7 +1289,7 @@ sub warn {
 sub trace {
     my $self    = shift;
 	my $message = shift;
-    my %log = $self -> collection('%LOG');
+    my %log = $self -> property('%LOG');
     if(%log){
         $self -> log($message)
     }else{
@@ -1300,7 +1313,7 @@ sub  SQL {
 }
 our $JSON;
 sub  JSON {
-    my $self    = shift;
+    my $self = shift;
     if(!$JSON){
         require CNFJSON;
         $JSON = CNFJSON-> new({ CNF_VERSION=>$self->{CNF_VERSION},
@@ -1310,10 +1323,24 @@ sub  JSON {
     }
     return $JSON;
 }
+our %NODES;
+sub addTree {
+    my ($self, $name, $node  )= @_;
+    if($name && $node){
+        $NODES{$name} = $node;
+    }
+}
+sub getTree {
+    my ($self, $name) = @_;
+    return $NODES{$name};
+}
 
 sub END {
 undef %ANONS;
 undef @files;
+undef %properties;
+undef %lists;
+undef %instructors;
 }
 1;
 =begin copyright

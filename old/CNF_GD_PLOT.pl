@@ -1,10 +1,10 @@
 #!/usr/bin/perl
 
 #use strict;
-use warnings; 
+use warnings;
 use Try::Tiny;
 use Exception::Class ('CNFParserException');
-use DBI;  
+use DBI;
 use GD::Graph::lines;
 
 #DEFAULT SETTINGS HERE!
@@ -33,9 +33,9 @@ while( my @a = $stm->fetchrow_array() ){
 
 my @data = ([@DAT], [@MAX], [@AVG], [@MIN]);
 
-my @dim = $cnf->collection('@DIM_SET_BITCOIN');
+my @dim = $cnf->property('@DIM_SET_BITCOIN');
 my $graph = GD::Graph::lines->new(@dim);
-my %hsh = $cnf->collection('%HSH_SET_BITCOIN_LINE_PLOT_RANGE');
+my %hsh = $cnf->property('%HSH_SET_BITCOIN_LINE_PLOT_RANGE');
 $graph->set(%hsh);
 $graph->set_legend_font(GD::Graph::gdFontTiny);
 $graph->set_legend('Max','Avg', 'Min');

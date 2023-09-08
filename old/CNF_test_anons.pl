@@ -47,11 +47,11 @@ eval{ scalar keys %anons == 5 } or die "Error annons count mismatch!";
 exit;
 
 
-my $hshs  = $cnf->collections();
+my $hshs  = $cnf->propertys();
 
-my $arr1 = $cnf->collection('@arr1');
-my $arr2 = $cnf->collection('@arr2');
-my $arr3 = $cnf->collection('@arr3');
+my $arr1 = $cnf->property('@arr1');
+my $arr2 = $cnf->property('@arr2');
+my $arr3 = $cnf->property('@arr3');
 
 print 'CNFParser.$VERSION is '.${CNFParser::VERSION}, "\n" . '-' x 80,"\n";
 
@@ -60,13 +60,13 @@ print map {'['.$_.']'} @{$arr2}, "\n";
 print map {'['.$_.']'} @{$arr3}, "\n";
 
 my %hsh_test = %{$hshs->{'%hsh_test'}}; #By Perl dereferencing.
-my $hsh_test2 = $cnf->collection('%hsh_test'); #By CNF convention
-my $hsh_test3 = $cnf->collection('%hsh_test');
+my $hsh_test2 = $cnf->property('%hsh_test'); #By CNF convention
+my $hsh_test3 = $cnf->property('%hsh_test');
 
 #%{$hsh_test{'City'}}="New York";
 $hsh_test2->{'Surname'}="Mason";
 $hsh_test2->{'City'}="London";
-$cnf->collection('%hsh_test')->{'Test'} ="check";
+$cnf->property('%hsh_test')->{'Test'} ="check";
 #we want both hashes to have same city
 #eval($hsh_test{'City'} eq $hsh_test2{'City'});
 
@@ -163,7 +163,7 @@ sub testRef{
     foreach my $v (@p) {print $v.','}
      print "\n-List size ".scalar(@res4)."-\n";
     foreach my $v (@res4) {print $v.','}
-    
+
 }
 sub getArray {return @{[1,2,3]}}
 sub addRandowNumberTo { my $arr=shift; push @{$arr}, rand(100);

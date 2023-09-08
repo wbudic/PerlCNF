@@ -65,12 +65,11 @@ sub collectFeeds($self,$parser) {
          if(ref($$tree) eq 'CNFNode'){
             my $output_local = getOutputDir($self);
             my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = ">$output_local"."tree_feed_$fname.cnf";
-            my %rep = %{$parser -> data()};
-               $rep{$name} = $tree;
             my $FH = FileHandle->new($fname);
             my $root = $$tree;
             print $FH $root->toScript();
             close $FH;
+            $parser->addTree($name, $tree);
          }
       }
   }
@@ -159,7 +158,9 @@ my $buffer = capture_stdout {
                     my $expires   = new Date::Manip::Date -> new_date(); $expires->parse("7 business days");
                        $expires   =  $expires->printf(CNFDateTime::FORMAT());
                     my $fnm = $name; $fnm =~ s/[\s|\W]/_/g;
-                    my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires,File => $output_local."tree_feed_$fnm.cnf"});
+                    my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires,
+                                                           File => $output_local."tree_feed_$fnm.cnf",
+                                                           URL=>$url});
                     $tree =    CNFNode -> new({'_'=>'CNF_FEED',Version=>'1.0', Release=>'1'});
                     $brew =    CNFNode -> new({'_'=>'Brew'});
                     $tree -> add($feed)->add($brew);
@@ -167,7 +168,7 @@ my $buffer = capture_stdout {
         $t0 = Benchmark->new;
         my $items_cnt =0;
         foreach my $item
-                    ( $feed->query('//item') ) {
+                    (   $feed->query('//item') ) {
             my $title = $item->query('title')->text_content;
             my $date  = $item->query('pubDate');
             my $desc  = $item->query('description')->text_content;

@@ -26,7 +26,7 @@ exposure_dt     = 'date and time of exposure'
 venue           = venue
 >>>
 !);
-my %map = %{$cnf->collection('%DATA_MAP_TO_CSV')};
+my %map = %{$cnf->property('%DATA_MAP_TO_CSV')};
 my @mkeys = sort keys %map;# we have to sort as keys are returned inconviently unorderly, each time fetched.
 my $csv = Text::CSV->new({  binary => 1, auto_diag => 1, sep_char => ',' });
 my @header = 0;
@@ -39,7 +39,7 @@ print $cnf -> writeOut($fhOut,'%DATA_MAP_TO_CSV');
 print $fhOut "<<DATA<DATA\n";
 $csv->header ($fh);
 while (my $r=$csv->getline_hr ($fh)) {
-       my %row = %{$r};       
+       my %row = %{$r};
        my $line = "";
        foreach my $k(@mkeys){
             my $n = $map{$k};

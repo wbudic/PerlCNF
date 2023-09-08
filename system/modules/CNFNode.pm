@@ -729,7 +729,7 @@ sub toScript {
     if($nodes){
         foreach my $nd (@$nodes) {
             my $ref = ref($nd);
-            $nd = $$nd if ($ref eq 'SCALAR');
+            $nd = $$nd if ($ref eq 'REF');
             if (ref($nd) eq 'CNFNode'){
                $script .=  toScript($nd, $nested+1);
             }

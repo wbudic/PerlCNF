@@ -20,9 +20,9 @@ sub cnfCalled{
 }
 
 my $cnf = new CNFParser($ENV{'PWD'}.'/test_properties.cnf');
-my @animals = @{$cnf->collection('@animals')};
-my %colls = $cnf->collections();
-my %settings = %{$cnf->collection('%settings')};
+my @animals = @{$cnf->property('@animals')};
+my %colls = $cnf->propertys();
+my %settings = %{$cnf->property('%settings')};
 print "AppName = ".$settings{'AppName'}, "\n";
 print "Pop music is a ", pop @animals, "!\n";
 print "CNF_PROCESSING_DATE -> ", $cnf -> anons('CNF_PROCESSING_DATE'), "\n";

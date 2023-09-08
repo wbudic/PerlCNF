@@ -22,7 +22,7 @@ sub new ($class, $plugin){
     return bless $settings, $class
 }
 sub getConfigFiles($self, $parser, $property){
-    my @dirs = $parser->collection($property);
+    my @dirs = $parser->property($property);
     my @files = ['ID','path','size','lines','modified']; my $cnt=0; #We have to mimic CNF<DATA> type entries.
     foreach(@dirs){
         my @list = glob("$_/*.cnf $_/*.config");
@@ -32,9 +32,9 @@ sub getConfigFiles($self, $parser, $property){
             my $size =  $stat[7];
             my $timestamp  = localtime($epoch_timestamp);
             my $CNFDate = $timestamp->strftime('%Y-%m-%d %H:%M:%S %Z');
-            my $num_lines = do { 
+            my $num_lines = do {
                 open my $fh, '<', $fl or die "Can't open $fl: $!";
-                grep { not /^$|^\s*#/ } <$fh>; 
+                grep { not /^$|^\s*#/ } <$fh>;
             };
             push @files, [++$cnt,$fl,$size,$num_lines,$CNFDate] if @list
         }
@@ -103,7 +103,7 @@ sub main ($self, $parser, $property) {
                         foreach (@map){
                             my @set  = @$_;
                             if($set[0] eq $label){
-                               $idx[$j] = $i if $set[1] ne 'auto'; 
+                               $idx[$j] = $i if $set[1] ne 'auto';
                                $found=1;
                                last
                             }
@@ -141,7 +141,7 @@ sub processTable ($db, $node) {
              my ($n,$v) = ($col->val() =~ /\s*(.*?)\s+(.*)/);
              if($v =~ /^auto/){
                 if( $isSQLite ){
-                    $v = "integer primary key autoincrement"                
+                    $v = "integer primary key autoincrement"
                 }else{
                     $v = "INT UNIQUE GENERATED ALWAYS AS IDENTITY";
                     $primary_key = $n;
@@ -152,7 +152,7 @@ sub processTable ($db, $node) {
                     if( $isSQLite ){
                         $v = "TEXT"
                     }else{
-                        $v = "TIMESTAMP";                    
+                        $v = "TIMESTAMP";
                     }
                 }else{
                     $v =~ s/\s*$//;

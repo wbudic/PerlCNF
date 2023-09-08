@@ -37,14 +37,14 @@ catch  {
   if ( $_->isa('CNFParserException') ) {
         warn $_->trace->as_string, "\n";
   }
-  
+
 };
 
 my @content = <DATA>;#<- Magic statment way in perl to slurp whole of the data buffer.
 $cnf->parse(undef, \@content);@<- End we pass reference to it otherwise is gets a copy of the buffer.
 
 print "\nArray \@AU_STATES:\n";
-my $states = $cnf->collection('@AU_STATES');
+my $states = $cnf->property('@AU_STATES');
 foreach(sort @$states){printf "\rState: $_\n"}
 print 'A='.$cnf->constant('$A')."\n";
 foreach my $prp (sort keys %{$cnf->constants()}){
@@ -52,7 +52,7 @@ foreach my $prp (sort keys %{$cnf->constants()}){
 }
 
 print "\nHash %settings:\n";
-my %hsh = %{$cnf->collection('%settings')};
+my %hsh = %{$cnf->property('%settings')};
 foreach my $key (keys %hsh){
     print "$key=", $hsh{$key},"\n";
 }
@@ -79,5 +79,5 @@ Check it out it is better than JSON:
      AppName       = "UDP Server"
      port          = 3820
      buffer_size   = 1024
-     pool_capacity = 1000    
+     pool_capacity = 1000
  >>

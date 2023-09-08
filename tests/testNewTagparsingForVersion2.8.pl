@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 use lib "tests";
 use lib "system/modules";
 
@@ -17,7 +17,7 @@ use Syntax::Keyword::Try; try {
     $test->case("Passed new instance for CNFParser.");
     #
 
-    #  
+    #
     $test-> nextCase();
     #
 
@@ -38,7 +38,7 @@ use Syntax::Keyword::Try; try {
     $test->subcase($cnf->anon('tag1') . " from $script");
     #
     $script = "This is a valid anon-><<A<B>>>";
-    $test->subcase($script);    
+    $test->subcase($script);
     $cnf->parse(undef,$script);
     $test->isDefined("A",$cnf->anon('A'));
     $test->evaluate("A==B",$cnf->anon('A'),'B');
@@ -52,7 +52,7 @@ use Syntax::Keyword::Try; try {
     $script = '  <<@<@Array<1,2,3,4,5>>>';
     $test->subcase($script);
     $cnf->parse(undef,$script);
-    my @a = $cnf->collection('@Array');
+    my @a = $cnf->property('@Array');
     $test->isDefined('@A', @a);
     $test->evaluate("A@ is 5",scalar @a,5);
 
@@ -76,11 +76,11 @@ use Syntax::Keyword::Try; try {
     $script = q/
 
        <<APP_HELP_TXT<CONST
-       This is your applications help text in format of an constance. 
+       This is your applications help text in format of an constance.
        All you see here can't be dynamically changed.
-       You might be able to change it in the script though. 
+       You might be able to change it in the script though.
        And re-run your app.
-       >>  
+       >>
 
      /;
     $cnf->parse(undef,$script);
@@ -96,7 +96,7 @@ use Syntax::Keyword::Try; try {
    <<<VARIABLE
 
    $var1    =  "No test shall fail!"
-   $var2    =  Indeed.   
+   $var2    =  Indeed.
    other_var= 'capture'
    >>>
 
@@ -106,13 +106,13 @@ use Syntax::Keyword::Try; try {
    $test ->evaluate('$var1', $cnf->anon('$var1'),'No test shall fail!');
    $test->isDefined('$var2', $cnf->anon('$var2'));
    $test->isDefined('other_var', $cnf->anon('other_var'));
-    
+
     #
     $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test->doneFailed();
 }
 
