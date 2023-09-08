@@ -235,7 +235,7 @@ my $buffer = capture_stdout {
     return \$buffer;
 }
 
-1;
+1; # <-- The score I get for using multipe functionality returns, I know. But if can swat 7 flies in one go, why not do it?
 
 =begin scrap
 
