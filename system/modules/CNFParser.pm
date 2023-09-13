@@ -12,7 +12,6 @@ require CNFMeta; CNFMeta::import();
 require CNFNode;
 require CNFDateTime;
 
-
 # Do not remove the following no critic, no security or object issues possible.
 # We can use perls default behaviour on return.
 ##no critic qw(Subroutines::RequireFinalReturn)
@@ -462,7 +461,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
            $v = CNFDateTime::_toCNFDate($v,$self->{'TZ'});
 
         }else{
-           $v = CNFDateTime->newSet({TZ=>$self->{'TZ'}});
+           $v = CNFDateTime->new(TZ=>$self->{'TZ'});
         }
        $anons->{$e} = $v;
     }elsif($t eq 'FILE'){#@TODO Test case this
@@ -1244,8 +1243,9 @@ sub log {
     my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> property('%LOG');
-    my $time = exists $self->{'TZ'} ? CNFDateTime->newSet({TZ=>$self->{'TZ'}}) -> toTimestamp() :
-                                      CNFDateTime->new()-> toTimestamp();
+    # my $time = exists $self->{'TZ'} ? CNFDateTime -> new(TZ=>$self->{'TZ'}) -> toTimestamp() :
+    #                                   CNFDateTime -> new()-> toTimestamp();
+    my $time = CNFDateTime -> new(TZ=>$self->{'TZ'}) -> toTimestamp();
     $message = "$type $message" if $isWarning;
 
     if($message =~ /^ERROR/ || $isWarning){
@@ -1301,6 +1301,15 @@ sub now {return CNFDateTime->new()}
 
 sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
+}
+
+sub import {
+    my $caller = caller;    no strict "refs";
+    {
+         *{"${caller}::isCNFTrue"}  = \&_isTrue;
+         *{"${caller}::now"}  = \&now;
+    }
+    return 1;
 }
 
 our $SQL;

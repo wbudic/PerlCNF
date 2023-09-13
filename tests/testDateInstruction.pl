@@ -36,7 +36,7 @@ try{
     #
     $test->case("Test CNFDateTime Instance.");
     die $test->failed() if not my $loca = CNFDateTime -> new(); # <- TODO This will use the default locale as US not the system one, I don't know why yet<moth?
-    die $test->failed() if not my $date = CNFDateTime -> newSet({TZ=>$random_city_in_picked});
+    die $test->failed() if not my $date = CNFDateTime -> new(TZ=>$random_city_in_picked);
     my $datetime = $date -> datetime();
     $test->isDefined('$datetime',$datetime);
     $test->passed("For $random_city_in_picked time was set ->".$date -> toSchlong() );

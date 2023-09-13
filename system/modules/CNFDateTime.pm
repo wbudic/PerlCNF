@@ -11,23 +11,29 @@ use Time::HiRes qw(time usleep);
 use feature 'signatures';
 
 use constant{
-                FORMAT         => '%Y-%m-%d %H:%M:%S',
-                FORMAT_NANO    => '%Y-%m-%d %H:%M:%S.%3N %Z',
-                FORMAT_SCHLONG => '%A, %d %B %Y %H:%M:%S %Z'
+                FORMAT            => '%Y-%m-%d %H:%M:%S',
+                FORMAT_NANO       => '%Y-%m-%d %H:%M:%S.%3N %Z',
+                FORMAT_SCHLONG    => '%A, %d %B %Y %H:%M:%S %Z',
+                DEFAULT_TIME_ZONE => 'UTC'
 };
 
-sub new($class){
-    return newSet($class,{});
+sub new {
+    my $class = shift;
+    my %settings;
+    if(ref($_[0]) eq 'HASH'){
+       %settings = %{$_[0]}
+    }else{
+       %settings = @_;
+    }
+    $settings{epoch} = time if !$settings{epoch};
+    $settings{TZ}    = DEFAULT_TIME_ZONE if !$settings{TZ};
+    return bless \%settings, $class
 }
-sub newSet($class, $settings){
-    $settings->{epoch} = time if not exists $settings->{epoch};
-    return bless $settings, $class
-}
+
 sub datetime($self) {
     return $self->{datetime} if exists $self->{datetime};
-    #   $self->{epoch} = time if not defined $self->{epoch};
-    my $dt = DateTime->from_epoch($self->{epoch});
-       $dt->set_time_zone($self->{TZ}) if $self->{TZ};
+    $self->{epoch} = time if not defined $self->{epoch};
+     my $dt = DateTime->from_epoch(epoch=>$self->{epoch},time_zone=>$self->{TZ});
     $self->{datetime} = $dt;
     return $dt
 }
@@ -47,7 +53,7 @@ sub toSchlong($self){
 }
 sub _toCNFDate ($formated, $timezone) {
     my $dt = DateTime::Format::DateParse->parse_datetime($formated, $timezone);
-    return newSet('CNFDateTime',{epoch => $dt->epoch, datetime=>$dt, TZ=>$timezone});
+    return new('CNFDateTime',{epoch => $dt->epoch, datetime=>$dt, TZ=>$timezone});
 }
 sub _listAvailableCountryCodes(){
      require DateTime::TimeZone;
