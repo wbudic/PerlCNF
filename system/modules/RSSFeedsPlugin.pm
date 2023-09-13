@@ -21,6 +21,8 @@ use constant VERSION => '1.0';
 # require CNFNode;
 # require CNFDateTime;
 
+CNFParser::import();
+
 sub new ($class, $plugin){
     my $settings;
     if($plugin){
@@ -34,7 +36,7 @@ sub new ($class, $plugin){
 ###
 sub process ($self, $parser, $property) {
     my @data = @{$parser->data()->{$property}};
-    $self->{date} = $parser->now();
+    $self->{date} = now();
     for my $idx (0 .. $#data){
         my @col = @{$data[$idx]};
         if($idx>0){
@@ -87,7 +89,7 @@ sub getOutputDir($self){
 sub fetchFeed($self,$name,$url,$description){
 
     my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "rss_$fname.rdf";
-    if(CNFParser::_isTrue($self->{RUN_FEEDS})){
+    if(isCNFTrue($self->{RUN_FEEDS})){
         if(-e $fname) {
             my $now   = new Date::Manip::Date -> new_date(); $now->parse("today");
             my $fdate = new Date::Manip::Date;
@@ -115,10 +117,10 @@ sub fetchFeed($self,$name,$url,$description){
     }
 
     my ($MD, $tree, $brew,$bench);
-    my $console     = CNFParser::_isTrue($self->{OUTPUT_TO_CONSOLE});
-    my $convert     = CNFParser::_isTrue($self->{CONVERT_TO_CNF_NODES});
-    my $markup      = CNFParser::_isTrue($self->{OUTPUT_TO_MD});
-    my $benchmark   = CNFParser::_isTrue($self->{BENCHMARK});
+    my $console     = isCNFTrue($self->{OUTPUT_TO_CONSOLE});
+    my $convert     = isCNFTrue($self->{CONVERT_TO_CNF_NODES});
+    my $markup      = isCNFTrue($self->{OUTPUT_TO_MD});
+    my $benchmark   = isCNFTrue($self->{BENCHMARK});
     my $output_local= getOutputDir($self);
 
     my $parser = XML::RSS::Parser->new;
