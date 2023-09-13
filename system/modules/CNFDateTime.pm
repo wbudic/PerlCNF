@@ -14,16 +14,17 @@ use constant{
                 FORMAT            => '%Y-%m-%d %H:%M:%S',
                 FORMAT_NANO       => '%Y-%m-%d %H:%M:%S.%3N %Z',
                 FORMAT_SCHLONG    => '%A, %d %B %Y %H:%M:%S %Z',
+                FORMAT_MEDIUM     => '%d %b %Y %H:%M:%S',
                 DEFAULT_TIME_ZONE => 'UTC'
 };
 
 sub new {
     my $class = shift;
     my %settings;
-    if(ref($_[0]) eq 'HASH'){
-       %settings = %{$_[0]}
+    if(ref($_[0]) eq ''){
+        %settings = @_;
     }else{
-       %settings = @_;
+        %settings = %{$_[0]}
     }
     $settings{epoch} = time if !$settings{epoch};
     $settings{TZ}    = DEFAULT_TIME_ZONE if !$settings{TZ};

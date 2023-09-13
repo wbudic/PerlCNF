@@ -98,6 +98,8 @@ sub import {
         *{"${caller}::configDumpENV"}  = \&dumpENV;
         *{"${caller}::anon"}           = \&anon;
         *{"${caller}::SQL"}            = \&SQL;
+        *{"${caller}::isCNFTrue"}      = \&_isTrue;
+        *{"${caller}::now"}            = \&now;
     }
     return 1;
 }
@@ -1243,9 +1245,9 @@ sub log {
     my $isWarning = $type eq 'WARNG';
     my $attach  = join @_; $message .= $attach if $attach;
     my %log = $self -> property('%LOG');
-    # my $time = exists $self->{'TZ'} ? CNFDateTime -> new(TZ=>$self->{'TZ'}) -> toTimestamp() :
-    #                                   CNFDateTime -> new()-> toTimestamp();
-    my $time = CNFDateTime -> new(TZ=>$self->{'TZ'}) -> toTimestamp();
+    my $time = exists $self->{'TZ'} ? CNFDateTime -> new(TZ=>$self->{'TZ'}) -> toTimestamp() :
+                                      CNFDateTime -> new()-> toTimestamp();
+
     $message = "$type $message" if $isWarning;
 
     if($message =~ /^ERROR/ || $isWarning){
@@ -1297,19 +1299,10 @@ sub trace {
     }
 }
 
-sub now {return CNFDateTime->new()}
+sub now {return CNFDateTime->new(shift)}
 
 sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
-}
-
-sub import {
-    my $caller = caller;    no strict "refs";
-    {
-         *{"${caller}::isCNFTrue"}  = \&_isTrue;
-         *{"${caller}::now"}  = \&now;
-    }
-    return 1;
 }
 
 our $SQL;

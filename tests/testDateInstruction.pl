@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 
 require TestManager;
@@ -97,6 +97,18 @@ try{
      }else{
         $test -> failed("Nano sec. for logging failed! Eh?->$t1$t2$t3")
      }
+
+    $test->case("Test Date Formats");
+    $date = $cnf->now();
+    $test->subcase(&CNFDateTime::FORMAT);
+    $test -> passed($date->datetime() -> strftime(&CNFDateTime::FORMAT));
+    $test->subcase(&CNFDateTime::FORMAT_NANO);
+    $test -> passed($date->datetime() -> strftime(&CNFDateTime::FORMAT_NANO));
+    $test->subcase(&CNFDateTime::FORMAT_SCHLONG);
+    $test -> passed($date->datetime() -> strftime(&CNFDateTime::FORMAT_SCHLONG));
+    $test->subcase(&CNFDateTime::FORMAT_MEDIUM);
+    $test -> passed($date->datetime() -> strftime(&CNFDateTime::FORMAT_MEDIUM));
+
 
     #
     $test->done();
