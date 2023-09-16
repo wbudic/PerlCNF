@@ -41,9 +41,9 @@ sub process ($self, $parser, $property) {
         my @col = @{$data[$idx]};
         if($idx>0){
             $col[0] = $idx+1;
-            $col[4] = $self->{date} -> toTimestamp();
+            $col[4] = $self-> {date} -> toTimestamp();
         }else{
-            $col[4]='last_updated';
+            $col[4] = 'last_updated';
         }
         $data[$idx]=\@col;
     }
@@ -52,29 +52,79 @@ sub process ($self, $parser, $property) {
 }
 
 sub collectFeeds($self,$parser) {
-  my  $property = $self->{property};
+  my $property = $self->{property};
   my %hdr;
   my @data = @{$parser->data()->{$property}};
+  my $page;
   for my $idx (0 .. $#data){
       my @col = @{$data[$idx]};
       if($idx==0){
-        for my $i(0..$#col){
+        for my $i(0..$#col){ # Get the matching table column index names as scripted.
          $hdr{$col[$i]}=$i
         }
       }else{
-         my $name = $col[$hdr{name}];
-         my $tree =  fetchFeed($self, $name,$col[$hdr{url}],$col[$hdr{description}]);
-         if(ref($$tree) eq 'CNFNode'){
-            my $output_local = getOutputDir($self);
-            my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = ">$output_local"."tree_feed_$fname.cnf";
-            my $FH = FileHandle->new($fname);
-            my $root = $$tree;
-            print $FH $root->toScript();
-            close $FH;
-            $parser->addTree($name, $tree);
+         my $name = $col[$hdr{Name}]; # Now use the column names as coded, if names in script are changed, you must change.
+         my $tree =  fetchFeed($self, $name, $col[$hdr{URL}], $col[$hdr{Description}]);
+         if($tree && ref($$tree) eq 'CNFNode'){
+            if(not isCNFTrue($self->{CNF_TREE_LOADED}) && isCNFTrue($self->{CNF_TREE_STORE})){
+               my $output_local = getOutputDir($self);
+               my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = ">$output_local"."tree_feed_$fname.cnf";
+               my $FH = FileHandle->new($fname);
+               my $root = $$tree;
+               print $FH $root->toScript();
+               close $FH;
+               $parser->addTree($name, $tree);
+            }
+            if(isCNFTrue($self->{CONVERT_CNF_HTML})){
+               $page .= _treeToHTML($tree);
+            }
+         }else{
+            $parser-> warn("Feed '$name' bailed to return a CNFNode tree.")
          }
       }
   }
+  $parser->data()->{PAGE} = \$page if $page;
+}
+### PerlCNF TREE to HTML Conversion Routine, XML based RSS of various Internet feeds convert to PerlCNF previously.
+sub _treeToHTML($tree){
+    my $root = $$tree;
+    my $feed = $root->node('Feed');
+    my $brew = $root->node('Brew');
+    my ($Title, $Published,$URL,$Description) = $feed -> array('Title','Published','URL','#');
+    my $bf = qq(
+        <div class="feed">
+        <div class="feeds_hdr">
+            <div class="feed_title"><h2>$Title</hd></div>
+            <div class-"feed_lbl"><div class="feed_hdr_lbl">Published:</div>$Published</span></div>
+            <div class-"feed_hdr"><div class="feed_hdr_lbl"><span style="text-align:right;width:inherit;">URL:&nbsp;</span></div>)._htmlURL($URL).qq(</div>
+            <div class-"feed_hdr"><p>$Description</p></div>
+        </div>
+        </div>
+    );
+    my $alt = 0;
+    foreach
+        my $item(@{$brew->items()}){
+        next if $item->name() ne 'Item';
+        my ($Title,$Link,$Date) = $item -> array('Title','Link','Date');
+        my $Description         = $item -> node('Description') -> val();
+        $bf.= qq(
+            <div class="feed">
+            <div class="feeds_item_$alt">
+                <div class="feed_title"><div class="feed_lbl">Title:</div>$Title</div>
+                <div class="feed_link"><div class="feed_lbl">Link:</div>)._htmlURL($Link).qq(</div>
+                <div class="feed_Date"><div class="feed_lbl">Date:</div>$Date<div><hr></div></div>
+                <div class="feed_desc"><span>$Description<span></div>
+            </div>
+            </div>
+        );
+        $alt = $alt?0:1;
+    }
+    return $bf . '<hr class="feeds">'
+}
+
+sub _htmlURL {
+    my $link = shift;
+    return qq(<a class="feed_link" href="$link" target="feed">$link</a>)
 }
 
 sub getOutputDir($self){
@@ -88,17 +138,34 @@ sub getOutputDir($self){
 
 sub fetchFeed($self,$name,$url,$description){
 
-    my $fname = $name; $fname =~ s/[\s|\W]/_/g; $fname = "rss_$fname.rdf";
+    my ($MD, $tree, $brew,$bench);
+    my $console     = isCNFTrue($self->{OUTPUT_TO_CONSOLE});
+    my $convert     = isCNFTrue($self->{CONVERT_TO_CNF_NODES}); #<--_ If true,
+    my $stored      = isCNFTrue($self->{CNF_TREE_STORE});       #<-\_ Will use a fast stashed local CNF tree instead of the XML::RSS::Parser.
+    my $markup      = isCNFTrue($self->{OUTPUT_TO_MD});
+    my $benchmark   = isCNFTrue($self->{BENCHMARK});
+    my $output_local= getOutputDir($self);
+    my $fname = $name; $fname =~ s/[\s|\W]/_/g;
+
+    $fname = $output_local."rss_$fname.rdf";
+
     if(isCNFTrue($self->{RUN_FEEDS})){
         if(-e $fname) {
             my $now   = new Date::Manip::Date -> new_date(); $now->parse("today");
             my $fdate = new Date::Manip::Date;
             my $fsepoch = (stat($fname))[9]; $fdate->parse("epoch $fsepoch"); $fdate->parse("3 business days");
             my $delta = $fdate->calc($now);
+            $self->{CNF_TREE_LOADED} = 0;
             if($now->cmp($fdate)>0){
                 unlink $fname;
+            }else{
+                my $cnf_fname = $name; $cnf_fname =~ s/[\s|\W]/_/g;
+                $cnf_fname =  $output_local."tree_feed_$cnf_fname.cnf";
+                if($convert && $stored && -e $cnf_fname){
+                   $self->{CNF_TREE_LOADED} = 1 if $_ = CNFParser -> new($cnf_fname,{DO_ENABLED => 1}) -> getTree('CNF_FEED');
+                   return $_;
+                }
             }
-
         }
         unless ( -e $fname ) {
             try{
@@ -116,13 +183,6 @@ sub fetchFeed($self,$name,$url,$description){
         }
     }
 
-    my ($MD, $tree, $brew,$bench);
-    my $console     = isCNFTrue($self->{OUTPUT_TO_CONSOLE});
-    my $convert     = isCNFTrue($self->{CONVERT_TO_CNF_NODES});
-    my $markup      = isCNFTrue($self->{OUTPUT_TO_MD});
-    my $benchmark   = isCNFTrue($self->{BENCHMARK});
-    my $output_local= getOutputDir($self);
-
     my $parser = XML::RSS::Parser->new;
     my $fh = FileHandle->new($fname);
     my $t0 = Benchmark->new;
@@ -138,17 +198,18 @@ sub fetchFeed($self,$name,$url,$description){
         return
     }
 
-my $buffer = capture_stdout {
+my  $buffer = capture_stdout {
+        my $Title = $feed->query('/channel/title')->text_content;
         if($console){
             print 'x'x60,"\n";
-            print $feed->query('/channel/title')->text_content, " [ Items: ",$feed->item_count, " ]\n";
+            print $Title, " [ Items: ",$feed->item_count, " ]\n";
             print 'x'x60,"\n\n";
         }else{
             if($markup){
             $fname = ">$output_local"."rss_$name.md";
             $MD = FileHandle->new($fname);
             #binmode($MD, ":encoding(UTF-8)");
-            print $MD "# ",$feed->query('/channel/title')->text_content, "\n";
+            print $MD "# ", $Title, "\n";
             print $MD "\n   $description\n\n";
             print $MD "* Feed: [$name]($url)\n";
             print $MD "* Items: ",$feed->item_count, "\n";
@@ -160,8 +221,9 @@ my $buffer = capture_stdout {
                     my $expires   = new Date::Manip::Date -> new_date(); $expires->parse("7 business days");
                        $expires   =  $expires->printf(CNFDateTime::FORMAT());
                     my $fnm = $name; $fnm =~ s/[\s|\W]/_/g;
-                    my $feed = CNFNode -> new({'_'=>'Feed',Published=>$published, Expires=>$expires,
-                                                           File => $output_local."tree_feed_$fnm.cnf",
+                    my $Title = $feed->query('/channel/title')->text_content;
+                    my $feed = CNFNode -> new({'_'=>'Feed',Title => $Title, Published=>$published, Expires=>$expires,
+                                                           File  => $output_local."tree_feed_$fnm.cnf", '#'=>$description,
                                                            URL=>$url});
                     $tree =    CNFNode -> new({'_'=>'CNF_FEED',Version=>'1.0', Release=>'1'});
                     $brew =    CNFNode -> new({'_'=>'Brew'});
@@ -191,7 +253,6 @@ my $buffer = capture_stdout {
                     print $MD "* Link : <$link>\n";
                     print $MD "* Date : $date\n\n";
                     }
-
             }
             if($convert){
                 $CNFItm =  CNFNode -> new({

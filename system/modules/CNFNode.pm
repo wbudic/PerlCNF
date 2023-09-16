@@ -26,6 +26,10 @@ sub list     {shift -> {'@@'}}
 sub script   {shift -> {'~'}}
 sub priority {shift -> {'^'}}
 sub evaluate {shift -> {'&'}}
+###
+# Obtains this nodes all public attributes.
+# What you usually only want.
+###
 sub attributes {
     my $self = shift;
     my @attributes;
@@ -36,6 +40,23 @@ sub attributes {
         }
     }
     return @attributes;
+}
+###
+# Utility arrays any attributes by list requested.
+# $node-> array('Name','#') will return node 'Name' attribute and value if it has it, onderwise undef for either.
+###
+sub array {
+    my $self = shift;
+    my @attributes = @_;
+    my @arr;
+    foreach my $next(@attributes){
+       my $val = $self -> {$next};
+        if(ref($val) eq 'SCALAR'){
+           $val = $$val;
+        }
+       $arr[@arr] = $val
+    }
+    return @arr;
 }
 sub nodes {
     my $self = shift;
@@ -50,7 +71,7 @@ sub nodes {
 # Returns $self so you can perl them, if you want..
 ##
 sub add {
-    my ($self, $node,@nodes)  = @_;
+    my ($self, $node, @nodes)  = @_;
     my $prev = $self->{'@$'};
     if($prev) {
         @nodes = @$prev;
@@ -58,7 +79,7 @@ sub add {
         @nodes = ();
     }
     $node->{'@'}    = \$self;
-    $nodes[@nodes]  = \$node;
+    $nodes[@nodes]  = $node;
     $self -> {'@$'} = \@nodes;
     return $self;
 }
@@ -104,6 +125,11 @@ sub val {
     }
 
 #
+
+sub items(){
+    my $self = shift;
+    return $self -> {'@$'}
+}
 
 ###
 # Search select nodes based on from a path statement.

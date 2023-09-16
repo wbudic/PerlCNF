@@ -65,7 +65,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
                   STRICT          => 1,  # Enable/Disable strict processing to FATAL on errors, this throws and halts parsing on errors.
                   HAS_EXTENSIONS  => 0,  # Enable/Disable extension of custom instructions. These is disabled by default and ingored.
                   DEBUG           => 0,  # Not internally used by the parser, but possible a convienince bypass setting for code using it.
-                  CNF_CONTENT     => "", # Origin of the script, this wull be set by the parser, usually the path of a script file or is direct content.
+                  CNF_CONTENT     => "", # Origin of the script, this will be set by the parser, usually the path of a script file or is direct content.
                   RUN_PROCESSORS  => 1,  # When enabled post parse processors are run, are these outside of the scope of the parsers executions.
         };
     }
@@ -944,13 +944,13 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
 #
 
 sub instructPlugin {
-     my ($self, $struct, $anons) = @_;
+    my ($self, $struct, $anons) = @_;
     try{
         $properties{$struct->{'ele'}} = doPlugin($self, $struct, $anons);
         $self->log("Plugin instructed ->". $struct->{'ele'});
     }catch($e){
         if($self->{STRICT}){
-            CNFParserException->throw(error=>$e, show_trace=>1);
+            CNFParserException->throw(error=>$e);
         }else{
             $self->trace("Error @ Plugin -> ". $struct->toString() ." Error-> $@")
         }
@@ -1260,7 +1260,7 @@ sub log {
         my $logfile  = $log{file};
         my $tail_cnt = $log{tail};
         if($log{tail} && $tail_cnt && int(`tail -n $tail_cnt $logfile | wc -l`)>$tail_cnt-1){
-            use File::ReadBackwards;
+use File::ReadBackwards;
             my $pos = do {
                my $fh = File::ReadBackwards->new($logfile) or die $!;
                $fh->readline() for 1..$tail_cnt;
@@ -1325,6 +1325,11 @@ sub  JSON {
     }
     return $JSON;
 }
+
+###
+# CNFNodes are kept as anons by the TREE instruction, but these either could have been futher processed or
+# externaly assigned too as nodes to the parser.
+###
 our %NODES;
 sub addTree {
     my ($self, $name, $node  )= @_;
@@ -1332,9 +1337,15 @@ sub addTree {
         $NODES{$name} = $node;
     }
 }
+### Utility way to obtain CNFNodes from a configuration.
 sub getTree {
     my ($self, $name) = @_;
-    return $NODES{$name};
+    return $NODES{$name} if exists $NODES{$name};
+    my $ret = $self->anon($name);
+    if(ref($ret) eq 'CNFNode'){
+        return \$ret;
+    }
+    return;
 }
 
 sub END {
