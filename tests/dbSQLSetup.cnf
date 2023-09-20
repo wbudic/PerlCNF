@@ -122,7 +122,7 @@ ID`address`state`city`postcode`country~
 >>
 
 <<RSS_FEEDS<DATA>
-ID`name`url`description~
+ID`Name`URL`Description~
 #`Perl Weekly`https://perlweekly.com/perlweekly.rss`A free, once a week e-mail round-up of hand-picked news and articles about Perl.
 The Perl Weekly ( http://perlweekly.com/ ) is a newsletter including links to blog posts and other news items
  related to the Perl programming language.~

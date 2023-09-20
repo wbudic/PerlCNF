@@ -2,7 +2,7 @@ package RSSFeedsPlugin;
 
 use strict;
 use warnings;
-
+no warnings qw(experimental::signatures);
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Syntax::Keyword::Try;
@@ -36,6 +36,7 @@ sub new ($class, $plugin){
 ###
 sub process ($self, $parser, $property) {
     my @data = @{$parser->data()->{$property}};
+    my $cgi  = $parser->const('CGI');
     $self->{date} = now();
     for my $idx (0 .. $#data){
         my @col = @{$data[$idx]};
@@ -47,24 +48,39 @@ sub process ($self, $parser, $property) {
         }
         $data[$idx]=\@col;
     }
-    $parser->addPostParseProcessor($self,'collectFeeds');
-    $parser->data()->{$property} =\@data;
+    if($cgi&&$cgi->param('action') eq 'list'){
+       my $page = '<div class="feed"><h2>List Of Feeds</h2><ol>';
+       for my $idx (1 .. $#data){
+           my @col = @{$data[$idx]};
+           $page .= qq|<li><span style="border: 1px solid black; padding: 5px; padding-bottom: 0px;"><a onclick="return fetchFeed('$col[1]')" style="cursor: pointer;"> <b>$col[1]</b> </a></span> &nbsp;&nbsp;[ $col[4] ]<dt style="padding:5px;">$col[3]</dt></li>\n|;
+       }
+       $page .= '</ol></feed>';
+       $parser->data()->{PAGE} = \$page
+    }else{
+       $parser->addPostParseProcessor($self,'collectFeeds');
+    }
+    $parser->data()->{$property} = \@data
 }
 
-sub collectFeeds($self,$parser) {
+sub collectFeeds($self, $parser) {
   my $property = $self->{property};
   my %hdr;
   my @data = @{$parser->data()->{$property}};
+  my $cgi  = $parser->const('CGI');
   my $page;
+  my $feed = $cgi->param('feed') if $cgi;
+  $parser->log("Feed request:$feed");
   for my $idx (0 .. $#data){
       my @col = @{$data[$idx]};
       if($idx==0){
         for my $i(0..$#col){ # Get the matching table column index names as scripted.
-         $hdr{$col[$i]}=$i
+               $hdr{$col[$i]} = $i
         }
       }else{
-         my $name = $col[$hdr{Name}]; # Now use the column names as coded, if names in script are changed, you must change.
+         my $name = $col[$hdr{Name}]; #<- Now use the column names as coded, if names in script are changed, you must change here.
+         next if($feed && $feed ne $name);
          my $tree =  fetchFeed($self, $name, $col[$hdr{URL}], $col[$hdr{Description}]);
+         $parser->log("Fetched feed:".$name);
          if($tree && ref($$tree) eq 'CNFNode'){
             if(not isCNFTrue($self->{CNF_TREE_LOADED}) && isCNFTrue($self->{CNF_TREE_STORE})){
                my $output_local = getOutputDir($self);
@@ -106,7 +122,7 @@ sub _treeToHTML($tree){
         my $item(@{$brew->items()}){
         next if $item->name() ne 'Item';
         my ($Title,$Link,$Date) = $item -> array('Title','Link','Date');
-        my $Description         = $item -> node('Description') -> val();
+        my $Description         = $item -> node('Description')-> val();
         $bf.= qq(
             <div class="feed">
             <div class="feeds_item_$alt">

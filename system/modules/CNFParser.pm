@@ -7,6 +7,7 @@ use strict;use warnings;#use warnings::unused;
 use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
+use File::ReadBackwards;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
@@ -279,9 +280,7 @@ sub anon {  my ($self, $n, $args)=@_;
 # Validates and returns a constant named value as part of this configs instance.
 # Returns undef if it doesn't exist, and exception if constance required is set;
 sub const { my ($self,$c)=@_;
-    if(exists $self->{$c}){
-       return  $self->{$c}
-    }
+    return  $self->{$c} if exists $self->{$c};
     CNFParserException->throw("Required constants variable ' $c ' not defined in config!") if $CONSTREQ;
     return;
 }
@@ -1256,22 +1255,24 @@ sub log {
     elsif(%log && $log{console}){
         print $time . " " .$message ."\n"
     }
-    if(%log && $log{enabled} && $message){
+    if(%log && _isTrue($log{enabled}) && $message){
         my $logfile  = $log{file};
         my $tail_cnt = $log{tail};
-        if($log{tail} && $tail_cnt && int(`tail -n $tail_cnt $logfile | wc -l`)>$tail_cnt-1){
-use File::ReadBackwards;
-            my $pos = do {
-               my $fh = File::ReadBackwards->new($logfile) or die $!;
-               $fh->readline() for 1..$tail_cnt;
-               $fh->tell()
-            };
-            truncate($logfile, $pos) or die $!;
-
+        if($logfile){
+                        open (my $fh, ">>", $logfile) or die $!;
+                        print $fh $time . " - " . $message ."\n";
+                        close $fh;
+                        if(_isTrue($log{tail}) && $tail_cnt){
+                            my $fh = File::ReadBackwards->new($logfile) or die $!;
+                            if($fh->{lines}>$tail_cnt){
+                                my $pos = do {
+                                    $fh->readline() for 1..$tail_cnt;
+                                    $fh->tell()
+                                };
+                                truncate($logfile, $pos) or die $!;
+                            }
+                        }
         }
-        open (my $fh, ">>", $logfile) or die ("$!");
-        print $fh $time . " - " . $message ."\n";
-        close $fh;
     }
     return $time . " " .$message;
 }

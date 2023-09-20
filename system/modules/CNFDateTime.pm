@@ -5,6 +5,7 @@
 package CNFDateTime;
 use strict;
 use warnings;
+no warnings qw(experimental::signatures);
 use DateTime;
 use DateTime::Format::DateParse;
 use Time::HiRes qw(time usleep);
@@ -21,9 +22,7 @@ use constant{
 sub new {
     my $class = shift;
     my %settings;
-    if(ref($_[0]) eq ''){
-        %settings = @_;
-    }else{
+    if(ref($_[0]) ne ''){
         %settings = %{$_[0]}
     }
     $settings{epoch} = time if !$settings{epoch};

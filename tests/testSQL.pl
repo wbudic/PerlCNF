@@ -3,7 +3,7 @@ use warnings; use strict;
 use Syntax::Keyword::Try;
 use Benchmark;
 use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;
