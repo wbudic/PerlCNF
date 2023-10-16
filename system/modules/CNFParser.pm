@@ -713,7 +713,6 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                                     $anons ->{$name} = $line if $line
                                 }else{
                                   if($line and not $self->{$name}){# Not allowed to overwrite constant.
-
                                     $self->{$name} = $line;
                                   }else{
                                         warn "Skipping and keeping previously set constance -> [$name] the new value ".

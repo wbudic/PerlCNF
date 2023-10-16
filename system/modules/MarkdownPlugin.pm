@@ -2,7 +2,7 @@
 # This is an Ambitious Markup Script converter from  MD scripts to HTML. Every programers nightmare.
 # MD scripts can thus be placed in PerlCNF properties for further processing by this plugin.
 # Processing of these is placed in the data parsers data.
-###
+#
 package MarkdownPlugin;
 
 use strict;
@@ -14,7 +14,7 @@ use feature qw(signatures);
 use Clone qw(clone);
 ##no critic ControlStructures::ProhibitMutatingListFunctions
 
-use constant VERSION => '1.0';
+use constant VERSION => '1.1';
 
 our $TAB = ' 'x4;
 our $PARSER;
@@ -164,7 +164,7 @@ try{
             my $pret = ""; $pret = $1 if $1;
             my $post = ""; $post = $4 if $4;
             $tag = 'code'; $tag =$2 if $2;
-            my $inline = $3; 
+            my $inline = $3;
             $inline = inlineCNF($inline,"");
             my @code_tag = @{ setCodeTag($tag, "") };
             $ln = qq($pret<$code_tag[1] class='$code_tag[0]'>$inline</$code_tag[1]>$post\n);
@@ -226,6 +226,7 @@ try{
             if($list_root){ # Has been previously gathered and hasn't been buffered yet.
                $buff .= $list_root -> toString();
                undef $list_root;
+               undef $list_item;
             }
             $buff .= qq(<$h>$title</$h><a name=").scalar(@titels)."\"></a>\n"
         }
@@ -279,7 +280,7 @@ try{
             }else{
                 if($bqte_tag eq 'p'){
                    $ln =~ s/^\s*//g;
-                   $bqte .= ${style($ln)}."</br>";
+                   $bqte .= ${style($ln)}."<br>";
                 }else{
                    $ln =~ s/^\s*[-+*]\s*|^\s*\d+\.\s*//g;
                    $bqte .= "<li>".${style($ln)}."</li>\n";
@@ -294,8 +295,10 @@ try{
             }
         }
         elsif($ln =~ /^(\s*)(.*)/ && length($2)>0){
+            my $spc = length($1);
+            my $v = $2;
             if($code){
-                 my $v=$2; my $spc=$1; $list_end =0;
+                 my $spc=$1; $list_end =0;
                 if($tag eq 'pre' && $code == 1){
                     $v =~ s/</&#60;/g;
                     $v =~ s/>/&#62;/g;
@@ -304,7 +307,8 @@ try{
                     if($ln =~/^\s*\<+.*>+$/){
                        $para .= inlineCNF($v,$spc)."<br>\n"
                     }else{
-                       $para .= code2HTML($v)."<br>\n"
+                       $spc =~ s/\s/&nbsp;/g;
+                       $para .= $spc.code2HTML($v)."<br>\n"
                     }
                 }else{
                     $v = inlineCNF($v,$spc);
@@ -388,18 +392,49 @@ try{
                 }
             }else{
                 if($bqte){
-                    while($bqte_nested-->0){$bqte .="</$bqte_tag></blockqoute>\n"}
-                    $para   .= $bqte;
+                    while($bqte_nested-->0){$bqte .="</$bqte_tag></blockquote>\n"}
+                    $para   .= $bqte; $bqte_nested=0;
                     undef $bqte;
                 }
-                $para .= ${style($2)}."\n"
+
+                if($list_root && $spc>0){
+                    my $new = HTMLListItem -> new('dt', ${style($v)}, $spc);
+                    if($spc>$nplen){
+                        $list_item -> add($new);
+                        $list_item = $new;
+                        $nplen = $spc;
+                    }else{
+                        my $isEq = $list_item->{spc} == $spc;
+                        while($list_item->{spc} >= $spc && $list_item -> parent()){
+                            $list_item = $list_item -> parent();
+                            last if $isEq
+                        }
+                        $list_item = $list_root if  !$list_item;
+                        $list_item -> add($new);
+                    $list_item = $new;
+                    }
+                    $list_end = 0;
+                }else{
+                    $para .= ${style($v)}."\n"
+                }
             }
         }else{
             if($list_root && ++$list_end>1){
                $buff .= $list_root -> toString();
+               if($para){
+                    $buff .= qq(<p>$para</p>\n);
+                    $list_end=0;
+                    $para  =""
+               }
                undef $list_root;
+               undef $list_item;
             }
             elsif($para){
+                if($bqte){
+                    while($bqte_nested-->0){$bqte .="</$bqte_tag></blockquote>\n"}
+                    $para   .= $bqte;
+                    undef $bqte;
+                }
                 if($list_item){
                    $list_item->{item} = $list_item->{item} .  $para;
                    $list_end=0;
@@ -407,7 +442,7 @@ try{
                elsif($code){
                     $buff .= $para;
                }else{
-                    $buff .= qq(<p>$para</p><br>\n);
+                    $buff .= qq(<p>$para</p>\n);
                }
                $para=""
             }
@@ -475,7 +510,7 @@ sub inlineCNF($v,$spc){
         my $r = "<span ".C_PV.">[#[</span>";
            $v =~ s/\[\#\[/$r/g;
         if($v =~ m/\]\#\]/){
-           $r = "<span ".C_PV.">]#]</span>"; 
+           $r = "<span ".C_PV.">]#]</span>";
            $v =~ s/\]\#\]/$r/g;
         }
         return "$spc$v"
@@ -506,7 +541,7 @@ sub inlineCNF($v,$spc){
         $v=~/(.*)(>+\s*)$/;
         if(!$1 && $2){
             $v = $2; $v =~ s/>/&#62;/g;
-            return "$spc<span ".C_B.">$v</span>"           
+            return "$spc<span ".C_B.">$v</span>"
         }else{
             $oo =~ s/</&#60;/g;
             if($v=~m/>>>/){
@@ -556,13 +591,13 @@ if(!$oo && !$cc){
 
     $body =~ m/ ^([\[<\#\*\[<]+)  (.*?) ([\]>\#\*\]>]+)$  /gmx;
     if($1&&$2&&$3){
-      $oo=$1;
+      $oo   = $1;
       $body = $2;
-      $cc=$3;
-      $oo =~ s/</&#60;/g;
-      $oo =~ s/>/&#62;/g;
-      $cc =~ s/</&#60;/g;
-      $cc =~ s/>/&#62;/g;
+      $cc   = $3;
+      $oo   =~ s/</&#60;/g;
+      $oo   =~ s/>/&#62;/g;
+      $cc   =~ s/</&#60;/g;
+      $cc   =~ s/>/&#62;/g;
       $body =~ s/</&#60;/g;
       $body =~ s/>/&#62;/g;
       return "$spc<span ".C_B.">$oo</span><span ".C_PV.">$body</span>><span ".C_B.">$cc</span>";
@@ -769,10 +804,6 @@ div .cnf {
 =begin copyright
 Programed by  : Will Budic
 EContactHash  : 990MWWLWM8C2MI8K (https://github.com/wbudic/EContactHash.md)
-Source        : https://github.com/wbudic/PerlCNF.git
-Documentation : Specifications_For_CNF_ReadMe.md
-    This source file is copied and usually placed in a local directory, outside of its repository project.
-    So it could not be the actual or current version, can vary or has been modiefied for what ever purpose in another project.
-    Please leave source of origin in this file for future references.
+
 Open Source Code License -> https://github.com/wbudic/PerlCNF/blob/master/ISC_License.md
 =cut copyright
