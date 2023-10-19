@@ -416,7 +416,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     }
     elsif($t eq 'DATA'){
         my $add_as_SQLTable = $v =~ s/${meta('SQL_TABLE')}/""/sexi;
-        $v=~ s/^\n//;
+        $v=~ s/^\s*//gm;
         foreach(split /~\n/,$v){
             my @a;
             $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
@@ -436,7 +436,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                     push @a, $v;
                 }
                 else{
-                    if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
+                    if($d =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
                         $d = $1;
                         $d=0 if !$d; #default to 0 if not specified.
                         push @a, $d
@@ -447,18 +447,28 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                 }
             }
             if($add_as_SQLTable){
-                my ($body,$primary);
-                foreach(@a){
-                    if($_ =~ m/^ID/i){
-                        $body   .= "\"$_\" INTEGER NOT NULL,";
-                        $primary = ", PRIMARY KEY (\"$_\" AUTOINCREMENT)";
+                my ($body,$primary); #2023-10-18 SQLite db flavour only specific and tested for CNF3.0 meta support.
+                my ($INT,$BOOL,$TEXT,$DATE) = (meta('INT'),meta('BOOL'),meta('TEXT'),meta('DATE'));
+                for my $i (0..$#a-1){
+                    my $hdr = $a[$i];
+                    if($hdr =~ m/ID/i){
+                       $body   .= "\"$hdr\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,\n";
+                    }elsif($hdr =~ s/$INT//sexi){
+                       $body   .= "\"$hdr\" INTEGER NOT NULL,\n";
+                    }elsif($hdr =~ s/$BOOL//sexi){
+                       $body   .= "\"$hdr\" BOOLEAN NOT NULL CHECK (\"$hdr\" IN (0, 1)),\n";
+                    }elsif($hdr =~ s/$TEXT//sexi){
+                       $body   .= "\"$hdr\" TEXT NOT NULL CHECK (length(\"$hdr\")<=2024),\n";
+                    }elsif($hdr =~ s/$DATE//sexi){
+                       $body   .= "\"$hdr\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n";
                     }else{
-                        $body .= "\"$_\" varchar(128) NOT NULL,";
+                       $body .= "\"$hdr\" varchar(128) NOT NULL,\n";
                     }
+                    $a[$i] = $hdr;
                 }
                 $body =~ s/,$//;
-                $self->SQL()->createTable($e,$body.$primary);
-                $add_as_SQLTable =0;
+                $self->SQL()->createTable($e,$body);
+                $add_as_SQLTable = 0;
             }
 
             my $existing = $self->{'__DATA__'}{$e};

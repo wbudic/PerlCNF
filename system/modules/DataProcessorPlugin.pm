@@ -6,6 +6,8 @@ use warnings;
 use feature qw(signatures);
 use Scalar::Util qw(looks_like_number);
 use Clone qw(clone);
+use Date::Manip;
+
 use constant VERSION => '1.0';
 
 sub new ($class, $plugin){
@@ -20,22 +22,22 @@ sub new ($class, $plugin){
 # Process config data to contain expected fields and data.
 ###
 sub process ($self, $parser, $property) {
-    my @data = $parser->data()->{$property};    
+    my @data = $parser->data()->{$property};
 #
-# The sometime unwanted side of perl is that when dereferencing arrays, 
+# The sometime unwanted side of perl is that when dereferencing arrays,
 # modification only is visible withing the scope of the block.
 # Following processes and creates new references on modified data.
 # And is the reason why it might look ugly or has some unecessary relooping.
-#    
-    for my $did (0 .. $#data){ 
+#
+    for my $did (0 .. $#data){
         my @entry = @{$data[$did]};
         my $ID_Spec_Size = 0;
         my @SPEC;
-        my $mod = 0;        
+        my $mod = 0;
         foreach (@entry){
                 my @row = @$_;
                 $ID_Spec_Size = scalar @row;
-                for my $i (0..$ID_Spec_Size-1){                
+                for my $i (0..$ID_Spec_Size-1){
                     if($row[$i] =~ /^#/){
                         $SPEC[$i] = 1;
                     }
@@ -48,20 +50,20 @@ sub process ($self, $parser, $property) {
                 }#rof
                 if($row[0]){
                     # Cleanup header label row for the columns, if present.
-                    shift @entry; 
+                    shift @entry;
                     #we are done spec obtained from header just before.
                     last
-                }            
+                }
         }
         my $size = $#entry;
         my $padding = length($size);
         for my $eid (0 .. $size){
-            my @row = @{$entry[$eid]};            
+            my @row = @{$entry[$eid]};
             if ($ID_Spec_Size){
-                # If zero it is presumed ID field, corresponding to row number + 1 is our assumed autonumber.                                   
-                if($row[0] == 0){                     
+                # If zero it is presumed ID field, corresponding to row number + 1 is our assumed autonumber.
+                if($row[0] == 0){
                     my $times = $padding - length($eid+1);
-                    $row[0] = zero_prefix($times,$eid+1);       
+                    $row[0] = zero_prefix($times,$eid+1);
                     $mod = 1
                 }
                 if(@row!=$ID_Spec_Size){
@@ -79,14 +81,14 @@ sub process ($self, $parser, $property) {
                                }
                         }else{
                             my $v = $row[$i];
-                            $v =~ s/^\s+|\s+$//gs; 
-                            $row[$i] =$v; 
+                            $v =~ s/^\s+|\s+$//gs;
+                            $row[$i] =$v;
                         }
                     }
                 }
-                $entry[$eid]=\@row if $mod; #<-- re-reference as we changed the row. Something hard to understand.                   
-            }            
-        }        
+                $entry[$eid]=\@row if $mod; #<-- re-reference as we changed the row. Something hard to understand.
+            }
+        }
         $data[$did]=\@entry if $mod;
     }
     $parser->data()->{$property} = \@data;

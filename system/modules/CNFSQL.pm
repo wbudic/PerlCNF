@@ -8,6 +8,7 @@ use Exception::Class ('CNFSQLException'); use Carp qw(cluck);
 use Syntax::Keyword::Try;
 use Time::HiRes qw(time);
 use DateTime;
+use DBI;
 
 use constant VERSION => '2.0';
 
@@ -162,13 +163,13 @@ try{
                 my @hdr;
                 my @rows = @$data_prp;
                 $db->begin_work();
-                for my $row_idx (0 .. $#rows-1){
+                for my $row_idx (0 .. $#rows){
                     my @col = @{$rows[$row_idx]};
                     if($row_idx==0){
                         for my $i(0 .. $#col){
                             $hdr[@hdr]={'_'=>$col[$i],'i'=>$i}
                         }
-                    }else{
+                    }elsif(@col>0){
                         ##
                         #sel tbl section
                         if(@spec){

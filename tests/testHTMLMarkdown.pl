@@ -1,6 +1,6 @@
 use warnings; use strict;
-#use 5.36.0;
-use lib "/home/will/dev/ServerConfigCentral/local";
+
+use lib "system/modules";
 use lib "tests";
 
 
@@ -11,22 +11,22 @@ require MarkdownPlugin;
 
 my $test = TestManager -> new($0);
 
-use Syntax::Keyword::Try; try {   
+use Syntax::Keyword::Try; try {
 
 
-  
+
 
     ###
     $test->case("Markdown Instance");
-    my $plugin = MarkdownPlugin->new();
+    my $plugin = MarkdownPlugin->new(undef);
 
 
-    $test->case("Test ordered lists");   
+    $test->case("Test ordered lists");
     my $doc = $plugin->parse(qq(
         <b><https://duckduckgo.com></b>
         **Links** [Duck Duck Go](https://duckduckgo.com)
     ));
-    
+
     my $txt = @{$doc}[0];
 
     $test->case("Markdown Parser");
@@ -39,12 +39,12 @@ use Syntax::Keyword::Try; try {
     $txt = ${@{$doc}[0]};
     ($txt =~ /(<h1>.*<\/h1>)/);
      my $t = $1;
-     $test->evaluate("Has <h1> Hello",$t,'<h1> Hello</h1>');
+     $test->evaluate("Has <h1>Hello",$t,'<h1>Hello</h1>');
 
     # $test->nextCase();
 
 
-    # $test->case("Test ordered lists");   
+    # $test->case("Test ordered lists");
     # @html = $plugin->parse(qq(
     #     ## List
     #     1. First Item
@@ -57,18 +57,18 @@ use Syntax::Keyword::Try; try {
     #     3. Third item with sub list.
     #         1. One
     #         2. Two
-                    
+
     #     ***
     # ));
     # ($$html =~ /(<blockquote>)/);
     # $test->evaluate("Has <blockquote>",$1,'<blockquote>');
 
-    # $test->case("Test image links.");   
+    # $test->case("Test image links.");
     # $html = $plugin->parse(qq(
     #     ## List
     #     - New Map of Europe.
     #       < ![New Map of Europe](images/new_map_of_eu.jpg)
-                    
+
     #     ***
     # ));
     # ($$html =~ /(<img>)/);
@@ -79,10 +79,9 @@ use Syntax::Keyword::Try; try {
     $test->done();
     #
 }
-catch{ 
+catch{
    $test -> dumpTermination($@);
    $test -> doneFailed();
 }
 
 
-    

@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 use Syntax::Keyword::Try;
 
 use lib "tests";
 use lib "system/modules";
+use Date::Manip;
 
 require TestManager;
 require CNFParser;
@@ -17,16 +18,16 @@ try{
     #
     die $test->failed() if not $cnf = CNFParser->new('./old/pluginTest.cnf',{DO_ENABLED=>1});
     $test->case("Passed new instance CNFParser for:".$cnf->{CNF_CONTENT});
-    #  
+    #
     #$test-> nextCase();
-    #   
+    #
 
-    #   
-    $test->done();    
+    #
+    $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test -> doneFailed();
 }
 
