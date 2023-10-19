@@ -121,6 +121,17 @@ ID`address`state`city`postcode`country~
     property    : RSS_FEEDS
 >>
 
+<<CAT<DATA> __SQL_TABLE__
+   ID`Category`Description~
+   01`Unspecified `For quick uncategorized entries.~
+   03`File System `Operating file system/Application short log.~
+   06`System Log  `Operating system important log.~
+   09`Event       `Event that occurred, meeting, historically important.~
+   28`Personal    `Personal log of historical importance, diary type.~
+   32`Expense     `Significant yearly expense.~
+   35`Income      `Significant yearly income.~
+>>
+
 <<RSS_FEEDS<DATA>
 ID`Name`URL`Description~
 #`Perl Weekly`https://perlweekly.com/perlweekly.rss`A free, once a week e-mail round-up of hand-picked news and articles about Perl.

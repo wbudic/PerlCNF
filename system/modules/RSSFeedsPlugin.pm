@@ -52,9 +52,11 @@ sub process ($self, $parser, $property) {
        my $page = '<div class="feed"><h2>List Of Feeds</h2><ol>';
        for my $idx (1 .. $#data){
            my @col = @{$data[$idx]};
-           $page .= qq|<li><span style="border: 1px solid black; padding: 5px; padding-bottom: 0px;"><a onclick="return fetchFeed('$col[1]')" style="cursor: pointer;"> <b>$col[1]</b> </a></span> &nbsp;&nbsp;[ $col[4] ]<dt style="padding:5px;">$col[3]</dt></li>\n|;
+           $page .= qq|<li><span style="border: 1px solid black; padding: 5px; padding-bottom: 0px;">
+           <a onclick="return fetchFeed('$col[1]')" style="cursor: pointer;"> <b>$col[1]</b> </a></span>
+            &nbsp;&nbsp;[ $col[4] ]<dt style="padding:10px;">$col[3]</dt></li>\n|;
        }
-       $page .= '</ol></feed>';
+       $page .= '</ol></div>';
        $parser->data()->{PAGE} = \$page
     }else{
        $parser->addPostParseProcessor($self,'collectFeeds');
@@ -71,7 +73,7 @@ sub collectFeeds($self, $parser) {
   my $feed = $cgi->param('feed') if $cgi;
   $parser->log("Feed request:$feed");
   for my $idx (0 .. $#data){
-      my @col = @{$data[$idx]};
+       my @col = @{$data[$idx]};
       if($idx==0){
         for my $i(0..$#col){ # Get the matching table column index names as scripted.
                $hdr{$col[$i]} = $i
@@ -93,6 +95,9 @@ sub collectFeeds($self, $parser) {
             }
             if(isCNFTrue($self->{CONVERT_CNF_HTML})){
                $page .= _treeToHTML($tree);
+               $page .=qq(<a class="ui-button ui-corner-all ui-widget" onclick="return fetchFeeds('#feeds_bottom')">RSS Feeds</a>&nbsp;[<a href="#feed_top">To Top Of Feed</a>]
+               <div id="feeds_bottom" style ="margin: 5px;padding:0;visibility:hidden"><br></div>
+               )
             }
          }else{
             $parser-> warn("Feed '$name' bailed to return a CNFNode tree.")
@@ -122,7 +127,8 @@ sub _treeToHTML($tree){
         my $item(@{$brew->items()}){
         next if $item->name() ne 'Item';
         my ($Title,$Link,$Date) = $item -> array('Title','Link','Date');
-        my $Description         = $item -> node('Description')-> val();
+        my $Description         = $item -> node('Description') -> val();
+           $Description =~ s/<a/<a target="feed"/gs if $Description;
         $bf.= qq(
             <div class="feed">
             <div class="feeds_item_$alt">
@@ -185,12 +191,13 @@ sub fetchFeed($self,$name,$url,$description){
         }
         unless ( -e $fname ) {
             try{
-                print "Fetching: $fname -> $url ...";
+                print "Fetching: $fname -> [$url] ...";
                 my  $res = getstore($url, $fname);
                 if ($res == 200){
-                    print "\e[2Adone!\n"
+                    print "done!\n"
                 }else{
-                    print "\e[2AError<$res>!\n"
+                    print "Error<$res>!\n";
+                    `curl $url -o $fname`
                 }
             }catch{
                 print "Error: $@.\n";
@@ -256,6 +263,10 @@ my  $buffer = capture_stdout {
             my $CNFItm; $items_cnt++;
             if(!$date) {
                 $date  = $item->query('dc:date');
+            }
+            if(!$date){
+                print "Feed pub date item error with:$title";
+                next
             }
             $date = $date->text_content;
             $date = CNFDateTime::_toCNFDate($date, $self->{TZ})->toTimestampShort();

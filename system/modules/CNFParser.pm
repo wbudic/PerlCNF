@@ -23,6 +23,7 @@ our @files;
 our %lists;
 our %properties;
 our %instructors;
+our $SQL;
 
 ###
 # Package fields are always global in perl!
@@ -30,8 +31,9 @@ our %instructors;
 our %ANONS;
 #private -> Instance fields:
                 my  $anons;
-                my %includes;
+                my @includes; my $CUR_SCRIPT;
                 my %instructs;
+                my $IS_IN_INCLUDE_MODE;
 ###
 # CNF Instruction tag covered reserved words.
 # You can't use any of these as your own possible instruction implementation, unless in lower case.
@@ -88,6 +90,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     $self->{RUN_PROCESSORS}  = 1 if not exists $self->{RUN_PROCESSORS}; #Bby default enabled, disable during script dev.
     $self->{CNF_VERSION}     = VERSION;
     $self->{__DATA__}        = {};
+    undef $SQL;
     bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
     return $self;
 }
@@ -108,6 +111,9 @@ sub import {
 our $meta_has_priority  = meta_has_priority();
 our $meta_priority      = meta_priority();
 our $meta_on_demand     = meta_on_demand();
+our $meta_process_last  = meta_process_last();
+
+
 ###
 # The metaverse is that further this can be expanded,
 # to provide further dynamic meta processing of the property value of an anon.
@@ -247,7 +253,6 @@ sub anon {  my ($self, $n, $args)=@_;
                         }
                 }
                 $ret = $args->process($n,$ret);
-
             }elsif($ref eq 'HASHREF'){
                 foreach my $key(keys %$args){
                     if($ret =~ m/\$\$\$$key\$\$\$/g){
@@ -396,7 +401,6 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
 
     my $DO_ENABLED = $self->{'DO_ENABLED'};  my $priority = 0;
     $t = "" if not defined $t;
-
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
         # It is NOT allowed to overwrite constant.
         if (not $self->{$e}){
@@ -411,13 +415,14 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
         $anons->{$e} = $v;
     }
     elsif($t eq 'DATA'){
+        my $add_as_SQLTable = $v =~ s/${meta('SQL_TABLE')}/""/sexi;
         $v=~ s/^\n//;
         foreach(split /~\n/,$v){
             my @a;
             $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
             foreach my $d (split /`/, $_){
                 $d =~ s/\\f/`/g; #escape back form feed to backtick.
-                $d =~ s/~$//; #strip dangling ~ if there was no \n
+                $d =~ s/^\s*|~$//g; #strip dangling ~ if there was no \n
                 $t = substr $d, 0, 1;
                 if($t eq '$'){
                     $v =  $d;            #capture specked value.
@@ -432,7 +437,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                 }
                 else{
                     if($t =~ /^\#(.*)/) {#First is usually ID a number and also '#' signifies number.
-                        $d = $1;#substr $d, 1;
+                        $d = $1;
                         $d=0 if !$d; #default to 0 if not specified.
                         push @a, $d
                     }
@@ -440,6 +445,20 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                         push @a, $d;
                     }
                 }
+            }
+            if($add_as_SQLTable){
+                my ($body,$primary);
+                foreach(@a){
+                    if($_ =~ m/^ID/i){
+                        $body   .= "\"$_\" INTEGER NOT NULL,";
+                        $primary = ", PRIMARY KEY (\"$_\" AUTOINCREMENT)";
+                    }else{
+                        $body .= "\"$_\" varchar(128) NOT NULL,";
+                    }
+                }
+                $body =~ s/,$//;
+                $self->SQL()->createTable($e,$body.$primary);
+                $add_as_SQLTable =0;
             }
 
             my $existing = $self->{'__DATA__'}{$e};
@@ -452,7 +471,6 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                 $self->{'__DATA__'}{$e} = \@rows if scalar @a >0;
             }
         }
-
     }elsif($t eq 'DATE'){
         if($v && $v !~ /now|today/i){
            $v =~ s/^\s//;
@@ -513,7 +531,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                                 push @a, $d
                             }
                             else{
-                            push @a, $d;
+                                push @a, $d;
                             }
                         }
                         my $existing = $self->{'__DATA__'}{$e};
@@ -530,28 +548,38 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
             }
         }
     }elsif($t eq 'INCLUDE'){
-            $includes{$e} = {loaded=>0,path=>$e,v=>$v};
+        if (!$v){
+            $v=$e
+        }else{
+            $anons = $v;
+        }
+        my $prc_last  = ($v =~ s/($meta_process_last)/""/ei)?1:0;
+        if (includeContains($v)){
+            $self->warn("Skipping adding include $e, path already is registered for inclusion -> $v");
+            return;
+        }
+        $includes[@includes] = {script=>$v,local=>$CUR_SCRIPT,loaded=>0, prc_last=>$prc_last};
     }elsif($t eq 'TREE'){
         my  $tree = 0;
         if (!$v){
                 $v = $e;
                 $e = 'LAST_DO';
         }
-        if( $v =~ s/($meta_has_priority)/""/ei){
+        if( $v =~ s/($meta_has_priority)/""/ei ){
             $priority = 1;
         }
-        if( $v =~ s/$meta_priority/""/sexi){
+        if( $v =~ s/$meta_priority/""/sexi ){
             $priority = $2;
         }
             $tree = CNFNode->new({'_'=>$e,'~'=>$v,'^'=>$priority});
             $tree->{DEBUG} = 1 if $self->{DEBUG};
             $instructs{$e} = $tree;
     }elsif($t eq 'TABLE'){           # This has now be late bound and send to the CNFSQL package. since v.2.6
-        SQL()->createTable($e,$v) }  # It is hardly been used. But in future this might change.
-        elsif($t eq 'INDEX'){ SQL()->createIndex($v)}
+        $self->SQL()->createTable($e,$v) }  # It is hardly been used. But in future this might change.
+        elsif($t eq 'INDEX'){ $self->SQL()->createIndex($v)}
             elsif($t eq 'VIEW'){ SQL()->createView($e,$v)}
-                elsif($t eq 'SQL'){ SQL($e,$v)}
-                    elsif($t eq 'MIGRATE'){SQL()->migrate($e, $v)
+                elsif($t eq 'SQL'){ $self->SQL($e,$v)}
+                    elsif($t eq 'MIGRATE'){$self->SQL()->migrate($e, $v)
     }
     elsif($t eq 'DO'){
         if($DO_ENABLED){
@@ -560,13 +588,13 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                  $v = $e;
                  $e = 'LAST_DO';
             }
-            if( $v =~ s/($meta_has_priority)/""/ei){
+            if( $v =~ s/($meta_has_priority)/""/ei ){
                 $priority = 1;
             }
-            if( $v =~ s/($meta_priority)/""/sexi){
+            if( $v =~ s/($meta_priority)/""/sexi ){
                 $priority = $2;
             }
-            if($v=~ s/($meta_on_demand)/""/ei){
+            if( $v=~ s/($meta_on_demand)/""/ei ){
                $anons->{$e} = CNFNode -> new({'_'=>$e,'&'=>$v,'^'=>$priority});
                return;
             }
@@ -664,9 +692,6 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     }else{
        $anons = $self->{'__ANONS__'};
     }
-    #private %includes; for now we keep on possible multiple calls to parse.
-    #private instructs on this parse call.
-    %instructs = ();
 
     # We control from here the constances, as we need to unlock them if previous parse was run.
     unlock_hash(%$self);
@@ -677,13 +702,16 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
         close $fh;
         my @stat = stat($cnf_file);
         $self->{CNF_STAT}    = \@stat;
-        $self->{CNF_CONTENT} = $cnf_file;
+        $self->{CNF_CONTENT} = $CUR_SCRIPT = $cnf_file;
     }else{
-        my $type =Scalar::Util::reftype($content);
+        my $type = Scalar::Util::reftype($content);
         if($type && $type eq 'ARRAY'){
            $content = join  "",@$content;
            $self->{CNF_CONTENT} = 'ARRAY';
-        }else{$self->{CNF_CONTENT} = 'script'};
+        }else{
+           $CUR_SCRIPT = \$content;
+           $self->{CNF_CONTENT} = 'script'
+        }
     }
     $content =~ m/^\!(CNF\d+\.\d+)/;
     my $CNF_VER = $1; $CNF_VER="Undefined!" if not $CNF_VER;
@@ -722,7 +750,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                             }
                     }
               }else{
-                doInstruction($self,$v,$t,undef);
+                 doInstruction($self,$v,$t,undef);
               }
            }else{
               $v =~ s/\s*>$//;
@@ -858,8 +886,15 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
             doInstruction($self,$e,$t,$v)
         }
 	}
+    # Do scripted includes first. As these might set properties imported and processed used by the main script.
+    if(@includes){
+       $includes[@includes] = {script=>$CUR_SCRIPT,loaded=>1, prc_last=>0} if not includeContains($CUR_SCRIPT); #<- to prevent circular includes.
+       foreach (@includes){
+          $self -> doInclude($_) if $_ && not $_->{prc_last} and not $_->{loaded} and $_->{local} eq $CUR_SCRIPT;
+       }
+    }
     ###  Do the smart instructions and property linking.
-    if(%instructs){
+    if(%instructs && not $IS_IN_INCLUDE_MODE){
         my @items;
         foreach my $e(keys %instructs){
             my $struct = $instructs{$e};
@@ -910,27 +945,12 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
         }
         undef %instructs;
     }
-    #Do scripted includes.
-    my @inc = sort values %includes;
-    $includes{$0} = {loaded=>1, path=>$self->{CNF_CONTENT}}; #<- to prevent circular includes.
-    foreach my $file(@inc){
-        if(!$file->{loaded} && $file->{path} ne $self->{CNF_CONTENT}){
-           if(open(my $fh, "<:perlio", $file->{path} )){
-                read $fh, $content, -s $fh;
-              close   $fh;
-              if($content){
-                 $file->{loaded} = 1;
-                 $self->parse(undef, $content)
-              }else{
-                 $self->error("Include content is blank for -> ".$file->{path})
-              }
-            }else{
-                 CNFParserException->throw("Can't open ".$file->{path}." -> $!") if $self->{STRICT};
-                 $file->{loaded} = 0;
-                 $self->error("Script include not available -> ".$file->{path})
-            }
-        }
+
+    foreach (@includes){
+        $self -> doInclude($_) if $_ && (not $_->{loaded} and $_->{local} eq $CUR_SCRIPT)
     }
+    undef @includes if not $IS_IN_INCLUDE_MODE;
+
     foreach my $k(@$del_keys){
         delete $self->{$k} if exists $self->{$k}
     }
@@ -940,6 +960,41 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     return $self
 }
 #
+    sub includeContains{
+        my $path = shift;
+        foreach(@includes){
+            return 1 if $_&&$_->{script} eq $path
+        }
+        return 0
+    }
+###
+# Loads and parses includes local to script.
+###
+sub doInclude { my ($self, $prp_file) = @_;
+    if(!$prp_file->{loaded}){
+        if(open(my $fh, "<:perlio", $prp_file->{script} )){
+            read $fh, my $content, -s $fh;
+            close   $fh;
+            if($content){
+                my $cur_script = $CUR_SCRIPT;
+                $prp_file->{loaded} = 1;
+                $CUR_SCRIPT = $prp_file->{script};
+                # Perl is not OOP so instructions are gathered into one place, time will tell if this is desirable rather then a curse.
+                # As per file processing of instructions is not encapsulated within a included file, but main includer or startup script.
+                $IS_IN_INCLUDE_MODE = 1;
+                $self->parse(undef, $content);
+                $IS_IN_INCLUDE_MODE = 0;
+                $CUR_SCRIPT = $cur_script;
+            }else{
+                $self->error("Include content is blank for include -> ".$prp_file->{script})
+            }
+        }else{
+                $prp_file->{loaded} = 0;
+                $self->error("Script include not available for include -> ".$prp_file->{script});
+                CNFParserException->throw("Can't open include ".$prp_file->{script}." -> $!") if $self->{STRICT};
+        }
+    }
+}
 
 sub instructPlugin {
     my ($self, $struct, $anons) = @_;
@@ -1305,10 +1360,11 @@ sub dumpENV{
     foreach (keys(%ENV)){print $_,"=", "\'".$ENV{$_}."\'", "\n"}
 }
 
-our $SQL;
 sub  SQL {
-    if(!$SQL){##It is late compiled on demand.
-        require CNFSQL; $SQL  = CNFSQL->new();
+    if(!$SQL){##It is late compiled package on demand.
+        my $self = shift;
+        my $data = shift;
+        require CNFSQL; $SQL  = CNFSQL->new({parser=>$self});
     }
     $SQL->addStatement(@_) if @_;
     return $SQL;
@@ -1318,9 +1374,9 @@ sub  JSON {
     my $self = shift;
     if(!$JSON){
         require CNFJSON;
-        $JSON = CNFJSON-> new({ CNF_VERSION=>$self->{CNF_VERSION},
-                                CNF_CONTENT=>$self->{CNF_CONTENT},
-                                DO_ENABLED =>$self->{DO_ENABLED}
+        $JSON = CNFJSON-> new({ CNF_VERSION => $self->{CNF_VERSION},
+                                CNF_CONTENT => $self->{CNF_CONTENT},
+                                DO_ENABLED  => $self->{DO_ENABLED}
                               });
     }
     return $JSON;

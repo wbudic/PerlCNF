@@ -7,6 +7,7 @@ use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;
+require CNFSQL;
 
 my $test = TestManager -> new($0);
 my $cnf;
@@ -23,10 +24,11 @@ try{
        $test->case("Parse CNF into SQL.");
        $cnf->parse(undef,q(
          <<MyTable<TABLE>
-            name  varchar(20) NOTNULL
+            name  varchar(20) NOT NULL primary key
          >>
         ));
         $sql->addStatement('selAll','select * from MyTable;');
+        $test->evaluate("Has selAll?","select * from MyTable;", $sql->getStatement('selAll'));
    #
    $test->nextCase();
    #
@@ -36,14 +38,13 @@ try{
    `rm -f test_db_central.db`;
    #
    my $t0 = Benchmark->new;
-   die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1});
+   die $test->failed() if not $cnf = CNFParser->new('tests/dbSQLSetup.cnf',{DO_ENABLED=>1,DEBUG=>1,'%LOG'=>{console=>1}});
    my $t1 = Benchmark->new;
    my $td = timediff($t1, $t0);
    print "The CNF translation for tests/dbSQLSetup.cnf took:",timestr($td),"\n";
    my $sql2 = $cnf->SQL();
    $test->subcase("Test CNFSQL obtained.");
    $test->evaluate("Is CNFSQl ref?","CNFSQL", ref($sql2));
-   $test->evaluate("Has selAll?","select * from MyTable;", $sql2->getStatement('selAll'));
    #
    $test->nextCase();
    #
@@ -60,7 +61,29 @@ try{
    }else{
       $test->subcase('Skipped subcase tests, CONVERT_TO_CNF_NODES == false')
    }
-
+   #
+   $test->nextCase();
+   #
+   $test->case("Test CNFSQL script to data synch and map.");
+   $cnf = CNFParser->new(undef,{DO_ENABLED=>1,DEBUG=>1,'%LOG'=>{console=>1}});
+   $cnf->parse(undef,q(
+   <<TBL_A<TABLE>
+        "name"  varchar(28) NOT NULL,
+        "ID" INTEGER NOT NULL,
+        PRIMARY KEY ("ID" AUTOINCREMENT)
+   >>
+   <<TBL_A_DATA<DATA>
+   ID`NAME`Gender~
+   #`Mickey Mouse`rat~
+   5`Donald Duck`food~
+   #`Captain Cook`crook~
+   >>
+   ));
+   my $central = $cnf->property('DB_CENTRAL');
+   my $db = CNFSQL::_connectDB('test','test',$central->{DBI_SQL_SOURCE},$central->{DB}.'.db');
+   $sql = $cnf->SQL();
+   $sql -> {data } = $sql2->{parser}->data();
+   $sql -> initiDatabase($db,0,{'TBL_A' => ['TBL_A_DATA','name','ID']});
     #
     #
     $test->done();
