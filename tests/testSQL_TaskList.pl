@@ -18,8 +18,8 @@ try{
 
 
    $test->case("Test local SQL Database Setup.");
-    my $content = do {local $/;<DATA>};
-   $cnf = CNFParser->new(undef,{DO_ENABLED=>1,DEBUG=>1,'%LOG'=>{console=>1}});
+   my $content = do {local $/;<DATA>};
+   $cnf = CNFParser->new(undef,{DO_ENABLED=>1,DEBUG=>1,'%LOG'=>{console=>1},TZ=>"Australia/Sydney"});
    $cnf->parse(undef,$content);
    my $sql = $cnf->SQL();
    $test->subcase("Test CNFSQL obtained.");
@@ -49,4 +49,20 @@ ID`Name`~
 1`High`~
 2`Medium`~
 3`Low`~
+>>
+<< TASKS <DATA> __SQL_TABLE__
+ID`Date _DATE_ `Due _DATE_ `Task __TEXT__`Completed _BOOL_`Priority __ID_~
+#`2023-10-18`2023-11-22`Write test.`0`1~
+#`2023-10-18`2023-12-01`Implement HSHContact.`0`2~
+#`2023-10-20`2023-12-05`Start documentation page for CNFMeta DATA headers.`0`3~
+>>
+<< SHOPPING_LIST <DATA> __SQL_TABLE__
+ID`Item`Pending __BOOL__ `Date __DATE__~
+#`Tumeric Powder`no`now~
+#`Vanila Essence`yes`now~
+#`Pizza Flour`0`now~
+#`Jasmin Rice``now~
+#`Nutmeg`no`now~
+
+
 >>

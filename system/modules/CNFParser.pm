@@ -473,7 +473,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
            $v = CNFDateTime::_toCNFDate($v,$self->{'TZ'});
 
         }else{
-           $v = CNFDateTime->new(TZ=>$self->{'TZ'});
+           $v = CNFDateTime->new({TZ=>$self->{'TZ'}});
         }
        $anons->{$e} = $v;
     }elsif($t eq 'FILE'){#@TODO Test case this

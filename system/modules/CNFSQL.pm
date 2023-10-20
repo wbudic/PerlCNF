@@ -140,8 +140,8 @@ try{
            $st = $db->prepare("pragma table_info($tbl)");
         }
         $st->execute();
-        while(my @r = $st->fetchrow_array()){
-           $table_info[@table_info] = $r[1]
+        while(my @row_info = $st->fetchrow_array()){
+           $table_info[@table_info] = [$row_info[1], $row_info[2]]
         }
         my $t = $tbl; my ($sel,$ins,@spec,$q);
            $t  = %$map{$t} if $map && %$map{$t};
@@ -209,15 +209,28 @@ try{
                             my $hn = $_->{'_'};
                             my $hi = $_->{'i'};
                             for my $i(0 .. $#table_info){
-                                if ($table_info[$i] =~ m/$hn/i){
-                                    if($table_info[$i]=~/ID/i){
+                                if ($table_info[$i][0] =~ m/$hn/i){
+                                    if($table_info[$i][0]=~/ID/i){
                                       if($col[$hi]){
                                          $ins[$i] = $col[$hi];
                                       }else{
                                          $ins[$i] = $row_idx; # The row index is ID as default on autonumbered ID columns.
                                       }
                                     }else{
-                                       $ins[$i] = $col[$hi];
+                                       my $v = $col[$hi]; $v=~s/\s//g;
+                                       if($table_info[$i][1] eq "DATETIME"){
+                                          if($v && $v !~ /now|today/i){
+                                                if($self->{STRICT}&&$v!~/^\d\d\d\d-\d\d-\d\d/){
+                                                $self-> warn("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
+                                                }
+                                            $v = CNFDateTime::_toCNFDate($v,$self->{parser}->{'TZ'}) -> toTimestamp()
+                                          }else{
+                                            $v = CNFDateTime->new({TZ=>$self->{parser}->{'TZ'}}) -> toTimestamp()
+                                          }
+                                       }elsif($table_info[$i][1] =~ m/^BOOL/){
+                                         $v = CNFParser::_isTrue($v) ?1:0;
+                                       }
+                                       $ins[$i] = $v
                                     }
                                     last;
                                 }
