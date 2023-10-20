@@ -2,6 +2,8 @@
 use warnings; use strict;
 use Syntax::Keyword::Try;
 use Benchmark;
+
+
 use lib "tests";
 use lib "system/modules";
 
@@ -39,11 +41,11 @@ catch{
 __DATA__
 !CNF3.0
 << TASKS <DATA> __SQL_TABLE__
-ID`Date _DATE_ `Due _DATE_ `Task __TEXT__`Completed _BOOL_`Priority __INT_~
+ID`Date _DATE_ `Due _DATE_ `Task __TEXT__`Completed _BOOL_`Priority __ID_~
 #`2023-10-18`2023-11-22`Write test.`0`1~
-#`2023-10-18`2023-12-01`Implement HSHContact.`0`1~
->><<PRIORITIES <DATA>
-ID`Name`
+#`2023-10-18`2023-12-01`Implement HSHContact.`0`5~
+>><<PRIORITIES <DATA> __SQL_TABLE__
+ID`Name`~
 1`High`~
 2`Medium`~
 3`Low`~

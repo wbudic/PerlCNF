@@ -9,6 +9,7 @@ use Syntax::Keyword::Try;
 use Time::HiRes qw(time);
 use DateTime;
 use DBI;
+use Tie::IxHash;
 
 use constant VERSION => '2.0';
 
@@ -23,6 +24,9 @@ our $isPostgreSQL = 0;
 sub new {
     my ($class, $attrs, $self) = @_;
     $self = \%$attrs;
+    # By convention any tables and views as appearing in the CNF script should in that order also be created.
+    tie %tables, "Tie::IxHash";
+    tie %views, "Tie::IxHash";
     bless $self, $class;
 }
 
@@ -109,13 +113,13 @@ try{
     # If set $do_not_auto_synch = 1 we skip that if table is present, empty or not,
     # and if has been updated dynamically that is good, what we want. It is of external config. implementation choice.
     foreach my $tbl(keys %tables){
-        my @table_info;
         if(!$curr_tables{$tbl}){
             $st = $tables{$tbl};
             $self->{parser}->log("CNFParser-> SQL: $st\n");
             try{
                 $db->do($st);
-                $self->{parser}->log("CNFParser-> Created table: $tbl\n")
+                $self->{parser}->log("CNFParser-> Created table: $tbl\n");
+                $do_not_auto_synch = 0;
             }catch{
                 die "Failed to create:\n$st\nError:$@"
             }
@@ -123,6 +127,10 @@ try{
         else{
             next if $do_not_auto_synch;
         }
+    }
+    foreach my $tbl(keys %tables){
+        next if $do_not_auto_synch;
+        my @table_info;
         if(isPostgreSQL()){
            $st = lc $tbl; #we lc, silly psql is lower casing meta and case sensitive for internal purposes.
            $st="select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";
@@ -228,10 +236,11 @@ try{
         }
 
     }
+
     foreach my $view(keys %views){
         if(!$curr_tables{$view}){
             $st = $views{$view};
-            #print "CNFParser-> SQL: $st\n";
+            $self->{parser}->log("CNFParser-> SQL: $st\n");
             $db->do($st);
             $self->{parser}->log("CNFParser-> Created view: $view\n")
         }

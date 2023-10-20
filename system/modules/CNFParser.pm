@@ -447,27 +447,10 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                 }
             }
             if($add_as_SQLTable){
-                my ($body,$primary); #2023-10-18 SQLite db flavour only specific and tested for CNF3.0 meta support.
                 my ($INT,$BOOL,$TEXT,$DATE) = (meta('INT'),meta('BOOL'),meta('TEXT'),meta('DATE'));
-                for my $i (0..$#a-1){
-                    my $hdr = $a[$i];
-                    if($hdr =~ m/ID/i){
-                       $body   .= "\"$hdr\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,\n";
-                    }elsif($hdr =~ s/$INT//sexi){
-                       $body   .= "\"$hdr\" INTEGER NOT NULL,\n";
-                    }elsif($hdr =~ s/$BOOL//sexi){
-                       $body   .= "\"$hdr\" BOOLEAN NOT NULL CHECK (\"$hdr\" IN (0, 1)),\n";
-                    }elsif($hdr =~ s/$TEXT//sexi){
-                       $body   .= "\"$hdr\" TEXT NOT NULL CHECK (length(\"$hdr\")<=2024),\n";
-                    }elsif($hdr =~ s/$DATE//sexi){
-                       $body   .= "\"$hdr\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n";
-                    }else{
-                       $body .= "\"$hdr\" varchar(128) NOT NULL,\n";
-                    }
-                    $a[$i] = $hdr;
-                }
-                $body =~ s/,$//;
-                $self->SQL()->createTable($e,$body);
+                my $ret = CNFMeta::_metaTranslateDataHeader(@a);
+                @a = @{@$ret[0]};
+                $self->SQL()->createTable($e,${@{$ret}[1]});
                 $add_as_SQLTable = 0;
             }
 
