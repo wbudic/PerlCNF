@@ -27,6 +27,7 @@ try{
    my $db = CNFSQL::_connectDB('test','test','DBI:SQLite:','test_tasks.db');
    $sql->initiDatabase($db,0);
    #
+   #
    $test->nextCase();
    #
    #

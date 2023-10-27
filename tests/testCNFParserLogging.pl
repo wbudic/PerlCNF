@@ -2,7 +2,7 @@
 use warnings; use strict;
 use Syntax::Keyword::Try;
 #no critic "eval"
-use lib "/home/will/dev/PerlCNF/system/modules";
+use lib "system/modules";
 use lib "tests";
 
 require CNFParser;
