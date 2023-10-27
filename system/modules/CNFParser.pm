@@ -8,6 +8,7 @@ use Exception::Class ('CNFParserException');
 use Syntax::Keyword::Try;
 use Hash::Util qw(lock_hash unlock_hash);
 use File::ReadBackwards;
+use File::Copy;
 
 require CNFMeta; CNFMeta::import();
 require CNFNode;
@@ -34,6 +35,7 @@ our %ANONS;
                 my @includes; my $CUR_SCRIPT;
                 my %instructs;
                 my $IS_IN_INCLUDE_MODE;
+                my $LOG_TRIM_SUB;
 ###
 # CNF Instruction tag covered reserved words.
 # You can't use any of these as your own possible instruction implementation, unless in lower case.
@@ -305,7 +307,7 @@ return property(@_);
 ###
 # Collection now returns the contained type dereferenced and is concidered a property.
 # Make sure you use the appropriate Perl type on the receiving end.
-# Note, if properties contain any scalar key entry, it sure hasn't been set by this parser.
+# Note, if properties contain any scalar key row, it sure hasn't been set by this parser.
 #
 sub property { my($self, $name) = @_;
     if(exists($properties{$name})){
@@ -398,7 +400,6 @@ sub template { my ($self, $property, %macros) = @_;
 
 #private to parser sub.
 sub doInstruction { my ($self,$e,$t,$v) = @_;
-
     my $DO_ENABLED = $self->{'DO_ENABLED'};  my $priority = 0;
     $t = "" if not defined $t;
     if($t eq 'CONST' or $t eq 'CONSTANT'){#Single constant with mulit-line value;
@@ -417,10 +418,11 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
     elsif($t eq 'DATA'){
         my $add_as_SQLTable = $v =~ s/${meta('SQL_TABLE')}/""/sexi;
         $v=~ s/^\s*//gm;
-        foreach(split /~\n/,$v){
+        foreach my $row(split(/~\s/,$v)){
             my @a;
-            $_ =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
-            foreach my $d (split /`/, $_){
+            $row =~ s/\\`/\\f/g;#We escape to form feed  the found 'escaped' backtick so can be used as text.
+            my @cols = $row =~ m/([^`]*)`{0,1}/gm;pop @cols;#<-regexp is special must pop last empty element.
+            foreach my $d(@cols){
                 $d =~ s/\\f/`/g; #escape back form feed to backtick.
                 $d =~ s/^\s*|~$//g; #strip dangling ~ if there was no \n
                 $t = substr $d, 0, 1;
@@ -428,11 +430,12 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                     $v =  $d;            #capture specked value.
                     $d =~ s/\$$|\s*$//g; #trim any space and system or constant '$' end marker.
                     if($v=~m/\$$/){
-                        $v = $self->{$d}; $v="" if not $v;
+                        $v = $self->{$d};
                     }
                     else{
                         $v = $d;
                     }
+                    $v="" if not $v;
                     push @a, $v;
                 }
                 else{
@@ -442,6 +445,7 @@ sub doInstruction { my ($self,$e,$t,$v) = @_;
                         push @a, $d
                     }
                     else{
+                        $d="" if not $d;
                         push @a, $d;
                     }
                 }
@@ -950,6 +954,10 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
     my $runProcessors = $self->{RUN_PROCESSORS} ? 1: 0;
     lock_hash(%$self);#Make repository finally immutable.
     runPostParseProcessors($self) if $runProcessors;
+    if ($LOG_TRIM_SUB){
+        $LOG_TRIM_SUB->();
+        undef $LOG_TRIM_SUB;
+    }
     return $self
 }
 #
@@ -965,7 +973,9 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
 ###
 sub doInclude { my ($self, $prp_file) = @_;
     if(!$prp_file->{loaded}){
-        if(open(my $fh, "<:perlio", $prp_file->{script} )){
+        my $file = $prp_file->{script};
+        if(!-e $file){$file =~ m/.*\/(.*$)/; $file = $1}
+        if(open(my $fh, "<:perlio", $file)){
             read $fh, my $content, -s $fh;
             close   $fh;
             if($content){
@@ -1309,15 +1319,18 @@ sub log {
                         open (my $fh, ">>", $logfile) or die $!;
                         print $fh $time . " - " . $message ."\n";
                         close $fh;
-                        if(_isTrue($log{tail}) && $tail_cnt){
-                            my $fh = File::ReadBackwards->new($logfile) or die $!;
-                            if($fh->{lines}>$tail_cnt){
-                                my $pos = do {
-                                    $fh->readline() for 1..$tail_cnt;
-                                    $fh->tell()
-                                };
-                                truncate($logfile, $pos) or die $!;
-                            }
+                        if($tail_cnt>0 && !$LOG_TRIM_SUB){
+                           $fh = File::ReadBackwards->new($logfile) or die $!;
+                           if($fh->{lines}>$tail_cnt){
+                                $LOG_TRIM_SUB = sub {
+                                my $fh = File::ReadBackwards->new($logfile) or die $!;
+                                my @buffer; $buffer[@buffer] = $fh->readline() for (1..$tail_cnt);
+                                   open (my $fhTemp, ">", "/tmp/$logfile") or die $!;
+                                    print $fhTemp $_ foreach (reverse @buffer);
+                                    close $fhTemp;
+                                   move("/tmp/$logfile",$logfile)
+                                }
+                           }
                         }
         }
     }
@@ -1398,6 +1411,7 @@ sub getTree {
 }
 
 sub END {
+$LOG_TRIM_SUB->() if $LOG_TRIM_SUB;
 undef %ANONS;
 undef @files;
 undef %properties;

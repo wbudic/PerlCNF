@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 
 use lib "tests";
-use lib "system/modules";
+use lib "/home/will/dev/PerlCNF/system/modules";
 
 require TestManager;
 require CNFParser;
@@ -18,11 +18,28 @@ try{
     # Test instance creation.
     ###
     die $test->failed() if not $cnf = CNFParser->new();
-    $test->case("Passed new instance CNFParser.");    
-    #  
+    $test->case("Passed new instance CNFParser.");
+    #
     $test-> nextCase();
-    #   
-    $test->case("Check cnf list specified type properties."); 
+    #
+    $test->case("Test standard header and DATA parsing.");
+    $cnf->parse(undef,qq(
+<<  Sample_Data <DATA>
+ID`name`desc~
+1`Mickey Mouse`Character
+ owned by Disney.~
+2`Olga Scheps`Pianist from Estern Europe~
+    >>));
+    my $sample = $cnf->data()->{Sample_Data};
+    $test->isDefined('$ample',$sample);
+    $test->evaluate('No. of rows is 3?', 3, scalar(@$sample));
+    my @array  = @$sample;
+    $test->evaluate('$array[1][2] does match?', qq(Character
+owned by Disney.), $array[1][2]);
+    #
+    $test-> nextCase();
+    #
+    $test->case("Check cnf list specified type properties.");
     my $exp = q|<<data$$<a=1>_some_value_>>|;
        $cnf->parse(undef,$exp);
     my @aitms = $cnf->list('data');
@@ -42,20 +59,20 @@ try{
     $test->subcase("Contain 'my\$\$' as 'my' data property?");
     my @data = @{%{$cnf->data()}{'my'}};
     my @mydt = @{$data[0]};
-    $test->evaluate(\@mydt);    
+    $test->evaluate(\@mydt);
     $test->evaluate('01',$mydt[0]);
-    #  
+    #
     $test-> nextCase();
-    # 
+    #
     $test->case("Is DATA reserved word.");
     $test->isDefined("isReservedWord('DATA')",1,$cnf->isReservedWord("DATA"));
     ###
-    #   
-    $test->done();    
+    #
+    $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test -> doneFailed();
 }
 
