@@ -58,29 +58,57 @@ sub import {
 # I know, this is crazy stuff, skips having to have to use the TABLE instruction in most cases.
 ###
 sub _metaTranslateDataHeader {
+    my $isPostgreSQL = shift;
     my @array = @_;
-    my ($body,$primary); #2023-10-18 SQLite db flavour only specific and tested for CNF3.0 meta support.
-    my ($INT,$BOOL,$TEXT,$DATE,$ID) = (_meta('INT'),_meta('BOOL'),_meta('TEXT'),_meta('DATE'),_meta('ID'));
+    my ($idType,$body,$primary)=('NONE');
+    my ($INT,$BOOL,$TEXT,$DATE,$ID, $CNFID, $INDEX) = (
+            _meta('INT'),_meta('BOOL'),_meta('TEXT'),_meta('DATE'),
+            _meta('ID'),_meta('CNF_ID'),_meta('CNF_INDEX')
+            );
     for my $i (0..$#array){
-        my $hdr = $array[$i];
+        my $hdr  = $array[$i];
         if($hdr eq 'ID'){
-            $body   .= "\"$hdr\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,\n";
+            if($isPostgreSQL){
+               $body   .= "\"$hdr\" INT UNIQUE PRIMARY KEY GENERATED ALWAYS AS IDENTITY,\n";
+               #$primary = "PRIMARY KEY(ID)"
+            }else{
+               $body   .= "\"$hdr\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,\n";
+            }
+            # DB provited sequence, you better don't set this when inserting a record.
+            $idType = 'AUTOINCREMENT'
+        }elsif($hdr =~ s/$CNFID/""/ei){
+            #This is where CNF provides the ID uinque int value (which doesn't have to be autonumbered i.e. '#', but must be unique).
+            $body   .= "\"$hdr\" INTEGER NOT NULL PRIMARY KEY CHECK (\"$hdr\">0),\n";
+            $idType = 'CNF_INDEX'
         }elsif($hdr =~ s/$ID/""/ei){
+            #This is ID prefix to some other data id stored in this table, usually one to one/many relationship.
             $body   .= "\"$hdr\" INTEGER CHECK (\"$hdr\">0),\n";
+        }elsif($hdr =~ s/$INDEX/""/ei){
+            # This is where CNF instructs to make a indexed lookup type field,
+            # for inside database fast selecting, hashing, caching and other queries.
+            $body   .= "\"$hdr\" varchar(64) NOT NULL PRIMARY KEY,\n";
         }elsif($hdr =~ s/$INT/""/ei){
             $body   .= "\"$hdr\" INTEGER NOT NULL,\n";
         }elsif($hdr =~ s/$BOOL/''/ei){
-            $body   .= "\"$hdr\" BOOLEAN NOT NULL CHECK (\"$hdr\" IN (0, 1)),\n";
+            if($isPostgreSQL){
+               $body   .= "\"$hdr\" BOOLEAN NOT NULL,\n";
+            }else{
+               $body   .= "\"$hdr\" BOOLEAN NOT NULL CHECK (\"$hdr\" IN (0, 1)),\n";
+            }
         }elsif($hdr =~ s/$TEXT/""/ei){
             $body   .= "\"$hdr\" TEXT NOT NULL CHECK (length(\"$hdr\")<=2024),\n";
         }elsif($hdr =~ s/$DATE/""/ei){
-            $body   .= "\"$hdr\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n";
+            $body   .= "\"$hdr\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n";
         }else{
-            $body   .= "\"$hdr\" varchar(128) NOT NULL,\n";
+            $body   .= "\"$hdr\" TEXT NOT NULL,\n";
         }
         $array[$i] = $hdr;
     }
-    $body =~ s/,$//;
-return [\@array,\$body];
+    if($primary){
+        $body   .=  $primary;
+    }else{
+        $body =~ s/,$//
+    }
+return [\@array,\$body,$idType];
 }
 1;

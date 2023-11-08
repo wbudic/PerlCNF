@@ -83,7 +83,7 @@ try{
    my $db = CNFSQL::_connectDB('test','test',$central->{DBI_SQL_SOURCE},$central->{DB}.'.db');
    $sql = $cnf->SQL();
    $sql -> {data } = $sql2->{parser}->data();
-   $sql -> initiDatabase($db,0,{'TBL_A' => ['TBL_A_DATA','name','ID']});
+   $sql -> initDatabase($db,0,{'TBL_A' => ['TBL_A_DATA','name','ID']});
     #
     #
     $test->done();

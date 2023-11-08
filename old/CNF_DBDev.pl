@@ -82,7 +82,7 @@ $dsn = "DBI:SQLite:dbname=".$ENV{'PWD'}.'/dbLifeLog/'.$cnf->constant('$DATABASE'
 
  $db = DBI->connect($dsn, $cnf->constant('$LOGIN_USER'), $cnf->constant('$LOGIN_PASS'), { RaiseError => 1 })
               or die "Error->". &DBI::errstri ;
-$dbver = $cnf->initiDatabase($db);
+$dbver = $cnf->initDatabase($db);
 
 
 $dsn= "DBI:SQLite:dbname=".$ENV{'PWD'}.'/dbLifeLog/'.$cnf->constant('$DATABASE');

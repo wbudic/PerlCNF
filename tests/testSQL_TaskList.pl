@@ -25,7 +25,7 @@ try{
    $test->subcase("Test CNFSQL obtained.");
    $test->evaluate("Is CNFSQl ref?","CNFSQL", ref($sql));
    my $db = CNFSQL::_connectDB('test','test','DBI:SQLite:','test_tasks.db');
-   $sql->initiDatabase($db,0);
+   $sql->initDatabase($db,0);
    #
    #
    $test->nextCase();

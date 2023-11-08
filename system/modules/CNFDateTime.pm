@@ -53,6 +53,7 @@ sub toSchlong($self){
 }
 sub _toCNFDate ($formated, $timezone) {
     my $dt = DateTime::Format::DateParse->parse_datetime($formated, $timezone);
+    die "Unable to parse date:" if not $dt;
     return new('CNFDateTime',{epoch => $dt->epoch, datetime=>$dt, TZ=>$timezone});
 }
 sub _listAvailableCountryCodes(){

@@ -13,13 +13,17 @@ use Tie::IxHash;
 
 use constant VERSION => '2.0';
 
-our %tables = ();
+our %tables = (); our %tables_id_type = ();
 our %views  = ();
 our %mig    = ();
 our @sql    = ();
 our @statements;
 our %curr_tables  = ();
-our $isPostgreSQL = 0;
+
+my $isPostgreSQL = 0;
+my $hasRecords = 0;
+my $TZ;
+
 
 sub new {
     my ($class, $attrs, $self) = @_;
@@ -40,11 +44,12 @@ sub isPostgreSQL{shift; return $isPostgreSQL}
 #
 # $map - In general is binding of an CNF table to its DATA property, header of the DATA instructed property is self column resolving.
 #        If assinged to an array the first element must contain the name,
-#        @TODO 18102023 - Specifications page to be provided with examples for this.
+#        @TODO 20231018 - Specifications page to be provided with examples for this.
 #
-sub initiDatabase { my($self, $db, $do_not_auto_synch, $map, $st) = @_;
+sub initDatabase { my($self, $db, $do_not_auto_synch, $map, $st) = @_;
 #Check and set CNF_CONFIG
 try{
+    $hasRecords   = 0;
     $isPostgreSQL = $db-> get_info( 17) eq 'PostgreSQL';
     if($isPostgreSQL){
         my @tbls = $db->tables(undef, 'public'); #<- This is the proper way, via driver, doesn't work on sqlite.
@@ -66,7 +71,7 @@ try{
             $stmt = qq|
                     CREATE TABLE CNF_CONFIG
                     (
-                        NAME character varying(16)  NOT NULL,
+                        NAME character varying(32)  NOT NULL,
                         VALUE character varying(128) NOT NULL,
                         DESCRIPTION character varying(256),
                         CONSTRAINT CNF_CONFIG_pkey PRIMARY KEY (NAME)
@@ -86,29 +91,30 @@ try{
         foreach my $key(sort keys %{$self->{parser}}){
             my ($dsc,$val);
             $val = $self->{parser}->const($key);
-            if(ref($val) eq 'SCALAR'){
+            if(ref($val) eq ''){
                 my @sp = split '`', $val;
                 if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
                 $st->execute($key,$val,$dsc);
             }
         }
         $db->commit();
-    }else{
-        my $sel = $db->prepare('SELECT VALUE FROM CNF_CONFIG WHERE NAME LIKE ?;');
+    }else{ unless ($do_not_auto_synch){
+        my $sel = $db->prepare("SELECT VALUE FROM CNF_CONFIG WHERE NAME LIKE ?;");
         my $ins = $db->prepare('INSERT INTO CNF_CONFIG VALUES(?,?,?);');
         foreach my $key(sort keys %{$self->{parser}}){
                 my ($dsc,$val);
                 $val = $self->{parser}->const($key);
-                if(ref($val) eq 'SCALAR'){
-                    my @sp = split '`', $val;
-                    if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
+                if(ref($val) eq ''){
                     $sel->execute($key);
-                    if(!$sel->fetchrow_array()){
+                    my @a = $sel->fetchrow_array();
+                    if(@a==0){
+                        my @sp = split '`', $val;
+                        if(scalar @sp>1){$val=$sp[0];$dsc=$sp[1];}else{$dsc=""}
                         $ins->execute($key,$val,$dsc);
                     }
                 }
         }
-    }
+    }}
     # By default we automatically data insert synchronize script with database state on every init.
     # If set $do_not_auto_synch = 1 we skip that if table is present, empty or not,
     # and if has been updated dynamically that is good, what we want. It is of external config. implementation choice.
@@ -131,9 +137,10 @@ try{
     foreach my $tbl(keys %tables){
         next if $do_not_auto_synch;
         my @table_info;
+        my $tbl_id_type = $tables_id_type{$tbl};
         if(isPostgreSQL()){
            $st = lc $tbl; #we lc, silly psql is lower casing meta and case sensitive for internal purposes.
-           $st="select column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";
+           $st="select ordinal_position, column_name, data_type from information_schema.columns where table_schema = 'public' and table_name = '$st';";
            $self->{parser}->log("CNFParser-> $st", "\n");
            $st = $db->prepare($st);
         }else{
@@ -141,36 +148,50 @@ try{
         }
         $st->execute();
         while(my @row_info = $st->fetchrow_array()){
-           $table_info[@table_info] = [$row_info[1], $row_info[2]]
+           $row_info[2] =~ /(\w+)/;
+           $table_info[@table_info] = [$row_info[1], uc $1 ]
         }
-        my $t = $tbl; my ($sel,$ins,@spec,$q);
+        my $t = $tbl; my ($sel,$ins,@spec,$q,$qinto);
            $t  = %$map{$t} if $map && %$map{$t};
         if(ref($t) eq 'ARRAY'){
            @spec = @$t;
            $t = $spec[0]; shift @spec;
            foreach(@spec){ $q.="\"$_\" == ? and " }
            $q =~ s/\sand\s$//;
-           $st="SELECT * FROM $tbl where $q;";
+           $st="SELECT * FROM $tbl WHERE $q;";
            $self->{parser}->log("CNFParser-> $st\n");
            $sel = $db -> prepare($st);
         }else{
            my $prime_key = getPrimaryKeyColumnNameWherePart($db, $tbl);
-           $st="SELECT * FROM $tbl where $prime_key";
+           $st="SELECT * FROM $tbl WHERE $prime_key";
            $self->{parser}->log("CNFParser-> $st\n");
            $sel = $db -> prepare($st);
+           my @r = $self->selectRecords($db,"select count(*) from $tbl;")->fetchrow_array();
+           $hasRecords = 1 if $r[0] > 0
         }
-           $q ="";foreach(@table_info){ $q.="?,"} $q =~ s/,$//;
-           $ins = $db -> prepare("INSERT INTO $tbl VALUES($q);");
+
+        $q = $qinto = ""; my $qa = $tbl_id_type eq 'CNF_INDEX'; foreach(@table_info){
+            if($qa || @$_[0] ne 'ID') {
+                $qinto .="\"@$_[0]\",";
+                $q.="?,"
+            }
+        }
+        $qinto =~ s/,$//;
+        $q =~ s/,$//;
+        $ins = $db -> prepare("INSERT INTO $tbl ($qinto)\nVALUES ($q);");
+
+
         my $data = $self->{parser} -> {'__DATA__'};
         if($data){
-            my $data_prp = %$data{$t};
+            my  $data_prp = %$data{$t};
             if(!$data_prp && $self->{data}){
                 $data_prp = %{$self->{data}}{$t};
             }
             if($data_prp){
                 my @hdr;
                 my @rows = @$data_prp;
-                $db->begin_work();
+                my $auto_increment=0;
+            $db->begin_work();
                 for my $row_idx (0 .. $#rows){
                     my @col = @{$rows[$row_idx]};
                     if($row_idx==0){
@@ -216,19 +237,21 @@ try{
                                       }else{
                                          $ins[$i] = $row_idx; # The row index is ID as default on autonumbered ID columns.
                                       }
+                                      $auto_increment=$i+1 if $tbl_id_type eq 'AUTOINCREMENT';
                                     }else{
-                                       my $v = $col[$hi]; $v=~s/\s//g;
-                                       if($table_info[$i][1] eq "DATETIME"){
+                                       my $v = $col[$hi];
+                                       if($table_info[$i][1] =~ /TIME/ || $table_info[$i][1] =~  /DATE/){
+                                          $TZ = exists $self->{parser}->{'TZ'} ? $self->{parser}->{'TZ'} : CNFDateTime::DEFAULT_TIME_ZONE() if !$TZ;
                                           if($v && $v !~ /now|today/i){
                                                 if($self->{STRICT}&&$v!~/^\d\d\d\d-\d\d-\d\d/){
                                                 $self-> warn("Invalid date format: $v expecting -> YYYY-MM-DD at start as possibility of  DD-MM-YYYY or MM-DD-YYYY is ambiguous.")
                                                 }
-                                            $v = CNFDateTime::_toCNFDate($v,$self->{parser}->{'TZ'}) -> toTimestamp()
+                                             $v = CNFDateTime::_toCNFDate($v,$TZ) -> toTimestamp()
                                           }else{
-                                            $v = CNFDateTime->new({TZ=>$self->{parser}->{'TZ'}}) -> toTimestamp()
+                                             $v = CNFDateTime->new({TZ=>$TZ}) -> toTimestamp()
                                           }
                                        }elsif($table_info[$i][1] =~ m/^BOOL/){
-                                         $v = CNFParser::_isTrue($v) ?1:0;
+                                             $v = CNFParser::_isTrue($v) ?1:0;
                                        }
                                        $ins[$i] = $v
                                     }
@@ -237,6 +260,10 @@ try{
                              }
                         }
                         $self->{parser}->log("CNFParser-> Insert into $tbl -> ". join(',', @ins)."\n");
+                        if($auto_increment){
+                           $auto_increment--;
+                           splice @ins, $auto_increment, 1
+                        }
                         $ins->execute(@ins);
                     }
                 }
@@ -258,7 +285,7 @@ try{
             $self->{parser}->log("CNFParser-> Created view: $view\n")
         }
     }
-    undef %tables;
+    undef %tables; undef %tables_id_type;
     undef %views;
 }
 catch{
@@ -281,9 +308,13 @@ sub _connectDB {
        die "<p>Error->$@</p><br><pre>DSN: $DSN</pre>";
     }
 }
+sub _credentialsToArray{
+   return split '/', shift
+}
 
-sub createTable { my ($self, $name, $body) = @_;
-        $tables{$name} = "CREATE TABLE $name(\n$body);"
+sub createTable { my ($self, $name, $body, $idType) = @_;
+        $tables{$name} = "CREATE TABLE $name(\n$body);";
+        $tables_id_type{$name} = $idType;
 }
 sub createView { my ($self, $name, $body) = @_;
         $views{$name} = "CREATE VIEW $name AS $body;"
@@ -306,6 +337,7 @@ sub getStatement { my ($self, $name) = @_;
    return;
 }
 sub hasEntry{  my ($sel, $uid) = @_;
+    return 0 if !$hasRecords;
     if(ref($uid) eq 'ARRAY'){
            $sel -> execute(@$uid)
     }else{
@@ -317,31 +349,35 @@ sub hasEntry{  my ($sel, $uid) = @_;
 }
 
 sub getPrimaryKeyColumnNameWherePart { my ($db,$tbl) = @_; $tbl = lc $tbl;
-    my $sql = $isPostgreSQL ? qq(SELECT c.column_name, c.data_type
-FROM information_schema.table_constraints tc
-JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name)
-JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema
-  AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
-WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = '$tbl') :
+    my $sql = $isPostgreSQL ?
+qq(SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS data_type
+FROM   pg_index i
+JOIN   pg_attribute a ON a.attrelid = i.indrelid
+                     AND a.attnum = ANY(i.indkey)
+WHERE  i.indrelid = '$tbl'::regclass
+AND    i.indisprimary;) :
+
 qq(PRAGMA table_info($tbl););
+
+
 my $st = $db->prepare($sql); $st->execute();
 my @r  = $st->fetchrow_array();
 if(!@r){
     CNFSQLException->throw(error=> "Table missing or has no Primary Key -> $tbl", show_trace=>1);
 }
-    if($isPostgreSQL){
-        return $r[0]."=?";
-    }else{
-        # sqlite
-        # cid[0]|name|type|notnull|dflt_value|pk<--[5]
-        while(!$r[5]){
-            @r  = $st->fetchrow_array();
-            if(!@r){
-            CNFSQLException->throw(error=> "Table  has no Primary Key -> $tbl", show_trace=>1);
+        if($isPostgreSQL){
+            return "\"$r[0]\"=?";
+        }else{
+            # sqlite
+            # cid[0]|name|type|notnull|dflt_value|pk<--[5]
+            while(!$r[5]){
+                @r  = $st->fetchrow_array();
+                if(!@r){
+                CNFSQLException->throw(error=> "Table  has no Primary Key -> $tbl", show_trace=>1);
+                }
             }
+            return $r[1]."=?";
         }
-        return $r[1]."=?";
-    }
 }
 
 sub selectRecords {
