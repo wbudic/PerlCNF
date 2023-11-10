@@ -95,7 +95,7 @@ sub new { my ($class, $path, $attrs, $del_keys, $self) = @_;
     $self->{CNF_VERSION}     = VERSION;
     $self->{__DATA__}        = {};
     undef $SQL;
-    bless $self, $class; $self->parse($path, undef, $del_keys) if($path);
+    bless $self, $class; $self -> parse($path, undef, $del_keys) if($path);
     return $self;
 }
 #
@@ -290,7 +290,10 @@ sub anon {  my ($self, $n, $args)=@_;
 # Returns undef if it doesn't exist, and exception if constance required is set;
 sub const { my ($self,$c)=@_;
     return  $self->{$c} if exists $self->{$c};
-    CNFParserException->throw("Required constants variable ' $c ' not defined in config!") if $CONSTREQ;
+    if ($CONSTREQ){CNFParserException->throw("Required constants variable ' $c ' not defined in config!")}
+    # Let's try to resolve. As old convention makes constances have a '$' prefix all upprercase.
+    $c = '$'.$c;
+    return  $self->{$c} if exists $self->{$c};
     return;
 }
 
@@ -941,7 +944,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
         delete $self->{$k} if exists $self->{$k}
     }
     my $runProcessors = $self->{RUN_PROCESSORS} ? 1: 0;
-    lock_hash(%$self);#Make repository finally immutable.
+    $self = lock_hash(%$self);#Make repository finally immutable.
     runPostParseProcessors($self) if $runProcessors;
     if ($LOG_TRIM_SUB){
         $LOG_TRIM_SUB->();
@@ -1295,7 +1298,7 @@ sub log {
 
     $message = "$type $message" if $isWarning;
 
-    if($message =~ /^ERROR/ || $isWarning){
+    if($message =~ /^ERROR/ || ($isWarning && $self->{ENABLE_WARNINGS})){
         warn  $time . " " .$message;
     }
     elsif(%log && $log{console}){
