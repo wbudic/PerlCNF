@@ -27,11 +27,11 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
 4. Multi line values are tag ended on a separate line with an **>>>**.
 5. CNF tag value can post processed by placing macros making it a template.
 6. Standard markup of a macro is to enclose the property name or number with a triple dollar signifier **\$\$\$**{macro}**\$\$\$**.
-    1. Precedence of resolving the property name/value is by first passed macros, then config anons and finally the looking up constance's.
+    1. Precedence of resolving the property name/value is by first passed macros, then config anons and finally the looking up constances.
     2. Nested macros resolving from linked in other properties is currently not supported.
 7. CNF full tag syntax format: **```<<{$|@|%}NAME{<INSTRUCTION>}{<any type of value>}>>```**, the name and instruction parts, sure open but don't have to be closed with **>** on a multiple line value.
 8. CNF instructions and constants are uppercase.
-    1. Example 1 format with instruction: ```<<<CONST\n{name=value\n..}\n>>>``` autonomous const, with inner properties.
+    1. Example 1 format with instruction: ```<<<CONST\n{name=value\n..}\n>>>``` autonomous const ins., with inner attributes as constances.
     2. Example 2 format with instruction: ```<<{$sig}{NAME}<CONST {multi line value}>>>``` A single const property with a multi line value.
     3. Example 3 format with instruction: ```<<CONST<{$sig}{NAME}\n {multi line value}>>>``` A single const property with a multi line value.
     4. Example 4 format with instruction: ```<<{NAME}<{INSTRUCTION}<{value}>>>``` A anon.
@@ -48,23 +48,30 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
 
 13. Property names, Constant, Anon refer to the programmatically assigned variable name.
 14. *CNF Constant* values are store specific.
+    1. These don't have to be uppercase and containing a **$** prefix as signifier in their name, anymore.
+    2. The convention of signifying them particularly is for special cases only.
+    3. Reason is that since v.3.0 of CNF, the '$' prevents access to them directly in code via a keyword, i.e.:
+        ```CNF $cnf->{MY_KEYWORD} ```
+    4. A safer method access is provided **CONST('MY_KEYWORD')**, but in general future use unnecessary, slower and not direct.
+       1. Accessing a CNF constant from code not declared in script will rise errors, preventing the application to function any further. A desirable outcome in most cases anyway.
+       2. So to provide an alternative value, using exist function to check if the constant keyword is present in repository is possible but not recommended.
 15. Constants can't be changed for the life of the application or service issued.
 16. Storage of CNF constants declared can be preceded to the file based one.
 17. A Constant CNF value is not synchronized, unlike an anon from script to storage configuration. It has to be created from the scripted if missing in storage.
-18. i.e. If stored in a database or on a network node. After the file declaration fact.
-19. Missing file based storage settings can be next queried from the environmental one.
+    1. i.e. If stored in a database or on a network node. After the file declaration fact.
+18. Missing file based storage settings can be next queried from the environmental one.
     1. This is to be avoided if possible.
-20. File storage encountered constants override system environmental ones.
+19. File storage encountered constants override system environmental ones.
     1. i.e. System administrator has set them.
-21. Database storage encountered constants override file set ones.
+20. Database storage encountered constants override file set ones.
     1. i.e. User of application has set them.
-22. CNF Constant values can be changed in the script file.
+21. CNF Constant values can be changed in the script file.
     1. If not present in script file, then an application setting must proceed with its default.
     2. CNF Constants can be declared only once during initial parsing of script files.
     3. Rule of thumb is that Constants are synchronized with an applications release version.
     4. Static constants, are script or code only assigned values.
-    5. CNF Anons can override in contrast previously assigned value.
-23. A CNF Anon is similar to constants but a simpler property and value only pair.
+    5. CNF Anons can override in contrast to previously assigned value or a included script.
+22. A CNF Anon is similar to constants but a simpler property and value only pair.
     1. Anons are so called because they are unknown or unexpected by the configuration framework, store to object intermediate.
     2. Constants that turn up in the anon list, are a good indicator that they are not handled from script. Forgotten become anons.
     3. Anons similar to constants, once in the database, overtake the scripted or application default settings value.
@@ -72,10 +79,10 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
     5. Anons hashed are programmatically accessed separately to constants.
        1. It is fine to have several applications, to share same storage, even if they have different implementation.
        2. Constants will be specific to application, while anons can change in different purpose script files.
-24. *Anon* is not instruction processed. Hence, anonymous in nature for its value. Applications using this CNF system usually process and handles this type of entries.
-25. Anon has no signifier, and doesn't need to have an application default.
-26. Anon value is in best practice and in general synchronized, from script to a database configuration store. It is up to the implementation.
-27. Anon value is global to the application and its value can be modified.
+23. *Anon* is not instruction processed. Hence, anonymous in nature for its value. Applications using this CNF system usually process and handles this type of entries.
+24. Anon has no signifier, and doesn't need to have an application default.
+25. Anon value is in best practice and in general synchronized, from script to a database configuration store. It is up to the implementation.
+26. Anon value is global to the application and its value can be modified.
 
     ```CNF
             <<USE_SWITCH<true>>>
@@ -98,14 +105,14 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
              or warn "Failed to obtain expected URL when querying anon -> GET_SUB_URL"
     ```
 
-28. Listing is a reappearing same name tag postfixed with an **\$\$**.
+27. Listing is a reappearing same name tag postfixed with an **\$\$**.
 
     ```CNF Example 1:
                 <<INS$$>ls -la>
                 <<INS$$>uname -a>
     ```
 
-29. Listing is usually a named list of instructions, items grouped and available as individual entries of the listing value.
+28. Listing is usually a named list of instructions, items grouped and available as individual entries of the listing value.
 
     ```CNF Example 2:
                 <<Animals$$>Cat>
@@ -113,9 +120,9 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
                 <<Animals$$>Eagle>
     ```
 
-30. Anon used as an **reserve** format is some applications internal meta property.
+29. Anon used as a **reserve** format is some applications internal meta property.
     1. These are prefixed with an **^** to the anon property name.
-    2. They are not expected or in any specially part of the CNF processing, but have here an special mention.
+    2. They are not expected or in any specially part of the CNF processing, but have here a special mention.
     3. It is not recommended to use reserve anons as their value settings, that is; can be modified in scripts for their value.
     4. Reserve anon if present is usually a placeholder, lookup setting, that in contrast if not found there, might rise exceptions from the application using CNF.
 
@@ -126,7 +133,6 @@ Quick Jump: [CNF Tag Formats](#cnf-tag-formats)  |  [CNF Collections Formatting]
                 <<^REVISION>5>>
                 <<META><DATA>^INIT=1`^RUN=1`^STAGES_EXPECTED=5>> } <-- End
     ```
-
 
 ## CNF Tag Formats
 
@@ -219,8 +225,8 @@ Quick Jump: [Introduction](#introduction)  |  [CNF Collections Formatting](#cnf-
        <<PWD<>path/to/something>>
     ```
 
-
 ## CNF Collections Formatting
+
 Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)  | [Instructions & Reserved Words](#instructions-and-reserved-words) | [Scripted Data Related Instructions](#scripted-data-related-instructions)
 
 1. CNF collections are named two list types.
@@ -264,7 +270,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
    1. Reserved words relate to instructions, that are specially treated, and interpreted by the parser to perform extra or specifically processing on the current value.
    2. Reserved instructions can't be used for future custom ones, and also not recommended tag or property names.
    3. Current Reserved words list is.
-       - CONST      - Concentrated list of constances, or individually tagged name and its value.
+       - CONST      - Concentrated list of constances, or individually tagged a name and its value.
        - VARIABLE   - Concentrated list of anons, or individually tagged name and its value.
        - DATA       - CNF scripted delimited data property, having uniform table data rows.
        - FILE       - CNF scripted delimited data property is in a separate file.
@@ -292,7 +298,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
 ## CNF META Instructions
 
 1. Some instructions accept to have special in header value meta flags.
-    1. These are not to be impeding normal evaluation or processing of and instruction.
+    1. These are not to be impeding normal evaluation or processing of the instruction.
     2. The CNFMeta package is having the latest list of meta tags, a help about and for the purpose utilities.
     3. Most common use is to compare and act up on if found at the beginning of a property value.
 2. Meta tag declared in a value begins and ends with an underscore **_** character.
@@ -316,7 +322,7 @@ Quick Jump: [Introduction](#introduction)  | [CNF Tag Formats](#cnf-tag-formats)
     3. By type of property or instruction.
         1. CNFNodes have higher priority then instructed item types (plugins).
     4. By meta instruction.
-        1. Meta instruction priority order (__PRIORITY_01__), the higher the no. the later will be processed.
+        1. Meta instruction priority order (**PRIORITY_01**), the higher the no. the later will be processed.
         2. Meta on demand, this is experimental, and usually out of the scope of the processor.
 
 ## Database and SQL Instruction Formatting
@@ -338,7 +344,7 @@ CNF supports basic SQL Database structure statement generation. This is done via
 
 ### SQLite Formatting
 
-* SQLites have the following reserved instructions:
+- SQLites have the following reserved instructions:
 
 1. TABLE
 
@@ -622,5 +628,6 @@ $APP_NAME="My Application Sample"
 
    An open source application.
 
-<center>Sun Stage - v.2.9 2023</center>
+   Please refer to this specifications header and item or section points, on any desired clarifications or research/troubleshooting inquires.
 
+<center>Sun Stage - v.3.0 2023</center>
