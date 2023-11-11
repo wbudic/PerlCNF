@@ -43,7 +43,7 @@ try{
    ###
        $test->subcase("Test constance's instructed block.");
        my $samp = $cnf->{'$TITLE_HEADING'};
-       $test->evaluate('$TITLE_HEADING', $samp, 'Example Application');
+       $test->evaluate('TITLE_HEADING', $samp, 'Example Application');
        $samp = $cnf->{'$FRENCH_PARAGRAPH'};
        $test->isDefined('$FRENCH_PARAGRAPH',$samp);
        $samp = $cnf->const('$CLINGTON_PARAGRAPH');
@@ -88,6 +88,18 @@ try{
 
     $test->evaluate("Changed in config ME_TOO == 1024 * 8", $cnf->anon('ME_TOO'), 1024 * 8);
     die "Should not be same" unless $me_too ne $cnf->anon('ME_TOO');
+
+    #
+    $test->nextCase();
+    #
+
+
+    ###
+    # Test VARIABLE instruction.
+    ###
+    $test->case("Test VAR converting to constant.");
+    $test->isDefined('$MyConstant1',$cnf->{MyConstant1});
+    $test->isDefined('$MyConstant1',$cnf->{MyConstant2});
 
     #
     $test->nextCase();

@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use warnings; use strict; 
+use warnings; use strict;
 use lib "tests";
 use lib "system/modules";
 
@@ -17,7 +17,7 @@ use Syntax::Keyword::Try; try {
     $test->case("Passed new instance for CNFParser.");
     #
 
-    #  
+    #
     $test-> nextCase();
     #
 
@@ -55,20 +55,20 @@ use Syntax::Keyword::Try; try {
     ###
     die $test->failed()  if not  $cnf = CNFParser->new('./old/CNF2HTML.cnf');
     $test->case($cnf);
-    $test->subcase("\$DEBUG=$cnf->{'$DEBUG'}");
+    $test->subcase("DEBUG=$cnf->{DEBUG}");
     # CNF Constances can't be modifed anymore, let's test.
     try{
         $cnf->{'$DEBUG'}= 'false'
     }catch{
-        $test->subcase("Passed keep constant test for \$cnf->\$DEBUG=$cnf->{'$DEBUG'}");
+        $test->subcase("Passed keep constant test for \$cnf->DEBUG=$cnf->{DEBUG}");
     }
 
     #
     $test->done();
     #
 }
-catch{ 
-   $test -> dumpTermination($@);   
+catch{
+   $test -> dumpTermination($@);
    $test->doneFailed();
 }
 
