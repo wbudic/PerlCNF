@@ -2,7 +2,7 @@
 use warnings; use strict;
 use Syntax::Keyword::Try;
 
-use lib "./tests";
+use lib "tests";
 use lib "system/modules";
 
 
@@ -35,6 +35,7 @@ try{
        try{
          my $immutable = $cnf->const('IMMUTABLE');
          $test->passed("Passed to access constance with variable resolve.");
+         $test->isDefined('$FRENCH_PARAGRAPH',$immutable);
        }catch{
          $test->failed("Failed access allowed to undefined constances.")
        }
@@ -68,7 +69,7 @@ try{
        $test->subcase('Passed dynamic added constance not possible.');
     }
 
-    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf',{'$DYNAMIC_IMMUTABLE'=>'app assigned constant value'});
+    die $test->failed() if not $cnf = CNFParser->new('./tests/example.cnf',{'$DYNAMIC_IMMUTABLE'=>'app assigned constant value',ENABLE_WARNINGS=>0});
     $test->evaluate('$DYNAMIC_IMMUTABLE == "app assigned constant value"',$cnf->{'$DYNAMIC_IMMUTABLE'},
                         'app assigned constant value');
     #

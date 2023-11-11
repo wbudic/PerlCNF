@@ -40,6 +40,7 @@ sub import {
          *{"${caller}::meta_on_demand"}      = sub {return _meta("ON_DEMAND")};
          # Process or load last (includes0.
          *{"${caller}::meta_process_last"}   = sub {return _meta("PROCESS_LAST")};
+         *{"${caller}::meta_const"}          = sub {return _meta("CONST")};
          ###
          # Tree instruction has been scripted in collapsed nodes shorthand format.
          # Shortife is parsed faster and with less recursion, but can be prone to script errors,

@@ -116,6 +116,7 @@ our $meta_has_priority  = meta_has_priority();
 our $meta_priority      = meta_priority();
 our $meta_on_demand     = meta_on_demand();
 our $meta_process_last  = meta_process_last();
+our $meta_const         = meta_const();
 
 
 ###
@@ -732,8 +733,9 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                                   if($line and not $self->{$name}){# Not allowed to overwrite constant.
                                     $self->{$name} = $line;
                                   }else{
-                                        warn "Skipping and keeping previously set constance -> [$name] the new value ".
-                                        ($line eq $self->{$name})?"matches it":"dosean't match -> $line."
+                                    my $w =  "Skipping and keeping a previously set constance -> [$name] in ". $self->{CNF_CONTENT}." the new value ";
+                                       $w .= ($line eq $self->{$name})?"matches it":"dosean't match -> $line.";
+                                        warn $w
                                   }
                                 }
                             }
@@ -816,6 +818,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                 #     $t = $1;
                 #     $v = $2;
                 # }
+                my $IsConstant = ($v =~ s/$meta_const/""/sexi);
                 my @lst = ($isArray?split(/[,\n]/, $v):split('\n', $v)); $_="";
                 my @props = map {
                         s/^\s+|\s+$//;   # strip unwanted spaces
@@ -850,10 +853,16 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                     foreach  my $p(@props){
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){
-                            my @pair = ($p=~/\s*([-+_\w]*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
+                            my @pair = ($p=~/\s*([-+_\w\$]*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
                             next if (@pair != 2 || $pair[0] =~ m/^[#\\\/]+/m);#skip, it is a comment or not '=' delimited line.
                             my $name  = $pair[0];
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip quotes
+                            if($IsConstant && $name =~ m/\$[A-Z]+/){
+                               if(not exists $self->{$name}){
+                                  $self->{$name} = $value;
+                                  next;
+                               }
+                            }
                             if($macro){
                                 my @arr = ($value =~ m/(\$\$\$.+?\$\$\$)/gm);
                                 foreach my $find(@arr) {
