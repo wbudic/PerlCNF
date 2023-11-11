@@ -2,6 +2,7 @@
 use warnings; use strict;
 use lib "tests";
 use lib "system/modules";
+#use lib "system/modules";
 
 require TestManager;
 require CNFParser;

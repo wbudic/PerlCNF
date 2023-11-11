@@ -42,6 +42,7 @@ my $cnf = CNFParser->new('./tests/example.cnf',{
 
 Constance's can be scripted in a multiline scripted block, using the inbuilt CONST instruction.
 Usually these are found at the beginning of the config. And by convention are upper case and signified with -> '$'
+However this convention is now deprecated.
 
 <<<CONST
 
@@ -174,4 +175,14 @@ normal : key of this settings collection.
 
 <<<CONST   $I_AM_A_CONSTANCE_2 = "Having this text."
 $I_AM_A_CONSTANCE_TOO = "Having a different value. Thus should error."
+>>>
+
+// New CNF v.3.0 business using meta conversion specifics.
+<<<VARIABLE
+
+__CONST__ $MyConstant1 = is this signifier striped!
+__CONST__ MyConstant2 = is this without a signifier!
+
+plain_anon = available only via anon method.
+
 >>>

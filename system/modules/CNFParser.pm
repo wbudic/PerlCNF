@@ -683,7 +683,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
        $anons = $self->{'__ANONS__'};
     }
 
-    # We control from here the constances, as we need to unlock them if previous parse was run.
+    # We control from here the constances, as we need to unlock them if a previous parse was run.
     unlock_hash(%$self);
 
     if(not $content){
@@ -720,26 +720,28 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
            if(isReservedWord($self,$t)){
               my $isVar = ($t eq 'VARIABLE' || $t eq 'VAR');
               if($t eq 'CONST' or $isVar){ #constant multiple properties.
-                    foreach  my $line(split '\n', $v) {
-                            $line =~ s/^\s+|\s+$//;  # strip unwanted spaces
-                            $line =~ s/\s*>$//;
-                            $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;
-                            my $name = $1;
-                               $line = $3; $line =~ s/^\s*(['"])(.*)\g{1}$/$2/ if $line;#strip quotes
-                            if(defined $name){
-                                if($isVar){
-                                    $anons ->{$name} = $line if $line
-                                }else{
-                                  if($line and not $self->{$name}){# Not allowed to overwrite constant.
-                                    $self->{$name} = $line;
-                                  }else{
-                                    my $w =  "Skipping and keeping a previously set constance -> [$name] in ". $self->{CNF_CONTENT}." the new value ";
-                                       $w .= ($line eq $self->{$name})?"matches it":"dosean't match -> $line.";
-                                        warn $w
-                                  }
+                foreach  my $line(split '\n', $v) {
+                    my  $isMETAConst = $line =~ s/$meta_const//se;
+                        $line =~ s/^\s+|\s+$//;  # strip unwanted spaces
+                        $line =~ s/\s*>$//;
+                        $line =~ m/([\$\w]*)(\s*=\s*)(.*)/g;
+                        my $name = $1;
+                           $line = $3; $line =~ s/^\s*(['"])(.*)\g{1}$/$2/ if $line;#strip quotes
+                        if(defined $name){
+                            if($isVar && not $isMETAConst){
+                                $anons ->{$name} = $line if $line
+                            }else{
+                                $name =~ s/^\$// if $isMETAConst;
+                                # It is NOT allowed to overwrite a constant, so check an issue warning.
+                                if($line and not $self->{$name}){
+                                   $self->{$name} = $line;
+                                }else{ my
+                                   $w =  "Skipping and keeping a previously set constance of -> [$name] in ". $self->{CNF_CONTENT}." the new value ";
+                                   $w .= ($line eq $self->{$name})?"matches it":"dosean't match -> $line."; $self->warn($w)
                                 }
                             }
-                    }
+                        }
+                }
               }else{
                  doInstruction($self,$v,$t,undef);
               }
@@ -842,7 +844,7 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                     my $macro = 0;
                     if(exists($properties{$t})){
                         if($self->isReservedWord($t)){
-                            $self->warn("Skipped overwritting reserved property -> $t.");
+                            $self->warn("Skipped a try to overwrite a reserved property -> $t.");
                             next
                         }else{
                             %hsh =  %{$properties{$t}}
@@ -853,11 +855,11 @@ sub parse {  my ($self, $cnf_file, $content, $del_keys) = @_;
                     foreach  my $p(@props){
                         if($p && $p eq 'MACRO'){$macro=1}
                         elsif( $p && length($p)>0 ){
-                            my @pair = ($p=~/\s*([-+_\w\$]*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
+                            my @pair = ($p=~/\s*([-+_\w]*)\s*[=:]\s*(.*)/s);#split(/\s*=\s*/, $p);
                             next if (@pair != 2 || $pair[0] =~ m/^[#\\\/]+/m);#skip, it is a comment or not '=' delimited line.
                             my $name  = $pair[0];
                             my $value = $pair[1]; $value =~ s/^\s*["']|['"]$//g;#strip quotes
-                            if($IsConstant && $name =~ m/\$[A-Z]+/){
+                            if($IsConstant && $p =~ m/\$[A-Z]+/){# if meta constant we check $p if signified to transfer into a CNF constance.
                                if(not exists $self->{$name}){
                                   $self->{$name} = $value;
                                   next;

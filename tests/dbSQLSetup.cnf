@@ -6,7 +6,7 @@
 # It is simple and early development and mapping will generically be full for the select and insert statments.
 # it doesn't cover for now, table relationships or constrains.
 ###
-<<DB_SCHEMA<TREE>
+<<DB_SCHEMA <TREE>
     [table[
         name    = USERS
         property: USERS_DATA
